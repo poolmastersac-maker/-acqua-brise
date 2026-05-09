@@ -1781,9 +1781,17 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
       const historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
       const produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
+      const necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
+      const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+      const permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}');
+
       for (const c of clientes) await setDoc(doc(db,'clientes',String(c.id)), c);
       for (const h of historico) await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
       for (const p of produtos) await setDoc(doc(db,'produtos',String(p.id)), p);
+      for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), n);
+      for (const u of usuarios) await setDoc(doc(db,'usuarios',String(u.id)), u);
+      await setDoc(doc(db,'config','permissoes'), permissoes);
+
       const badge = document.getElementById('syncBadge');
       if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
     } catch(e) {
@@ -1810,6 +1818,21 @@ window.addEventListener('resize', ajustarOffsetHeader);
     if (!snapP.empty) {
       const fbProd = snapP.docs.map(d => d.data());
       if (fbProd.length > 0) localStorage.setItem('aquagest_produtos', JSON.stringify(fbProd));
+    }
+    const snapN = await getDocs(collection(db, 'necessidades'));
+    if (!snapN.empty) {
+      const fbNec = snapN.docs.map(d => d.data());
+      if (fbNec.length > 0) localStorage.setItem('aquagest_necessidades', JSON.stringify(fbNec));
+    }
+    const snapU = await getDocs(collection(db, 'usuarios'));
+    if (!snapU.empty) {
+      const fbUsers = snapU.docs.map(d => d.data());
+      if (fbUsers.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(fbUsers));
+    }
+    const snapPerm = await getDocs(collection(db, 'config'));
+    if (!snapPerm.empty) {
+      const permDoc = snapPerm.docs.find(d => d.id === 'permissoes');
+      if (permDoc) localStorage.setItem('aquagest_permissoes', JSON.stringify(permDoc.data()));
     }
     const badge = document.getElementById('syncBadge');
     if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
