@@ -1,0 +1,2540 @@
+<html lang="pt-BR"><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/content/location/location.js" id="eppiocemhmnlbhjplcgkofciiegomcon"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/extend-native-history-api.js"></script><script src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/libs/requests.js"></script><head><script bis_use="true" type="text/javascript" charset="utf-8" data-bis-config="{&quot;blacklistIframeSrc&quot;:[&quot;facebook.com/&quot;,&quot;twitter.com/&quot;,&quot;youtube-nocookie.com/embed/&quot;,&quot;//vk.com/&quot;,&quot;//www.vk.com/&quot;,&quot;linkedin.com/&quot;,&quot;//www.linkedin.com/&quot;,&quot;//instagram.com/&quot;,&quot;//www.instagram.com/&quot;,&quot;//www.google.com/recaptcha/api2/&quot;,&quot;//www.google.com/recaptcha/enterprise/anchor&quot;,&quot;//hangouts.google.com/webchat/&quot;,&quot;//www.google.com/calendar/&quot;,&quot;//www.google.com/maps/embed&quot;,&quot;spotify.com/&quot;,&quot;soundcloud.com/&quot;,&quot;//player.vimeo.com/&quot;,&quot;//disqus.com/&quot;,&quot;//tgwidget.com/&quot;,&quot;//js.driftt.com/&quot;,&quot;friends2follow.com&quot;,&quot;/widget&quot;,&quot;login&quot;,&quot;//video.bigmir.net/&quot;,&quot;blogger.com&quot;,&quot;//smartlock.google.com/&quot;,&quot;//keep.google.com/&quot;,&quot;/web.tolstoycomments.com/&quot;,&quot;moz-extension://&quot;,&quot;chrome-extension://&quot;,&quot;/auth/&quot;,&quot;//analytics.google.com/&quot;,&quot;adclarity.com&quot;,&quot;paddle.com/checkout&quot;,&quot;hcaptcha.com&quot;,&quot;recaptcha.net&quot;,&quot;2captcha.com&quot;,&quot;accounts.google.com&quot;,&quot;www.google.com/shopping/customerreviews&quot;,&quot;buy.tinypass.com&quot;,&quot;gstatic.com&quot;,&quot;secureir.ebaystatic.com&quot;,&quot;docs.google.com&quot;,&quot;contacts.google.com&quot;,&quot;github.com&quot;,&quot;mail.google.com&quot;,&quot;chat.google.com&quot;,&quot;audio.xpleer.com&quot;,&quot;keepa.com&quot;,&quot;static.xx.fbcdn.net&quot;,&quot;sas.selleramp.com&quot;,&quot;1plus1.video&quot;,&quot;console.googletagservices.com&quot;,&quot;//lnkd.demdex.net/&quot;,&quot;//radar.cedexis.com/&quot;,&quot;//li.protechts.net/&quot;,&quot;challenges.cloudflare.com/&quot;,&quot;ogs.google.com&quot;,&quot;//www.ukrnafta.com/data/map/&quot;,&quot;//maps.google.com/maps&quot;,&quot;//www.openstreetmap.org/export/embed.html&quot;,&quot;//www.google.com/maps/d/u/3/embed&quot;,&quot;//itm.ebaydesc.com/itmdesc&quot;,&quot;//books.google.com/books&quot;,&quot;//embed.podcasts.apple.com&quot;,&quot;//www.paypal.com/smartchat&quot;,&quot;//www.centurylink.com/assets/includes/common/sfChatiFrame.html&quot;,&quot;//macmillan-prod-gen.ada.support/embed&quot;,&quot;//macmillan-prod-gen.ada.support/chat&quot;,&quot;//ctl-consumer.my.site.com/&quot;],&quot;whitelistDomainsForPostBody&quot;:[&quot;youtube.com&quot;]}" data-dynamic-id="77e9e0e5-f757-41a0-873b-6c8007bd7a39" src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/executors/200.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Acqua Brise — Gestão de Piscinas</title>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500;600;700&amp;family=IBM+Plex+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script><script bis_use="true" type="text/javascript" charset="utf-8" nonce="" data-dynamic-id="77e9e0e5-f757-41a0-873b-6c8007bd7a39" src="chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon/executors/101.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#DAEAF8;--surface:#F0F8FF;--surface2:#EAF4FB;--border:#C5DCEE;
+  --accent:#2196F3;--accent2:#1565C0;--green:#059669;--red:#DC2626;
+  --yellow:#D97706;--text:#1A202C;--muted:#4A6478;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Sans',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding-top:0;}
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1565C0 0%,#2196F3 50%,#42A5F5 100%);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.login-card{background:white;border-radius:20px;padding:40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.login-logo{font-size:2.5rem;text-align:center;margin-bottom:8px;}
+.login-titulo{font-family:'Spectral',serif;font-size:1.5rem;font-weight:600;text-align:center;color:#1565C0;margin-bottom:4px;}
+.login-sub{font-size:0.82rem;color:var(--muted);text-align:center;margin-bottom:28px;}
+.login-form .form-group{margin-bottom:16px;}
+.login-input{width:100%;padding:12px 14px;border:1.5px solid #C5DCEE;border-radius:10px;font-family:var(--font);font-size:0.9rem;outline:none;transition:border-color 0.2s;color:var(--text);}
+.login-input:focus{border-color:#2196F3;box-shadow:0 0 0 3px rgba(33,150,243,0.1);}
+.login-input-wrap{position:relative;}
+.login-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#1565C0,#2196F3);color:white;border:none;border-radius:10px;font-family:var(--font);font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:8px;transition:opacity 0.2s;}
+.login-btn:hover{opacity:0.9;}
+.login-erro{color:#DC2626;font-size:0.78rem;margin-top:6px;display:none;}
+.login-erro.show{display:block;}
+.login-link{background:none;border:none;color:#2196F3;font-size:0.82rem;cursor:pointer;text-decoration:underline;padding:0;font-family:var(--font);}
+.recovery-step{display:none;}
+.recovery-step.active{display:block;}
+header{display:flex;flex-direction:column;border-bottom:1px solid var(--border);background:#F0F8FF;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(33,150,243,0.1);}
+.header-top{display:flex;align-items:center;justify-content:space-between;padding:8px 28px;width:100%;border-bottom:1px solid var(--border);}
+.nav-tabs{display:flex;gap:2px;padding:4px 20px;overflow-x:auto;scrollbar-width:none;}
+.nav-tabs::-webkit-scrollbar{display:none;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:white;box-shadow:0 3px 10px rgba(33,150,243,0.35);}
+.logo-name{font-family:'Spectral',serif;font-size:1rem;font-weight:600;color:var(--accent2);}
+.logo-sub{font-size:0.58rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.nav-tabs{display:flex;gap:2px;flex-wrap:wrap;}
+.nav-tab{padding:7px 12px;border-radius:8px;border:none;background:none;color:var(--muted);font-family:var(--font);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:5px;}
+.nav-tab:hover{background:rgba(33,150,243,0.1);color:var(--accent2);}
+.nav-tab.active{background:rgba(33,150,243,0.12);color:var(--accent2);border-bottom:2px solid var(--accent);font-weight:700;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.sync-badge{font-size:0.65rem;padding:4px 12px;border-radius:20px;font-weight:600;}
+.sync-ok{background:rgba(5,150,105,0.1);color:var(--green);}
+.sync-off{background:rgba(217,119,6,0.1);color:var(--yellow);}
+.user-info{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:white;}
+.user-av{width:28px;height:28px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:0.75rem;font-weight:600;}
+.user-nm{font-size:0.78rem;font-weight:500;color:var(--text);}
+.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:4px 8px;}
+.logout-btn:hover{color:var(--red);}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px 28px;background:var(--bg);}
+.stat{padding:18px 20px;background:var(--surface);border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(33,150,243,0.06);transition:all 0.2s;}
+.stat:hover{box-shadow:0 4px 16px rgba(33,150,243,0.12);transform:translateY(-2px);}
+.stat-label{font-size:0.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.stat-value{font-size:1.8rem;font-weight:700;font-family:'Spectral',serif;line-height:1;color:var(--text);}
+.stat-sub{font-size:0.7rem;color:var(--muted);margin-top:6px;}
+.page{display:none;padding:24px 28px;}
+.page.active{display:block;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-family:var(--font);font-size:0.85rem;font-weight:600;transition:all 0.2s;white-space:nowrap;}
+.btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:white;}
+.btn-primary:hover{opacity:0.85;transform:translateY(-1px);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent2);}
+.btn-green{background:var(--green);color:white;}
+.btn-green:hover{opacity:0.85;}
+.btn-red{background:var(--red);color:white;}
+.btn-red:hover{opacity:0.85;}
+.btn-sm{padding:7px 13px;font-size:0.8rem;}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.search-wrap{flex:1;min-width:180px;position:relative;}
+.search-wrap input{width:100%;background:white;border:1.5px solid var(--border);color:var(--text);padding:9px 14px 9px 38px;border-radius:8px;font-family:var(--font);font-size:0.88rem;outline:none;transition:border-color 0.2s;}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(33,150,243,0.1);}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);}
+.filter-btns{display:flex;gap:5px;}
+.filter-btn{background:white;border:1.5px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:6px;cursor:pointer;font-family:var(--font);font-size:0.78rem;font-weight:600;transition:all 0.2s;}
+.filter-btn:hover{border-color:var(--accent);color:var(--accent2);}
+.filter-btn.active{background:var(--accent);border-color:var(--accent);color:white;}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(33,150,243,0.06);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--surface2);border-bottom:1px solid var(--border);}
+th{padding:11px 15px;text-align:left;font-size:0.63rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+td{padding:13px 15px;font-size:0.84rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(33,150,243,0.04);}
+.client-name{font-weight:700;}
+.client-phone{color:var(--muted);font-size:0.8rem;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.badge::before{content:'●';font-size:0.5rem;}
+.badge-green{background:rgba(5,150,105,0.1);color:var(--green);}
+.badge-yellow{background:rgba(217,119,6,0.1);color:var(--yellow);}
+.badge-red{background:rgba(220,38,38,0.1);color:var(--red);}
+.badge-gray{background:rgba(74,100,120,0.1);color:var(--muted);}
+.valor{font-weight:600;}
+.vencimento{font-size:0.82rem;color:var(--muted);}
+.action-btn{background:white;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:0.85rem;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.action-btn:hover{border-color:var(--accent);color:var(--accent);}
+.action-btn.pay:hover{border-color:var(--green);color:var(--green);}
+.action-btn.msg:hover{border-color:var(--yellow);color:var(--yellow);}
+.empty{text-align:center;padding:56px 20px;color:var(--muted);}
+.empty-icon{font-size:2.8rem;margin-bottom:10px;}
+.clientes-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+.lista-clientes{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.lista-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.lista-header-title{font-size:0.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.cliente-item{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.cliente-item:last-child{border-bottom:none;}
+.cliente-item:hover{background:rgba(33,150,243,0.05);}
+.cliente-item.selected{background:rgba(33,150,243,0.1);border-left:3px solid var(--accent);}
+.ci-info{display:flex;flex-direction:column;gap:3px;}
+.ci-nome{font-weight:700;font-size:0.92rem;}
+.ci-sub{font-size:0.77rem;color:var(--muted);}
+.ci-right{display:flex;align-items:center;gap:10px;}
+.chevron{color:var(--muted);font-size:0.85rem;transition:transform 0.2s;}
+.cliente-item.selected .chevron{transform:rotate(90deg);color:var(--accent);}
+.painel-cliente{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:80px;opacity:0;transform:translateX(10px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;box-shadow:0 4px 16px rgba(33,150,243,0.08);}
+.painel-cliente.visible{opacity:1;transform:translateX(0);pointer-events:all;}
+.painel-header{padding:18px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.painel-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:white;margin-bottom:10px;}
+.painel-nome{font-size:1rem;font-weight:800;margin-bottom:2px;}
+.painel-tel{font-size:0.78rem;color:var(--muted);}
+.painel-body{padding:14px;}
+.painel-info-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.82rem;}
+.painel-info-row:last-of-type{border-bottom:none;margin-bottom:14px;}
+.painel-info-label{color:var(--muted);}
+.painel-info-value{font-weight:600;}
+.painel-acoes{display:flex;flex-direction:column;gap:7px;padding-top:14px;border-top:1px solid var(--border);}
+.painel-btn{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:white;color:var(--text);cursor:pointer;font-family:var(--font);font-size:0.84rem;font-weight:600;transition:all 0.18s;text-align:left;width:100%;}
+.painel-btn:hover{border-color:var(--accent);background:rgba(33,150,243,0.05);}
+.painel-btn.danger:hover{border-color:var(--red);background:rgba(220,38,38,0.05);color:var(--red);}
+.painel-btn-icon{font-size:1rem;width:22px;text-align:center;}
+.tag-retro{background:rgba(217,119,6,0.1);color:var(--yellow);font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px;}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.form-card-title{font-size:1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:0.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.form-input{width:100%;background:white;border:1.5px solid var(--border);color:var(--text);padding:10px 13px;border-radius:8px;font-family:var(--font);font-size:0.9rem;outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(33,150,243,0.1);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
+.hist-layout{display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;}
+.hist-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:80px;max-height:calc(100vh - 120px);overflow-y:auto;}
+.hist-lista-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.hist-cliente-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.hist-cliente-item:last-child{border-bottom:none;}
+.hist-cliente-item:hover{background:rgba(33,150,243,0.05);}
+.hist-cliente-item.active{background:rgba(33,150,243,0.1);border-left:3px solid var(--accent);}
+.hist-cliente-nome{font-weight:700;font-size:0.88rem;margin-bottom:2px;}
+.hist-cliente-sub{font-size:0.75rem;color:var(--muted);}
+.hist-content{display:flex;flex-direction:column;gap:16px;}
+.hist-header-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.hist-client-info{display:flex;align-items:center;gap:14px;}
+.hist-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;color:white;}
+.hist-client-name{font-size:1.1rem;font-weight:800;margin-bottom:3px;}
+.hist-client-meta{font-size:0.78rem;color:var(--muted);}
+.hist-year-selector{display:flex;align-items:center;gap:8px;}
+.year-btn{background:white;border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.year-btn:hover{border-color:var(--accent);color:var(--accent);}
+.year-display{font-size:1rem;font-weight:800;color:var(--accent2);min-width:50px;text-align:center;}
+.hist-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hist-resumo-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.hist-resumo-label{font-size:0.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.hist-resumo-value{font-size:1.3rem;font-weight:800;}
+.hist-resumo-card.recebido .hist-resumo-value{color:var(--green);}
+.hist-resumo-card.pendente .hist-resumo-value{color:var(--yellow);}
+.hist-resumo-card.total .hist-resumo-value{color:var(--accent2);}
+.hist-meses{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.hist-meses-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:0.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.mes-row{display:grid;grid-template-columns:100px 90px 110px 100px 1fr 80px;gap:10px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border);font-size:0.85rem;}
+.mes-row:last-child{border-bottom:none;}
+.mes-row.header{background:var(--surface2);font-size:0.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:10px 18px;}
+.mes-nome{font-weight:700;}
+.mes-valor{font-weight:600;}
+.mes-data{font-size:0.8rem;color:var(--muted);}
+.mes-obs{font-size:0.8rem;color:var(--muted);font-style:italic;}
+.mes-edit-btn{background:white;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--font);font-size:0.75rem;font-weight:600;transition:all 0.15s;white-space:nowrap;}
+.mes-edit-btn:hover{border-color:var(--accent);color:var(--accent);}
+.estoque-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.produto-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:all 0.2s;}
+.produto-card:hover{box-shadow:0 4px 16px rgba(33,150,243,0.1);}
+.produto-card.alerta{border-color:var(--red);}
+.produto-card-header{padding:14px 16px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.produto-codigo{font-size:0.72rem;color:var(--muted);}
+.produto-card-body{padding:16px;}
+.produto-nome{font-size:0.95rem;font-weight:700;margin-bottom:12px;}
+.produto-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.produto-stat{background:white;border-radius:8px;padding:10px 12px;border:1px solid var(--border);}
+.produto-stat-label{font-size:0.65rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.produto-stat-value{font-size:1.1rem;font-weight:700;}
+.alerta-banner{background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:8px;padding:8px 12px;font-size:0.78rem;font-weight:700;color:var(--red);display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+.produto-acoes{display:flex;gap:6px;}
+.estoque-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+.est-res-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.est-res-label{font-size:0.65rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.est-res-value{font-size:1.4rem;font-weight:800;}
+.est-res-card.critico .est-res-value{color:var(--red);}
+.est-res-card.valor .est-res-value{color:var(--green);}
+.est-res-card.total .est-res-value{color:var(--accent2);}
+.servicos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
+.servico-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.servico-card-header{padding:20px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;}
+.servico-icon{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.servico-titulo{font-size:1rem;font-weight:700;margin-bottom:3px;}
+.servico-desc{font-size:0.78rem;color:var(--muted);line-height:1.5;}
+.servico-card-body{padding:20px;display:flex;flex-direction:column;gap:10px;}
+.orcamento-resultado{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;display:none;}
+.orcamento-resultado.visible{display:block;}
+.orc-linha{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);font-size:0.85rem;}
+.orc-linha:last-child{border-bottom:none;}
+.orc-linha-label{color:var(--muted);}
+.orc-linha-valor{font-weight:700;}
+.orc-total{display:flex;justify-content:space-between;align-items:center;padding-top:12px;margin-top:8px;border-top:2px solid var(--border);}
+.orc-total-label{font-weight:700;font-size:0.9rem;}
+.orc-total-valor{font-weight:700;font-size:1.2rem;color:var(--green);}
+.vg-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto;}
+.vg-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.nec-row{background:white;border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.nec-nome{font-weight:700;font-size:0.9rem;}
+.nec-sub{font-size:0.78rem;color:var(--muted);margin-top:2px;}
+.config-layout{display:grid;grid-template-columns:240px 1fr;gap:20px;}
+.config-menu{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:90px;}
+.config-menu-item{padding:12px 18px;cursor:pointer;font-size:0.85rem;font-weight:500;border-left:3px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
+.config-menu-item:hover{background:rgba(33,150,243,0.05);}
+.config-menu-item.active{background:rgba(33,150,243,0.1);color:var(--accent2);border-left-color:var(--accent);font-weight:600;}
+.config-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.config-section-title{font-size:1rem;font-weight:700;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,32,44,0.5);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:slideUp 0.2s ease;box-shadow:0 20px 60px rgba(33,150,243,0.15);}
+@keyframes slideUp{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-title{font-size:1.05rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;}
+.modal-close:hover{color:var(--text);}
+.cobranca-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:0.8rem;line-height:1.7;white-space:pre-wrap;margin:12px 0;max-height:200px;overflow-y:auto;}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:0.86rem;font-weight:600;z-index:300;transform:translateY(70px);opacity:0;transition:all 0.3s ease;box-shadow:0 4px 20px rgba(33,150,243,0.15);}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-color:var(--green);color:var(--green);}
+.toast.info{border-color:var(--accent);color:var(--accent2);}
+.toast.error{border-color:var(--red);color:var(--red);}
+.perm-table{width:100%;border-collapse:collapse;}
+.perm-table th,.perm-table td{padding:10px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:0.82rem;}
+.perm-table th{background:var(--surface2);font-weight:600;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.perm-table td:first-child{text-align:left;font-weight:600;}
+.perm-toggle{width:18px;height:18px;cursor:pointer;accent-color:var(--accent);}
+.export-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.export-card{background:white;border:1.5px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all 0.2s;text-align:center;}
+.export-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(33,150,243,0.1);}
+.export-icon{font-size:2rem;margin-bottom:8px;}
+.export-name{font-weight:700;font-size:0.9rem;margin-bottom:4px;}
+.export-desc{font-size:0.75rem;color:var(--muted);}
+/* ===== TABLET (até 900px) ===== */
+@media(max-width:900px){
+  /* HEADER */
+  header{padding:10px 14px;flex-wrap:wrap;gap:8px;}
+  .nav-tabs{gap:1px;flex-wrap:wrap;}
+  .nav-tab{padding:6px 10px;font-size:0.72rem;}
+  .nav-tab span:last-child{display:none;}
+  .logo-name{font-size:0.9rem;}
+  .header-right{gap:7px;}
+  .sync-badge{font-size:0.6rem;padding:3px 8px;}
+
+  /* STATS */
+  .stats-bar{grid-template-columns:repeat(2,1fr);gap:10px;padding:14px;}
+  .stat{padding:14px 16px;}
+  .stat-value{font-size:1.5rem;}
+
+  /* PAGES */
+  .page{padding:14px;}
+
+  /* CLIENTES */
+  .clientes-layout{grid-template-columns:1fr;}
+  .painel-cliente{position:static;transform:none;opacity:1;pointer-events:all;}
+
+  /* HISTÓRICO */
+  .hist-layout{grid-template-columns:1fr;}
+  .hist-lista{position:static;max-height:280px;}
+  .hist-resumo{grid-template-columns:1fr 1fr;}
+  .mes-row{grid-template-columns:80px 80px 90px 80px 1fr 70px;font-size:0.8rem;}
+
+  /* ESTOQUE */
+  .estoque-grid{grid-template-columns:repeat(2,1fr);}
+  .estoque-resumo{grid-template-columns:repeat(3,1fr);}
+
+  /* SERVIÇOS */
+  .servicos-grid{grid-template-columns:1fr;}
+
+  /* CONFIG */
+  .config-layout{grid-template-columns:1fr;}
+  .config-menu{position:static;}
+  .export-grid{grid-template-columns:repeat(2,1fr);}
+
+  /* FORMS */
+  .form-row{grid-template-columns:1fr 1fr;}
+}
+
+/* ===== MOBILE (até 600px) ===== */
+@media(max-width:600px){
+  /* HEADER — fixo no TOPO */
+  header{
+    position:fixed;top:0;bottom:auto;left:0;right:0;
+    box-shadow:0 2px 12px rgba(33,150,243,0.1);
+    z-index:100;background:#F0F8FF;
+  }
+  .header-top{padding:8px 12px;}
+  .logo-name{font-size:0.85rem;}
+  .user-nm{display:none;}
+  .logout-btn{font-size:0.7rem;padding:3px 6px;}
+
+  /* NAV TABS — scroll horizontal no topo */
+  .nav-tabs{
+    padding:2px 8px 4px;
+    gap:0;
+    border-top:1px solid var(--border);
+  }
+  .nav-tab{
+    flex:1;min-width:44px;flex-direction:column;
+    padding:5px 2px 6px;font-size:0.56rem;gap:2px;
+    border-radius:0;border-bottom:2px solid transparent;
+    border-top:none;
+  }
+  .nav-tab span:first-child{font-size:1rem;}
+  .nav-tab span:last-child{display:block!important;}
+  .nav-tab.active{border-bottom:2px solid var(--accent);border-top:none;background:rgba(33,150,243,0.08);}
+
+  /* OFFSET para o header fixo no topo — calculado via JS */
+  body{padding-top:0;}
+  #statsBar{margin-top:0;}
+  .page{padding:10px;padding-bottom:20px;margin-top:0;}
+
+  /* STATS — 2 colunas compactas */
+  .stats-bar{
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;padding:10px;
+  }
+  .stat{padding:12px 14px;border-radius:10px;}
+  .stat-value{font-size:1.4rem;}
+  .stat-label{font-size:0.6rem;}
+  .stat-sub{font-size:0.65rem;}
+
+  /* TOOLBAR */
+  .toolbar{flex-direction:column;align-items:stretch;gap:8px;}
+  .search-wrap{min-width:unset;}
+  .filter-btns{flex-wrap:wrap;gap:5px;}
+  .filter-btn{flex:1;min-width:80px;text-align:center;font-size:0.75rem;}
+
+  /* TABELA DASHBOARD — scroll horizontal */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:560px;}
+  th,td{padding:10px 10px;font-size:0.8rem;}
+  .client-name{font-size:0.85rem;}
+
+  /* CLIENTES */
+  .clientes-layout{gap:12px;}
+  .form-card{padding:16px;}
+  .form-row{grid-template-columns:1fr;}
+
+  /* PAINEL CLIENTE — scroll interno para não cortar botões */
+  .painel-cliente{
+    position:static;transform:none;opacity:1;pointer-events:all;
+    border-radius:10px;
+    max-height:none;
+    overflow:visible;
+  }
+  .painel-header{padding:14px;}
+  .painel-body{
+    padding:12px;
+    overflow-y:auto;
+  }
+  .painel-acoes{
+    gap:8px;
+    padding-bottom:8px;
+  }
+  .painel-btn{
+    padding:12px 14px;
+    font-size:0.86rem;
+    min-height:46px;
+  }
+
+  /* HISTÓRICO */
+  .hist-lista{max-height:220px;}
+  .hist-header-card{flex-direction:column;gap:10px;padding:14px;}
+  .hist-resumo{grid-template-columns:repeat(3,1fr);gap:7px;}
+  .hist-resumo-card{padding:10px 12px;}
+  .hist-resumo-label{font-size:0.6rem;}
+  .hist-resumo-value{font-size:1.1rem;}
+
+  /* HISTÓRICO — tabela meses scroll */
+  .hist-meses{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .mes-row{
+    grid-template-columns:70px 75px 80px 80px 1fr 65px;
+    gap:6px;padding:9px 10px;font-size:0.75rem;min-width:460px;
+  }
+  .mes-edit-btn{padding:3px 7px;font-size:0.7rem;}
+
+  /* ESTOQUE */
+  .estoque-resumo{grid-template-columns:repeat(3,1fr);gap:7px;}
+  .est-res-card{padding:10px 12px;}
+  .est-res-value{font-size:1.1rem;}
+  .estoque-grid{grid-template-columns:1fr;}
+  .produto-card-body{padding:12px;}
+  .produto-stats{grid-template-columns:1fr 1fr;}
+
+  /* SERVIÇOS */
+  .servicos-grid{grid-template-columns:1fr;gap:14px;}
+  .servico-card-header{padding:14px;gap:10px;}
+  .servico-icon{width:40px;height:40px;font-size:1.2rem;}
+  .servico-card-body{padding:14px;gap:8px;}
+
+  /* VISÃO GERAL */
+  .vg-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .vg-table-wrap table{min-width:700px;}
+
+  /* NECESSIDADES */
+  .nec-row{flex-direction:column;align-items:flex-start;gap:10px;}
+
+  /* CONFIG */
+  .config-menu{display:flex;flex-direction:row;overflow-x:auto;gap:0;}
+  .config-menu-item{min-width:130px;text-align:center;justify-content:center;font-size:0.78rem;padding:10px 8px;border-left:none;border-bottom:3px solid transparent;}
+  .config-menu-item.active{border-left:none;border-bottom:3px solid var(--accent);}
+  .config-section{padding:16px;}
+  .export-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .export-card{padding:14px;}
+
+  /* MODAIS */
+  .modal{padding:18px;margin:10px;max-width:calc(100vw - 20px);border-radius:12px;}
+  .modal-title{font-size:0.95rem;}
+  .form-row{grid-template-columns:1fr;}
+
+  /* BOTÕES */
+  .btn{padding:9px 14px;font-size:0.82rem;}
+  .btn-sm{padding:7px 11px;font-size:0.78rem;}
+
+  /* LOGIN */
+  .login-card{padding:28px 22px;margin:16px;border-radius:16px;}
+  .login-titulo{font-size:1.3rem;}
+
+  /* TABELA USUÁRIOS */
+  .table-wrap table{min-width:400px;}
+}
+
+/* ===== MOBILE PEQUENO (até 380px) ===== */
+@media(max-width:380px){
+  .stats-bar{gap:6px;padding:8px;}
+  .stat{padding:10px 12px;}
+  .stat-value{font-size:1.2rem;}
+  .stat-label{font-size:0.58rem;}
+  .nav-tab{min-width:40px;font-size:0.52rem;}
+  .nav-tab span:first-child{font-size:0.95rem;}
+  .filter-btn{font-size:0.7rem;padding:5px 7px;}
+}
+</style>
+</head>
+<body bis_register="W3sibWFzdGVyIjp0cnVlLCJleHRlbnNpb25JZCI6ImVwcGlvY2VtaG1ubGJoanBsY2drb2ZjaWllZ29tY29uIiwiYWRibG9ja2VyU3RhdHVzIjp7IkRJU1BMQVkiOiJlbmFibGVkIiwiRkFDRUJPT0siOiJlbmFibGVkIiwiVFdJVFRFUiI6ImVuYWJsZWQiLCJSRURESVQiOiJlbmFibGVkIiwiUElOVEVSRVNUIjoiZW5hYmxlZCIsIklOU1RBR1JBTSI6ImVuYWJsZWQiLCJUSUtUT0siOiJkaXNhYmxlZCIsIkxJTktFRElOIjoiZW5hYmxlZCIsIkNPTkZJRyI6ImRpc2FibGVkIn0sInZlcnNpb24iOiIyLjAuNDciLCJzY29yZSI6MjAwNDcwfV0=" __processed_bbd147ee-e72c-40dd-bff2-ce4c3a651c20__="true" style="padding-top: 0px;">
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay" bis_skin_checked="1" style="display: none;">
+  <div class="login-card" bis_skin_checked="1">
+    <div class="login-logo" bis_skin_checked="1">🏊</div>
+    <div class="login-titulo" bis_skin_checked="1">Acqua Brise</div>
+    <div class="login-sub" bis_skin_checked="1">Faça login para acessar o sistema</div>
+    <div class="recovery-step active" id="stepLogin" bis_skin_checked="1">
+      <div class="login-form" bis_skin_checked="1">
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">Usuário</label><input type="text" class="login-input" id="loginUsuario" placeholder="Digite seu usuário" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">Senha</label>
+          <div class="login-input-wrap" bis_skin_checked="1"><input type="password" class="login-input" id="loginSenha" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')fazerLogin()"><button class="login-eye" onclick="toggleSenhaLogin()">👁</button></div>
+        </div>
+        <div class="login-erro" id="loginErro" bis_skin_checked="1">⚠ Usuário ou senha incorretos</div>
+        <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+        <div style="text-align:center;margin-top:14px;" bis_skin_checked="1"><button class="login-link" onclick="irParaRecuperacao()">Esqueci minha senha</button></div>
+      </div>
+    </div>
+    <div class="recovery-step" id="stepEmail" bis_skin_checked="1">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Digite seu usuário para recuperar o acesso.</p>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Usuário</label><input type="text" class="login-input" id="recUsuario" placeholder="Digite seu usuário"></div>
+      <div class="login-erro" id="recErro" bis_skin_checked="1">⚠ Usuário não encontrado</div>
+      <button class="login-btn" onclick="enviarCodigo()">Enviar Código</button>
+      <div style="text-align:center;margin-top:14px;" bis_skin_checked="1"><button class="login-link" onclick="voltarLogin()">← Voltar</button></div>
+    </div>
+    <div class="recovery-step" id="stepCodigo" bis_skin_checked="1">
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Digite o código enviado para <span id="emailMostrado"></span></p>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Código</label><input type="text" class="login-input" id="codigoInput" placeholder="000000" maxlength="6"></div>
+      <div class="login-erro" id="codigoErro" bis_skin_checked="1">⚠ Código incorreto</div>
+      <button class="login-btn" onclick="verificarCodigo()">Verificar</button>
+      <div style="text-align:center;margin-top:14px;" bis_skin_checked="1"><button class="login-link" onclick="voltarLogin()">← Voltar</button></div>
+    </div>
+    <div class="recovery-step" id="stepNovaSenha" bis_skin_checked="1">
+      <p style="font-size:0.85rem;color:var(--green);margin-bottom:16px;">✓ Código verificado! Crie sua nova senha.</p>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Nova Senha</label><input type="password" class="login-input" id="novaSenhaInput" placeholder="Mínimo 4 caracteres"></div>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Confirmar Nova Senha</label><input type="password" class="login-input" id="confirmarSenhaInput" placeholder="Repita a senha"></div>
+      <div class="login-erro" id="novaSenhaErro" bis_skin_checked="1">⚠ As senhas não coincidem</div>
+      <button class="login-btn" onclick="salvarNovaSenha()">💾 Salvar Nova Senha</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header id="mainHeader" style="display: flex;">
+  <div class="header-top" bis_skin_checked="1">
+    <div class="logo" bis_skin_checked="1">
+      <div class="logo-icon" bis_skin_checked="1">🏊</div>
+      <div bis_skin_checked="1"><div class="logo-name" bis_skin_checked="1">Acqua Brise</div><div class="logo-sub" bis_skin_checked="1">Sistema de Gestão</div></div>
+    </div>
+    <div class="header-right" bis_skin_checked="1">
+      <span class="sync-badge sync-ok" id="syncBadge">✓ Sincronizado</span>
+      <div class="user-info" bis_skin_checked="1"><div class="user-av" id="userAv" bis_skin_checked="1">D</div><div class="user-nm" id="userNm" bis_skin_checked="1">Diego</div></div>
+      <button class="logout-btn" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+  <div class="nav-tabs" bis_skin_checked="1">
+    <button class="nav-tab" onclick="navegarPara('dashboard')"><span>📊</span><span>Dashboard</span></button>
+    <button class="nav-tab" onclick="navegarPara('clientes')"><span>👥</span><span>Clientes</span></button>
+    <button class="nav-tab" onclick="navegarPara('historico')"><span>📁</span><span>Histórico</span></button>
+    <button class="nav-tab" onclick="navegarPara('estoque')"><span>📦</span><span>Estoque</span></button>
+    <button class="nav-tab" onclick="navegarPara('servicos')"><span>🔧</span><span>Serviços</span></button>
+    <button class="nav-tab" onclick="navegarPara('visaogeral')"><span>📅</span><span>Visão Geral</span></button>
+    <button class="nav-tab" onclick="navegarPara('necessidades')"><span>🧴</span><span>Necessidades</span></button>
+    <button class="nav-tab active" onclick="navegarPara('configuracoes')"><span>⚙️</span><span>Config</span></button>
+  </div>
+</header>
+
+<!-- STATS -->
+<div id="statsBar" style="display: block;" bis_skin_checked="1">
+  <div class="stats-bar" bis_skin_checked="1">
+    <div class="stat" bis_skin_checked="1"><div class="stat-label" bis_skin_checked="1">Total Clientes</div><div class="stat-value" id="statTotal" bis_skin_checked="1">72</div><div class="stat-sub" id="statNovosMes" bis_skin_checked="1"></div></div>
+    <div class="stat" bis_skin_checked="1"><div class="stat-label" bis_skin_checked="1">Pagos</div><div class="stat-value" id="statPagos" style="color:var(--green)" bis_skin_checked="1">0</div><div class="stat-sub" id="statPctPagos" bis_skin_checked="1">0% do total</div></div>
+    <div class="stat" bis_skin_checked="1"><div class="stat-label" bis_skin_checked="1">Pendentes</div><div class="stat-value" id="statPendentes" style="color:var(--yellow)" bis_skin_checked="1">61</div><div class="stat-sub" id="statReceitaMes" bis_skin_checked="1">R$ 13810.00 pendente</div></div>
+    <div class="stat" bis_skin_checked="1"><div class="stat-label" bis_skin_checked="1">Atrasados</div><div class="stat-value" id="statAtrasados" style="color:var(--red)" bis_skin_checked="1">11</div><div class="stat-sub" id="statProxVenc" bis_skin_checked="1">11 em atraso</div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page" id="page-dashboard" bis_skin_checked="1">
+  <div class="toolbar" bis_skin_checked="1">
+    <div class="search-wrap" bis_skin_checked="1"><span class="search-icon">🔍</span><input type="text" id="searchInput" placeholder="Buscar cliente..." oninput="renderDashboard()"></div>
+    <div class="filter-btns" bis_skin_checked="1">
+      <button class="filter-btn active" onclick="setFilter(this,'todos')">Todos</button>
+      <button class="filter-btn" onclick="setFilter(this,'pago')">✓ Pagos</button>
+      <button class="filter-btn" onclick="setFilter(this,'pendente')">⏳ Pendentes</button>
+      <button class="filter-btn" onclick="setFilter(this,'atrasado')">⚠ Atrasados</button>
+      <button class="filter-btn" onclick="setFilter(this,'suspenso')">🚫 Suspensos</button>
+    </div>
+    <select class="form-input btn-sm" id="mesCobrar" style="width:auto;background:white;" onchange="renderDashboard()">
+      <option value="">Mês atual</option>
+      <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
+      <option value="3">Abril</option><option value="4">Maio</option><option value="5">Junho</option>
+      <option value="6">Julho</option><option value="7">Agosto</option><option value="8">Setembro</option>
+      <option value="9">Outubro</option><option value="10">Novembro</option><option value="11">Dezembro</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="cobrarTodos()">📲 Cobrar Atrasados</button>
+  </div>
+  <div class="table-wrap" bis_skin_checked="1">
+    <table><thead><tr><th>Cliente</th><th>Localização</th><th>Técnico</th><th>Vencimento</th><th>Mensalidade</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody id="tableBody"><tr>
+        <td><div class="client-name" bis_skin_checked="1">Abel Monteiro Santa Adelia </div><div class="client-phone" bis_skin_checked="1">11 98720-0905</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000000)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000000)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Amalia </div><div class="client-phone" bis_skin_checked="1">47 9754-5513</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Serein</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000001)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000001)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Ana / Fernando Buassalli </div><div class="client-phone" bis_skin_checked="1">11 99199-4108</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000002)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000002)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Ana Maria </div><div class="client-phone" bis_skin_checked="1">11 98895-0330</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Clair</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000003)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000003)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Ana Paula  Santa Adélia </div><div class="client-phone" bis_skin_checked="1">11 98818-5940</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000004)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000004)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Erika Andressa  Silva Fernandes </div><div class="client-phone" bis_skin_checked="1">11 96434-9210</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 100.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000005)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000005)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Angelica/Michel </div><div class="client-phone" bis_skin_checked="1">11 99945-3431</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Clair</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000006)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000006)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Anita Boemer </div><div class="client-phone" bis_skin_checked="1">11 99136-3003</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000007)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000007)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Bianca/Antônio Luiz </div><div class="client-phone" bis_skin_checked="1">11 98749-6606</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Jd. Europa</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000008)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000008)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Carol/ Paulo Eduardo Ferreira Luz </div><div class="client-phone" bis_skin_checked="1">11 99354-3586</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage clair</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 240.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000009)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000009)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Charles </div><div class="client-phone" bis_skin_checked="1">11 98901-9592</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 1</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000010)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000010)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Cícero / Lucilene NC  telecomunicações </div><div class="client-phone" bis_skin_checked="1">11 97183-6596</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">condominio São Fernando</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 240.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000011)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000011)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Circe Janete </div><div class="client-phone" bis_skin_checked="1">11 97162-7504</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Bel Verde</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000012)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000012)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Claudia/ Mauro Sta Adelia </div><div class="client-phone" bis_skin_checked="1">11 99871-4491</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000013)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000013)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Claudio Faria (00468-8) </div><div class="client-phone" bis_skin_checked="1">11 97334-0018</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 28</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000014)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000014)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Claudio Roberto - Deborah Regina </div><div class="client-phone" bis_skin_checked="1">11 99441-5977</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000015)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000015)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Claudio/ Rita </div><div class="client-phone" bis_skin_checked="1">+55 11 98166-9302</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Villa Rica</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 30.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000016)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000016)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Daniel Haras </div><div class="client-phone" bis_skin_checked="1">11 98995-0841</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 150.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000017)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000017)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Daniel SP2 </div><div class="client-phone" bis_skin_checked="1">11 94600-1300</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">SP 2</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000018)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000018)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Daniel/Izabel Lahera </div><div class="client-phone" bis_skin_checked="1">11 97681-1409</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Araucaria</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000019)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000019)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Gustavo Cotia Cartorio </div><div class="client-phone" bis_skin_checked="1">11 997000522</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">SP2</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000020)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000020)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Davi </div><div class="client-phone" bis_skin_checked="1">11 94710-4434</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000021)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000021)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Denise/ Richard Raucci </div><div class="client-phone" bis_skin_checked="1">11 94100-2535</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Condominio Higienopolis</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 1</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000022)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000022)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Diogo/ Leda </div><div class="client-phone" bis_skin_checked="1">11 94722-7406</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000023)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000023)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Edcarlos </div><div class="client-phone" bis_skin_checked="1">11 98343-8765</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Km48</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000024)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000024)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Fabio PHI </div><div class="client-phone" bis_skin_checked="1">11 99526-7886</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Jd. Floresta</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 600.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000026)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000026)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Fabio Santa Adelia </div><div class="client-phone" bis_skin_checked="1">97433-0905</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000027)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000027)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Felipe / Manoel </div><div class="client-phone" bis_skin_checked="1">11 97487-8193</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Sossego</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000028)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000028)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Flavio </div><div class="client-phone" bis_skin_checked="1">11 97419-8405</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">São Fernando</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 1</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000029)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000029)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Gabriela </div><div class="client-phone" bis_skin_checked="1">11 93940-1502</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Granja Cristiana</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000030)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000030)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Giovanni </div><div class="client-phone" bis_skin_checked="1"></div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Villa Rica</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000031)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000031)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Gleice </div><div class="client-phone" bis_skin_checked="1">11 97154-7594</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000032)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000032)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Hideraldo Shibata / Lazara </div><div class="client-phone" bis_skin_checked="1">11 99213-4465</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 2</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000033)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000033)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Írio </div><div class="client-phone" bis_skin_checked="1">11 97127-0507</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Patrimoni do carmo</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000034)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000034)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">izabel/ Rodrigo meneses </div><div class="client-phone" bis_skin_checked="1">11 98219-8010</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Bella Vita</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 350.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000035)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000035)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Jack- Kobo jack </div><div class="client-phone" bis_skin_checked="1">43 9107-2485</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000036)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000036)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">José Flaviano </div><div class="client-phone" bis_skin_checked="1">11 99425-8390</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Casa Blanca</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000037)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000037)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">José Luiz Juba </div><div class="client-phone" bis_skin_checked="1">11 99389-9829</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">São Fernando</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000038)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000038)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Hilly Richard Lins </div><div class="client-phone" bis_skin_checked="1">11 98323-5098</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 300.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000039)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000039)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Karin Swiatek </div><div class="client-phone" bis_skin_checked="1">11 98266-3888</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000040)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000040)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Luciana Narche </div><div class="client-phone" bis_skin_checked="1">11 99332-9578</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Noble</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 160.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000041)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000041)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Luciana LF soluções finan. </div><div class="client-phone" bis_skin_checked="1"></div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000042)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000042)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Luciano Breve Abrahão </div><div class="client-phone" bis_skin_checked="1">11 98114-5831</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Caete</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000043)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000043)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Lurdes </div><div class="client-phone" bis_skin_checked="1">11 99455-7826</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Parque Rizzo</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 7</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000044)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000044)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Marcelo Fecchio Villa Rica </div><div class="client-phone" bis_skin_checked="1">11 98551-1370</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Villa Rica</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 230.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000045)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000045)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Marcelo/ Regina </div><div class="client-phone" bis_skin_checked="1">+55 11 97657-7004</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage clair</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000046)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000046)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Marcia Bregues </div><div class="client-phone" bis_skin_checked="1">11 94774-7187</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000047)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000047)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Marcia/ Ricardo Massao 02436-4 </div><div class="client-phone" bis_skin_checked="1">11 98309-7777</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">SP 2</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 150.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000048)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000048)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Maria Elisa RvecK </div><div class="client-phone" bis_skin_checked="1">11 93083-3080</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000049)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000049)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Natucha/ Antônio Lucas </div><div class="client-phone" bis_skin_checked="1">11 96615-3341</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Parque Rizzo</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000050)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000050)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Olinda Haras </div><div class="client-phone" bis_skin_checked="1">11 99912-0082</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000051)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000051)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Paulo Marufugi/Eliana </div><div class="client-phone" bis_skin_checked="1">11 99978-0357</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000052)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000052)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Renata Monzani/Antonio </div><div class="client-phone" bis_skin_checked="1">11 99710-7460</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000053)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000053)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rodrigo / Caio/ Deyse </div><div class="client-phone" bis_skin_checked="1">11 99359-4020</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage clair</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000054)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000054)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rogerio / Elisabete Ap. Oliveira </div><div class="client-phone" bis_skin_checked="1">11 99276-2021</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000055)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000055)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rommel </div><div class="client-phone" bis_skin_checked="1">11 97573-4693</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000056)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000056)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rosana Gonçalves Ella Silva mota </div><div class="client-phone" bis_skin_checked="1">11 98593-6115</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Paysage Noble</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000057)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000057)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rosana/ Paul Hebert </div><div class="client-phone" bis_skin_checked="1">11 99314-2538</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 150.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000058)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000058)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Santina Burro Serafim </div><div class="client-phone" bis_skin_checked="1">11 97377-5501</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Nagoya</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000059)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000059)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Sergio Sacramento </div><div class="client-phone" bis_skin_checked="1">11 99980-7959</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Patrimonio do carmo</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 8</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000060)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000060)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Jessé </div><div class="client-phone" bis_skin_checked="1">11 97688 2889</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000061)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000061)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Tatiana Vaz de Almeida </div><div class="client-phone" bis_skin_checked="1">11 98314-9906</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 150.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000062)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000062)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Vander </div><div class="client-phone" bis_skin_checked="1">11 97334-5313</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Villa Rica</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 180.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000063)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000063)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Walter/Murilo </div><div class="client-phone" bis_skin_checked="1">11 97557-9237</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Itapark</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 350.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000064)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000064)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Welkens dos Reis Dutra </div><div class="client-phone" bis_skin_checked="1">11 99871-0153</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000065)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000065)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">wilians Soares Silva </div><div class="client-phone" bis_skin_checked="1">11 96193-1008</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Villa Rica</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 30</span></td>
+        <td><span class="valor">R$ 200.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000066)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000066)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">William/ Bruna Wells Amato </div><div class="client-phone" bis_skin_checked="1">11 98595-3113</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Haras</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 350.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1700000000067)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1700000000067)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Valdes </div><div class="client-phone" bis_skin_checked="1">11 98430 6126</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Reserva Samambaia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 260.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1778001374557)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1778001374557)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Alexandre </div><div class="client-phone" bis_skin_checked="1">11 99869 6658</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 5</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-red">Atrasado</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1778001506543)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1778001506543)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Rodrigo de jesus Ramos / Paloma </div><div class="client-phone" bis_skin_checked="1">11 91110 5174</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 10</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1778001789561)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1778001789561)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Graciella - Werles O de Almeida </div><div class="client-phone" bis_skin_checked="1">11 94961 3586</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 20</span></td>
+        <td><span class="valor">R$ 250.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1778002283521)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1778002283521)">💬</button>
+        </td></tr><tr>
+        <td><div class="client-name" bis_skin_checked="1">Luciana/  Fabiano Claro LF soluções </div><div class="client-phone" bis_skin_checked="1">11 98087-3593</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">Santa Adelia</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">—</span></td>
+        <td><span class="vencimento">Dia 15</span></td>
+        <td><span class="valor">R$ 220.00</span></td>
+        <td><span class="badge badge-yellow">Pendente</span></td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="Pago" onclick="togglePago(1778021366546)">✓</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(1778021366546)">💬</button>
+        </td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- CLIENTES -->
+<div class="page" id="page-clientes" bis_skin_checked="1">
+  <div class="clientes-layout" bis_skin_checked="1">
+    <div style="display:flex;flex-direction:column;gap:16px;" bis_skin_checked="1">
+      <div class="form-card" bis_skin_checked="1">
+        <div class="form-card-title" bis_skin_checked="1"><span id="formIcon">➕</span><span id="formTitulo">Novo Cliente</span></div>
+        <input type="hidden" id="editId">
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">Nome completo *</label><input type="text" class="form-input" id="fNome" placeholder="João da Silva"></div>
+        <div class="form-row" bis_skin_checked="1">
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">WhatsApp</label><input type="text" class="form-input" id="fTel" placeholder="(15) 99999-9999"></div>
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Dia vencimento *</label><input type="number" class="form-input" id="fDia" placeholder="10" min="1" max="31"></div>
+        </div>
+        <div class="form-row" bis_skin_checked="1">
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Mensalidade R$ *</label><input type="number" class="form-input" id="fValor" placeholder="250"></div>
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Tipo Pagamento</label>
+            <select class="form-input" id="fTipoPag"><option value="atual">Mês atual</option><option value="retro">↩ Retroativo</option></select>
+          </div>
+        </div>
+        <div class="form-row" bis_skin_checked="1">
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Status</label>
+            <select class="form-input" id="fStatus"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option><option value="suspenso">Suspenso</option><option value="isento">Isento</option></select>
+          </div>
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Técnico Responsável</label><select class="form-input" id="fTecnico"><option value="">— Selecione —</option></select></div>
+        </div>
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">Localização</label><input type="text" class="form-input" id="fEndereco" placeholder="Ex: Santa Adelia"></div>
+        <div class="form-actions" bis_skin_checked="1">
+          <button class="btn btn-ghost btn-sm" onclick="limparForm()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="saveClient()">💾 Salvar</button>
+        </div>
+      </div>
+      <div class="lista-clientes" bis_skin_checked="1">
+        <div class="lista-header" bis_skin_checked="1">
+          <span class="lista-header-title">Clientes Cadastrados</span>
+          <div class="search-wrap" style="max-width:170px;" bis_skin_checked="1"><span class="search-icon" style="font-size:0.8rem;">🔍</span><input type="text" id="searchClientes" placeholder="Buscar..." oninput="renderLista()" style="padding:6px 10px 6px 30px;font-size:0.8rem;"></div>
+        </div>
+        <div id="listaBody" bis_skin_checked="1"></div>
+      </div>
+    </div>
+    <div class="painel-cliente" id="painelCliente" bis_skin_checked="1">
+      <div class="painel-header" bis_skin_checked="1">
+        <div class="painel-avatar" id="painelAvatar" bis_skin_checked="1">?</div>
+        <div class="painel-nome" id="painelNome" bis_skin_checked="1">—</div>
+        <div class="painel-tel" id="painelTel" bis_skin_checked="1">—</div>
+      </div>
+      <div class="painel-body" bis_skin_checked="1">
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Vencimento</span><span class="painel-info-value" id="painelDia">—</span></div>
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Mensalidade</span><span class="painel-info-value" id="painelValor">—</span></div>
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Status</span><span id="painelStatus">—</span></div>
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Técnico</span><span class="painel-info-value" id="painelTecnico">—</span></div>
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Localização</span><span class="painel-info-value" id="painelEnd" style="font-size:0.76rem;text-align:right;max-width:150px;">—</span></div>
+        <div class="painel-acoes" bis_skin_checked="1">
+          <button class="painel-btn" onclick="editarClienteSelecionado()"><span class="painel-btn-icon">✏️</span>Alterar cadastro</button>
+          <button class="painel-btn" onclick="pagarClienteSelecionado()"><span class="painel-btn-icon">✅</span><span id="btnPagarLabel">Marcar como pago</span></button>
+          <button class="painel-btn" onclick="cobrarClienteSelecionado()"><span class="painel-btn-icon">💬</span>Enviar cobrança</button>
+          <button class="painel-btn" onclick="abrirHistoricoCliente()"><span class="painel-btn-icon">📁</span>Ver histórico</button>
+          <button class="painel-btn danger" onclick="excluirClienteSelecionado()"><span class="painel-btn-icon">🗑️</span>Excluir cliente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTÓRICO -->
+<div class="page" id="page-historico" bis_skin_checked="1">
+  <div class="hist-layout" bis_skin_checked="1">
+    <div class="hist-lista" bis_skin_checked="1">
+      <div class="hist-lista-header" bis_skin_checked="1">
+        <div class="lista-header-title" bis_skin_checked="1">Clientes</div>
+        <div class="search-wrap" style="margin-top:8px;" bis_skin_checked="1"><span class="search-icon" style="font-size:0.8rem;">🔍</span><input type="text" id="searchHistClientes" placeholder="Buscar..." oninput="renderHistLista()" style="padding:6px 10px 6px 30px;font-size:0.8rem;"></div>
+      </div>
+      <div id="histListaBody" bis_skin_checked="1"></div>
+    </div>
+    <div class="hist-content" id="histContent" bis_skin_checked="1">
+      <div class="empty" style="padding:80px 20px;" bis_skin_checked="1"><div class="empty-icon" bis_skin_checked="1">📁</div><div bis_skin_checked="1">Selecione um cliente para ver o histórico</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ESTOQUE -->
+<div class="page" id="page-estoque" bis_skin_checked="1">
+  <div class="estoque-resumo" bis_skin_checked="1">
+    <div class="est-res-card total" bis_skin_checked="1"><div class="est-res-label" bis_skin_checked="1">Total Produtos</div><div class="est-res-value" id="estTotal" bis_skin_checked="1">0</div></div>
+    <div class="est-res-card critico" bis_skin_checked="1"><div class="est-res-label" bis_skin_checked="1">Em Alerta Crítico</div><div class="est-res-value" id="estCritico" bis_skin_checked="1">0</div></div>
+    <div class="est-res-card valor" bis_skin_checked="1"><div class="est-res-label" bis_skin_checked="1">Valor em Estoque</div><div class="est-res-value" id="estValor" bis_skin_checked="1">R$ 0</div></div>
+  </div>
+  <div class="toolbar" bis_skin_checked="1">
+    <div class="search-wrap" bis_skin_checked="1"><span class="search-icon">🔍</span><input type="text" id="searchEstoque" placeholder="Buscar produto..." oninput="renderEstoque()"></div>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalProduto()">➕ Novo Produto</button>
+  </div>
+  <div class="estoque-grid" id="estoquGrid" bis_skin_checked="1"></div>
+</div>
+
+<!-- SERVIÇOS -->
+<div class="page" id="page-servicos" bis_skin_checked="1"><div class="servicos-grid" id="servicosGrid" bis_skin_checked="1"></div></div>
+
+<!-- VISÃO GERAL -->
+<div class="page" id="page-visaogeral" bis_skin_checked="1">
+  <div class="vg-table-wrap" bis_skin_checked="1">
+    <div class="vg-header" bis_skin_checked="1">
+      <div style="font-size:0.9rem;font-weight:700;" bis_skin_checked="1">Pagamentos por Mês</div>
+      <div class="hist-year-selector" bis_skin_checked="1">
+        <button class="year-btn" onclick="mudarAnoVG(-1)">‹</button>
+        <span class="year-display" id="vgAnoDisplay">2026</span>
+        <button class="year-btn" onclick="mudarAnoVG(1)">›</button>
+      </div>
+    </div>
+    <div id="vgTableBody" bis_skin_checked="1"></div>
+  </div>
+</div>
+
+<!-- NECESSIDADES -->
+<div class="page" id="page-necessidades" bis_skin_checked="1">
+  <div class="toolbar" bis_skin_checked="1">
+    <div class="search-wrap" bis_skin_checked="1"><span class="search-icon">🔍</span><input type="text" id="searchNec" placeholder="Buscar..." oninput="renderNecessidades()"></div>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalNecessidade(null)">➕ Nova Necessidade</button>
+  </div>
+  <div id="necPageBody" bis_skin_checked="1"></div>
+</div>
+
+<!-- CONFIGURAÇÕES -->
+<div class="page active" id="page-configuracoes" bis_skin_checked="1">
+  <div class="config-layout" bis_skin_checked="1">
+    <div class="config-menu" bis_skin_checked="1">
+      <div class="config-menu-item" onclick="abrirConfigSecao('usuarios')" bis_skin_checked="1">👤 Usuários e Senhas</div>
+      <div class="config-menu-item" onclick="abrirConfigSecao('permissoes')" bis_skin_checked="1">🔑 Permissões</div>
+      <div class="config-menu-item active" onclick="abrirConfigSecao('exportar')" bis_skin_checked="1">📤 Exportar Dados</div>
+    </div>
+    <div id="configContent" bis_skin_checked="1">
+      <div class="config-section" id="secUsuarios" bis_skin_checked="1" style="display: none;">
+        <div class="config-section-title" bis_skin_checked="1">👤 Usuários e Senhas</div>
+        <div id="usuariosLista" style="margin-bottom:20px;" bis_skin_checked="1"><div class="table-wrap" bis_skin_checked="1"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead><tbody>
+    <tr><td><div class="client-name" bis_skin_checked="1">Diegoskamino</div></td><td>👑 Admin</td><td>—</td><td><button class="action-btn" onclick="editarUsuario(1)">✏</button></td></tr>
+  </tbody></table></div></div>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalUsuario()">➕ Novo Usuário</button>
+      </div>
+      <div class="config-section" id="secPermissoes" style="display:none;" bis_skin_checked="1">
+        <div class="config-section-title" bis_skin_checked="1">🔑 Permissões por Perfil</div>
+        <div id="permissoesContainer" bis_skin_checked="1"></div>
+      </div>
+      <div class="config-section" id="secExportar" style="display: block;" bis_skin_checked="1">
+        <div class="config-section-title" bis_skin_checked="1">📤 Exportar Dados</div>
+
+        <!-- BACKUP COMPLETO -->
+        <div style="background:linear-gradient(135deg,#1565C0,#2196F3);border-radius:14px;padding:20px;margin-bottom:22px;color:white;" bis_skin_checked="1">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;" bis_skin_checked="1">
+            <div style="font-size:2rem;" bis_skin_checked="1">🛡️</div>
+            <div bis_skin_checked="1">
+              <div style="font-size:1rem;font-weight:800;" bis_skin_checked="1">Backup Completo do Sistema</div>
+              <div style="font-size:0.78rem;opacity:0.85;" bis_skin_checked="1">Salva todos os dados em um único arquivo .json — guarde no seu PC!</div>
+            </div>
+          </div>
+          <div id="ultimoBackupInfo" style="font-size:0.75rem;opacity:0.8;margin-bottom:14px;" bis_skin_checked="1">Último backup: 09/05/2026 às 18:13</div>
+
+          <!-- TOKEN GITHUB -->
+          <div id="githubTokenWrap" style="margin-bottom:12px;background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;" bis_skin_checked="1">
+            <div style="font-size:0.72rem;opacity:0.9;margin-bottom:6px;" bis_skin_checked="1">🔑 GitHub Token <span style="opacity:0.7;">(salvo localmente, nunca enviado a terceiros)</span></div>
+            <div style="display:flex;gap:8px;align-items:center;" bis_skin_checked="1">
+              <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="flex:1;padding:7px 10px;border-radius:6px;border:none;font-size:0.82rem;outline:none;color:#1A202C;" onchange="localStorage.setItem('drprime_gh_token',this.value)">
+              <button onclick="toggleVerToken()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;font-size:0.8rem;">👁</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;" bis_skin_checked="1">
+            <button onclick="fazerBackupCompleto()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">💾 Backup dos Dados (.json)</button>
+            <button onclick="baixarSistema()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📄 Salvar Sistema (.html)</button>
+            <button onclick="backupParaGitHub()" style="background:#24292e;color:white;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">🐙 Salvar no GitHub</button>
+            <button onclick="restaurarBackup()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📂 Restaurar Backup</button>
+          </div>
+          <input type="file" id="inputRestaurar" accept=".json" style="display:none;" onchange="lerArquivoBackup(event)">
+        </div>
+
+        <!-- INSTRUÇÕES PASTA PC -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:22px;" bis_skin_checked="1">
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;" bis_skin_checked="1">📁 Como manter cópia no seu PC</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:0.82rem;" bis_skin_checked="1">
+            <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:12px;" bis_skin_checked="1">
+              <div style="font-weight:700;color:var(--accent2);margin-bottom:6px;" bis_skin_checked="1">💾 Backup dos Dados (.json)</div>
+              <div style="color:var(--muted);line-height:1.8;" bis_skin_checked="1">Salva clientes, histórico e estoque.<br>Salve em:<br><code style="background:var(--border);padding:1px 5px;border-radius:4px;font-size:0.78rem;">C:\Backup Acqua Brise\dados\</code></div>
+            </div>
+            <div style="background:white;border:1px solid var(--border);border-radius:8px;padding:12px;" bis_skin_checked="1">
+              <div style="font-weight:700;color:var(--accent2);margin-bottom:6px;" bis_skin_checked="1">📄 Salvar Sistema (.html)</div>
+              <div style="color:var(--muted);line-height:1.8;" bis_skin_checked="1">Salva o sistema completo.<br>Salve em:<br><code style="background:var(--border);padding:1px 5px;border-radius:4px;font-size:0.78rem;">C:\Backup Acqua Brise\sistema\</code></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px 14px;background:rgba(33,150,243,0.06);border-radius:8px;font-size:0.78rem;color:var(--muted);" bis_skin_checked="1">
+            💡 <strong style="color:var(--text);">Dica:</strong> Faça os dois backups toda semana ou após cadastrar novos clientes. O arquivo .html pode ser enviado direto para o GitHub em caso de emergência.
+          </div>
+        </div>
+
+        <!-- EXPORTAR RELATÓRIOS -->
+        <div style="font-weight:700;font-size:0.88rem;margin-bottom:12px;color:var(--muted);" bis_skin_checked="1">📊 Exportar Relatórios</div>
+        <div class="export-grid" bis_skin_checked="1">
+          <div class="export-card" onclick="exportarExcel('clientes')" bis_skin_checked="1"><div class="export-icon" bis_skin_checked="1">📊</div><div class="export-name" bis_skin_checked="1">Clientes (Excel)</div><div class="export-desc" bis_skin_checked="1">Todos os clientes</div></div>
+          <div class="export-card" onclick="exportarExcel('historico')" bis_skin_checked="1"><div class="export-icon" bis_skin_checked="1">📈</div><div class="export-name" bis_skin_checked="1">Histórico (Excel)</div><div class="export-desc" bis_skin_checked="1">Pagamentos registrados</div></div>
+          <div class="export-card" onclick="exportarPDF('clientes')" bis_skin_checked="1"><div class="export-icon" bis_skin_checked="1">📄</div><div class="export-name" bis_skin_checked="1">Clientes (PDF)</div><div class="export-desc" bis_skin_checked="1">Relatório em PDF</div></div>
+          <div class="export-card" onclick="exportarPDF('historico')" bis_skin_checked="1"><div class="export-icon" bis_skin_checked="1">📋</div><div class="export-name" bis_skin_checked="1">Histórico (PDF)</div><div class="export-desc" bis_skin_checked="1">Relatório financeiro</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
+<div class="modal-overlay" id="modalCobranca" bis_skin_checked="1">
+  <div class="modal" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span>📲 Mensagem de Cobrança</span><button class="modal-close" onclick="fecharModal('modalCobranca')">✕</button></div>
+    <p style="color:var(--muted);font-size:0.83rem;margin-bottom:4px;">Para: <strong id="cobrancaNome" style="color:var(--text)"></strong></p>
+    <div class="cobranca-box" id="cobrancaTexto" bis_skin_checked="1"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalCobranca')">Fechar</button>
+      <button class="btn btn-primary btn-sm" onclick="copiarMensagem()">📋 Copiar</button>
+      <button class="btn btn-green btn-sm" onclick="abrirWhatsApp()">💬 WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalConfirm" bis_skin_checked="1">
+  <div class="modal" style="max-width:340px;text-align:center;" bis_skin_checked="1">
+    <div style="font-size:2rem;margin-bottom:10px;" bis_skin_checked="1">🗑️</div>
+    <div style="font-size:1rem;font-weight:800;margin-bottom:8px;" bis_skin_checked="1">Excluir cliente?</div>
+    <p style="color:var(--muted);font-size:0.84rem;margin-bottom:22px;">Deseja excluir <strong id="confirmNome" style="color:var(--red)"></strong>?<br>Esta ação não pode ser desfeita.</p>
+    <div style="display:flex;gap:10px;justify-content:center;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirm')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarExclusao()">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPagamento" bis_skin_checked="1">
+  <div class="modal" style="max-width:420px;" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span id="modalPagTitulo">Registrar Pagamento</span><button class="modal-close" onclick="fecharModal('modalPagamento')">✕</button></div>
+    <input type="hidden" id="pagClienteId"><input type="hidden" id="pagMesIdx"><input type="hidden" id="pagAno">
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Status</label>
+      <select class="form-input" id="pagStatus"><option value="pago">Pago</option><option value="pendente">Pendente</option><option value="atrasado">Atrasado</option><option value="isento">Isento</option></select>
+    </div>
+    <div class="form-row" bis_skin_checked="1">
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Valor pago (R$)</label><input type="number" class="form-input" id="pagValor" placeholder="0.00"></div>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Data do pagamento</label><input type="date" class="form-input" id="pagData"></div>
+    </div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Observações</label><input type="text" class="form-input" id="pagObs" placeholder="Ex: Pago via PIX..."></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalPagamento')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarPagamento()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalProduto" bis_skin_checked="1">
+  <div class="modal" style="max-width:440px;" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span id="modalProdTitulo">Novo Produto</span><button class="modal-close" onclick="fecharModal('modalProduto')">✕</button></div>
+    <input type="hidden" id="prodEditId">
+    <div class="form-row" bis_skin_checked="1">
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Código</label><input type="text" class="form-input" id="prodCodigo" placeholder="Ex: 61177"></div>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Qtd. em Estoque</label><input type="number" class="form-input" id="prodQtd" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Nome do Produto *</label><input type="text" class="form-input" id="prodNome" placeholder="Ex: Magic Gel Clarificante"></div>
+    <div class="form-row" bis_skin_checked="1">
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Valor Unitário R$</label><input type="number" class="form-input" id="prodValor" placeholder="0.00" step="0.01"></div>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Estoque Mínimo</label><input type="number" class="form-input" id="prodMinimo" placeholder="7" min="1" value="7"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalProduto')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarProduto()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalMovimento" bis_skin_checked="1">
+  <div class="modal" style="max-width:380px;" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span id="modalMovTitulo">Movimentar Estoque</span><button class="modal-close" onclick="fecharModal('modalMovimento')">✕</button></div>
+    <input type="hidden" id="movProdId">
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Tipo</label>
+      <select class="form-input" id="movTipo">
+        <option value="entrada">📦 Entrada (compra/reposição)</option>
+        <option value="saida">🔧 Saída (uso em serviço)</option>
+        <option value="ajuste">⚙ Ajuste manual</option>
+      </select>
+    </div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Quantidade</label><input type="number" class="form-input" id="movQtd" placeholder="0" min="1"></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Observação</label><input type="text" class="form-input" id="movObs" placeholder="Ex: Compra fornecedor..."></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalMovimento')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarMovimento()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalUsuario" bis_skin_checked="1">
+  <div class="modal" style="max-width:400px;" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span id="modalUserTitulo">Novo Usuário</span><button class="modal-close" onclick="fecharModal('modalUsuario')">✕</button></div>
+    <input type="hidden" id="userEditId">
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Nome de Usuário *</label><input type="text" class="form-input" id="cfgUsuario" placeholder="Ex: diego"></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Senha *</label><input type="password" class="form-input" id="cfgSenha" placeholder="Mínimo 4 caracteres"></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">E-mail (recuperação)</label><input type="email" class="form-input" id="cfgEmail" placeholder="email@exemplo.com"></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Perfil</label>
+      <select class="form-input" id="cfgPerfil"><option value="admin">👑 Admin</option><option value="gerente">👔 Gerente</option><option value="tecnico">🔧 Técnico</option><option value="financeiro">📊 Financeiro</option></select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalUsuario')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarUsuario()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalNecessidadeForm" bis_skin_checked="1">
+  <div class="modal" style="max-width:500px;" bis_skin_checked="1">
+    <div class="modal-title" bis_skin_checked="1"><span>🧴 Registrar Necessidade</span><button class="modal-close" onclick="fecharModal('modalNecessidadeForm')">✕</button></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Cliente</label><select class="form-input" id="necClienteSel"></select></div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Produto</label><select class="form-input" id="necProdutoSel"></select></div>
+    <div class="form-row" bis_skin_checked="1">
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Quantidade</label><input type="number" class="form-input" id="necQtd" placeholder="1" min="1"></div>
+      <div class="form-group" bis_skin_checked="1"><label class="form-label">Data</label><input type="date" class="form-input" id="necData"></div>
+    </div>
+    <div class="form-group" bis_skin_checked="1"><label class="form-label">Observação do Técnico</label><input type="text" class="form-input" id="necObs" placeholder="Ex: Produto urgente..."></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;" bis_skin_checked="1">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalNecessidadeForm')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarNecessidade()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast info show" id="toast" bis_skin_checked="1">⏳ Enviando sistema para o GitHub...</div>
+<script>
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const _versao = '3.0';
+
+let _default = [{"id": 1700000000000, "nome": "Abel Monteiro Santa Adelia", "tel": "", "dia": 10, "valor": 220.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000001, "nome": "Amalia/ Rodrigo Lopez", "tel": "", "dia": 15, "valor": 250.0, "status": "pendente", "endereco": "Paysage Serein"}, {"id": 1700000000002, "nome": "Ana / Fernando", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000003, "nome": "Ana Maria", "tel": "", "dia": 15, "valor": 250.0, "status": "pendente", "endereco": "Paysage Clair"}, {"id": 1700000000004, "nome": "Ana Paula  Santa Adélia", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000005, "nome": "Andressa/Edna", "tel": "", "dia": 30, "valor": 100.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000006, "nome": "Angelica/Michel", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Paysage Clair"}, {"id": 1700000000007, "nome": "Anita", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000008, "nome": "Bianca/Antônio Luiz", "tel": "", "dia": 15, "valor": 250.0, "status": "pendente", "endereco": "Jd. Europa"}, {"id": 1700000000009, "nome": "Carol/ Paulo Eduardo Ferreira Luz", "tel": "", "dia": 20, "valor": 240.0, "status": "pendente", "endereco": "Paysage clair"}, {"id": 1700000000010, "nome": "Charles", "tel": "", "dia": 1, "valor": 250.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000011, "nome": "Cícero / Lucilene", "tel": "", "dia": 30, "valor": 240.0, "status": "pendente", "endereco": "São Fernando"}, {"id": 1700000000012, "nome": "Circe Janete", "tel": "", "dia": 10, "valor": 200.0, "status": "pendente", "endereco": "Bel Verde"}, {"id": 1700000000013, "nome": "Claudia/ Mauro Sta Adelia", "tel": "", "dia": 20, "valor": 220.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000014, "nome": "Claudio Faria (00468-8)", "tel": "", "dia": 28, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000015, "nome": "Claudio Roberto", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000016, "nome": "Claudio/ Rita", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Villa Rica"}, {"id": 1700000000017, "nome": "Daniel Haras", "tel": "", "dia": 10, "valor": 150.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000018, "nome": "Daniel SP2", "tel": "", "dia": 20, "valor": 200.0, "status": "pendente", "endereco": "SP 2"}, {"id": 1700000000019, "nome": "Daniel/Izabel", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Araucaria"}, {"id": 1700000000020, "nome": "Daniele/ Gustavo", "tel": "", "dia": 30, "valor": 250.0, "status": "pendente", "endereco": "SP2"}, {"id": 1700000000021, "nome": "Davi", "tel": "", "dia": 15, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000022, "nome": "Denise", "tel": "", "dia": 15, "valor": 200.0, "status": "pendente", "endereco": "Higienopolis"}, {"id": 1700000000023, "nome": "Diogo/ Leda", "tel": "", "dia": 20, "valor": 220.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000024, "nome": "Edcarlos", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Km48"}, {"id": 1700000000025, "nome": "Erika Kosaka", "tel": "", "dia": 30, "valor": 150.0, "status": "pendente", "endereco": "Itapark"}, {"id": 1700000000026, "nome": "Fabio PHI", "tel": "", "dia": 20, "valor": 600.0, "status": "pendente", "endereco": "Jd. Floresta"}, {"id": 1700000000027, "nome": "Fabio Santa Adelia", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000028, "nome": "Felipe / Manoel", "tel": "", "dia": 10, "valor": 200.0, "status": "pendente", "endereco": "Sossego"}, {"id": 1700000000029, "nome": "Flavio", "tel": "", "dia": 1, "valor": 200.0, "status": "pendente", "endereco": "São Fernando"}, {"id": 1700000000030, "nome": "Gabriela", "tel": "", "dia": 15, "valor": 250.0, "status": "pendente", "endereco": "Granja Cristiana"}, {"id": 1700000000031, "nome": "Giovanni", "tel": "", "dia": 15, "valor": 200.0, "status": "pendente", "endereco": "Villa Rica"}, {"id": 1700000000032, "nome": "Gleice", "tel": "", "dia": 10, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000033, "nome": "Hideraldo Shibata / Lazara", "tel": "", "dia": 2, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000034, "nome": "Írio", "tel": "", "dia": 30, "valor": 250.0, "status": "pendente", "endereco": "Patrimoni do carmo"}, {"id": 1700000000035, "nome": "isabel", "tel": "", "dia": 10, "valor": 350.0, "status": "pendente", "endereco": "Paysage Bella Vita"}, {"id": 1700000000036, "nome": "Jack", "tel": "", "dia": 15, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000037, "nome": "José Flaviano", "tel": "", "dia": 15, "valor": 220.0, "status": "pendente", "endereco": "Casa Blanca"}, {"id": 1700000000038, "nome": "José Luiz Juba", "tel": "", "dia": 30, "valor": 250.0, "status": "pendente", "endereco": "São Fernando"}, {"id": 1700000000039, "nome": "Josimar/ Hilly", "tel": "", "dia": 15, "valor": 300.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000040, "nome": "Karin", "tel": "", "dia": 15, "valor": 250.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000041, "nome": "Luciana", "tel": "", "dia": 5, "valor": 160.0, "status": "pendente", "endereco": "Paysage Noble"}, {"id": 1700000000042, "nome": "Luciana LF soluções finan.", "tel": "", "dia": 15, "valor": 220.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000043, "nome": "Luciano", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Caete"}, {"id": 1700000000044, "nome": "Lurdes", "tel": "", "dia": 7, "valor": 200.0, "status": "pendente", "endereco": "Parque Rizzo"}, {"id": 1700000000045, "nome": "Marcelo Fecchio Villa Rica", "tel": "", "dia": 30, "valor": 230.0, "status": "pendente", "endereco": "Villa Rica"}, {"id": 1700000000046, "nome": "Marcelo/ Regina", "tel": "", "dia": 10, "valor": 200.0, "status": "pendente", "endereco": "Paysage clair"}, {"id": 1700000000047, "nome": "Marcia Bregues", "tel": "", "dia": 10, "valor": 220.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000048, "nome": "Marcia/ Ricardo 02436-4", "tel": "", "dia": 15, "valor": 150.0, "status": "pendente", "endereco": "SP 2"}, {"id": 1700000000049, "nome": "Maria Elisa RvecK", "tel": "", "dia": 10, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000050, "nome": "Natucha/ Antônio Lucas", "tel": "", "dia": 15, "valor": 220.0, "status": "pendente", "endereco": "Parque Rizzo"}, {"id": 1700000000051, "nome": "Olinda Haras", "tel": "", "dia": 5, "valor": 250.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000052, "nome": "Paulo Marufugi/Eliana", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000053, "nome": "Renata Monzani/Antonio", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000054, "nome": "Rodrigo Moreira/ Caio/ Deyse", "tel": "", "dia": 30, "valor": 220.0, "status": "pendente", "endereco": "Paysage clair"}, {"id": 1700000000055, "nome": "Rogerio/ Elisabete", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000056, "nome": "Rommel", "tel": "", "dia": 20, "valor": 200.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000057, "nome": "Rosana Paysage", "tel": "", "dia": 20, "valor": 250.0, "status": "pendente", "endereco": "Paysage Noble"}, {"id": 1700000000058, "nome": "Rosana/ Paul Hebert", "tel": "", "dia": 30, "valor": 150.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000059, "nome": "Santina", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Nagoya"}, {"id": 1700000000060, "nome": "Sergio Sacramento", "tel": "", "dia": 8, "valor": 250.0, "status": "pendente", "endereco": "Patrimonio do carmo"}, {"id": 1700000000061, "nome": "Fernando/Sidnei", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000062, "nome": "Tatiana", "tel": "", "dia": 15, "valor": 150.0, "status": "pendente", "endereco": "Haras"}, {"id": 1700000000063, "nome": "Vander", "tel": "", "dia": 15, "valor": 180.0, "status": "pendente", "endereco": "Villa Rica"}, {"id": 1700000000064, "nome": "Walter/Murilo", "tel": "", "dia": 10, "valor": 350.0, "status": "pendente", "endereco": "Itapark"}, {"id": 1700000000065, "nome": "Welkens", "tel": "", "dia": 5, "valor": 250.0, "status": "pendente", "endereco": "Santa Adelia"}, {"id": 1700000000066, "nome": "wilians Villa Rica", "tel": "", "dia": 30, "valor": 200.0, "status": "pendente", "endereco": "Villa Rica"}, {"id": 1700000000067, "nome": "William haras", "tel": "", "dia": 15, "valor": 350.0, "status": "pendente", "endereco": "Haras"}];
+
+const PRODUTOS_DEFAULT = [
+  {id:9001,codigo:'61177',nome:'Magic Gel Clarificante',qtd:0,valor:0,minimo:7},
+  {id:9002,codigo:'22325',nome:'Floculante Clarificante Liquido',qtd:0,valor:0,minimo:7},
+  {id:9003,codigo:'22327',nome:'Algicida Choque',qtd:0,valor:0,minimo:7},
+  {id:9004,codigo:'52536',nome:'Alcalinizante',qtd:0,valor:0,minimo:7},
+  {id:9005,codigo:'52535',nome:'Ph Mais',qtd:0,valor:0,minimo:7},
+  {id:9006,codigo:'37328',nome:'Tri-cloro c/ 5 Pastilhas',qtd:0,valor:0,minimo:7},
+  {id:9007,codigo:'34417',nome:'HPCL Hipoclorito 10 kg',qtd:0,valor:0,minimo:7},
+  {id:9008,codigo:'34161',nome:'Dicloro Multi-Acao 10 kg',qtd:0,valor:0,minimo:7}
+];
+
+const SERVICOS_DEF = [
+  {id:'areia',icon:'🏖️',titulo:'Troca de Areia do Filtro',desc:'Substituição completa da areia do filtro para melhor filtragem da piscina.',
+   campos:[{id:'areia_tipo',label:'Tipo do Filtro',tipo:'select',opcoes:['Filtro Pequeno (até 40kg)','Filtro Médio (até 80kg)','Filtro Grande (acima de 80kg)']},{id:'areia_desl',label:'Taxa de Deslocamento (R$)',tipo:'number',placeholder:'0.00'},{id:'areia_mo',label:'Mão de Obra (R$)',tipo:'number',placeholder:'0.00'},{id:'areia_mat',label:'Materiais (R$)',tipo:'number',placeholder:'0.00'}]},
+  {id:'limpeza',icon:'🧹',titulo:'Limpeza Avulsa de Piscina',desc:'Limpeza completa incluindo aspiração, escovação e tratamento químico.',
+   campos:[{id:'limp_tipo',label:'Tipo de Limpeza',tipo:'select',opcoes:['Limpeza Simples','Limpeza Completa','Limpeza com Tratamento de Choque','Limpeza Pós-Obra']},{id:'limp_desl',label:'Taxa de Deslocamento (R$)',tipo:'number',placeholder:'0.00'},{id:'limp_mo',label:'Mão de Obra (R$)',tipo:'number',placeholder:'0.00'},{id:'limp_mat',label:'Materiais (R$)',tipo:'number',placeholder:'0.00'}]},
+  {id:'motobomba',icon:'⚙️',titulo:'Manutenção Motobomba',desc:'Revisão, limpeza e reparo da motobomba para garantir o bom funcionamento da piscina.',
+   campos:[{id:'moto_tipo',label:'Tipo do Serviço',tipo:'select',opcoes:['Limpeza + Troca de Selo/Vedação','Rebobinamento','Substituição Completa']},{id:'moto_desl',label:'Taxa de Deslocamento (R$)',tipo:'number',placeholder:'0.00'},{id:'moto_mo',label:'Mão de Obra (R$)',tipo:'number',placeholder:'0.00'},{id:'moto_mat',label:'Materiais (R$)',tipo:'number',placeholder:'0.00'}]}
+];
+
+// INICIALIZAÇÃO DE DADOS
+if (localStorage.getItem('drprime_versao') !== _versao) {
+  localStorage.removeItem('aquagest_clientes');
+  localStorage.removeItem('aquagest_historico');
+  localStorage.removeItem('aquagest_usuarios');
+  localStorage.setItem('drprime_versao', _versao);
+}
+let clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || 'null');
+if (!clientes || clientes.length === 0) { clientes = _default; salvar(); }
+let historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
+let produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || 'null');
+if (!produtos || produtos.length === 0) { produtos = PRODUTOS_DEFAULT; salvarProdutos(); }
+let necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
+let usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
+if (!usuarios || usuarios.length === 0) {
+  usuarios = [{id:1,usuario:'Diegoskamino',senha:'#Diegoskamino992801',email:'',perfil:'admin',nome:'Diego'}];
+  salvarUsuarios();
+}
+let permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes') || 'null');
+if (!permissoes) {
+  permissoes = {
+    admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:true,excluir:true,exportar:true},
+    gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:false,excluir:true,exportar:true},
+    tecnico:{dashboard:true,clientes:false,historico:false,estoque:true,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
+    financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,configuracoes:false,excluir:false,exportar:true}
+  };
+  salvarPermissoes();
+}
+
+// ESTADO GLOBAL
+let filtroAtual = 'todos';
+let clienteSelecionadoId = null;
+let histClienteId = null;
+let histAno = new Date().getFullYear();
+let vgAno = new Date().getFullYear();
+let cobrancaAtual = null;
+let usuarioLogado = null;
+let codigoRecuperacao = null;
+let emailRecuperacao = null;
+
+// SALVAR
+function salvar() { localStorage.setItem('aquagest_clientes', JSON.stringify(clientes)); }
+function salvarHistorico() { localStorage.setItem('aquagest_historico', JSON.stringify(historico)); }
+function salvarProdutos() { localStorage.setItem('aquagest_produtos', JSON.stringify(produtos)); }
+function salvarNecessidades() { localStorage.setItem('aquagest_necessidades', JSON.stringify(necessidades)); }
+function salvarUsuarios() { localStorage.setItem('aquagest_usuarios', JSON.stringify(usuarios)); }
+function salvarPermissoes() { localStorage.setItem('aquagest_permissoes', JSON.stringify(permissoes)); }
+
+// STATUS
+function calcularStatus(c) {
+  if (c.status === 'suspenso') return 'suspenso';
+  if (c.status === 'isento') return 'isento';
+  if (c.status === 'pago') return 'pago';
+  const hoje = new Date();
+  if (hoje.getDate() > c.dia + 3) return 'atrasado';
+  return 'pendente';
+}
+function badgeHTML(status) {
+  const map = {pago:['badge-green','Pago'],pendente:['badge-yellow','Pendente'],atrasado:['badge-red','Atrasado'],suspenso:['badge-gray','Suspenso'],isento:['badge-green','Isento']};
+  const [cls,label] = map[status] || ['badge-yellow','Pendente'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+// LOGIN
+function verificarLogin() {
+  const saved = localStorage.getItem('drprime_logado');
+  if (saved) { const u = usuarios.find(x => x.usuario === saved); if (u) { usuarioLogado = u; entrar(); return; } }
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
+function fazerLogin() {
+  const usr = document.getElementById('loginUsuario').value.trim();
+  const sen = document.getElementById('loginSenha').value;
+  const u = usuarios.find(x => x.usuario === usr && x.senha === sen);
+  if (u) { usuarioLogado = u; localStorage.setItem('drprime_logado', u.usuario); entrar(); }
+  else document.getElementById('loginErro').classList.add('show');
+}
+function entrar() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('mainHeader').style.display = 'flex';
+  document.getElementById('statsBar').style.display = 'block';
+  document.getElementById('userAv').textContent = (usuarioLogado.nome||usuarioLogado.usuario).charAt(0).toUpperCase();
+  document.getElementById('userNm').textContent = usuarioLogado.nome||usuarioLogado.usuario;
+  aplicarPermissoes();
+  preencherSelectTecnicos();
+  renderDashboard();
+  atualizarStats();
+  setTimeout(ajustarOffsetHeader, 100);
+}
+function fazerLogout() {
+  localStorage.removeItem('drprime_logado');
+  usuarioLogado = null;
+  document.getElementById('mainHeader').style.display = 'none';
+  document.getElementById('statsBar').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginSenha').value = '';
+  document.getElementById('loginErro').classList.remove('show');
+}
+function toggleSenhaLogin() { const i = document.getElementById('loginSenha'); i.type = i.type==='password'?'text':'password'; }
+function irParaRecuperacao() { document.getElementById('stepLogin').classList.remove('active'); document.getElementById('stepEmail').classList.add('active'); }
+function voltarLogin() { document.querySelectorAll('.recovery-step').forEach(s=>s.classList.remove('active')); document.getElementById('stepLogin').classList.add('active'); }
+function enviarCodigo() {
+  const usr = document.getElementById('recUsuario').value.trim();
+  const u = usuarios.find(x => x.usuario === usr);
+  if (!u || !u.email) { document.getElementById('recErro').classList.add('show'); return; }
+  document.getElementById('recErro').classList.remove('show');
+  codigoRecuperacao = Math.floor(100000+Math.random()*900000).toString();
+  emailRecuperacao = u.email;
+  document.getElementById('emailMostrado').textContent = u.email;
+  document.getElementById('stepEmail').classList.remove('active');
+  document.getElementById('stepCodigo').classList.add('active');
+  showToast('Código enviado para '+u.email,'success');
+}
+function verificarCodigo() {
+  if (document.getElementById('codigoInput').value.trim() === codigoRecuperacao) {
+    document.getElementById('stepCodigo').classList.remove('active');
+    document.getElementById('stepNovaSenha').classList.add('active');
+    document.getElementById('codigoErro').classList.remove('show');
+  } else { document.getElementById('codigoErro').classList.add('show'); }
+}
+function salvarNovaSenha() {
+  const nova = document.getElementById('novaSenhaInput').value;
+  const conf = document.getElementById('confirmarSenhaInput').value;
+  if (nova.length < 4) { showToast('Senha muito curta','error'); return; }
+  if (nova !== conf) { document.getElementById('novaSenhaErro').classList.add('show'); return; }
+  const u = usuarios.find(x => x.email === emailRecuperacao);
+  if (u) { u.senha = nova; salvarUsuarios(); }
+  showToast('✓ Senha alterada com sucesso!','success');
+  voltarLogin();
+}
+
+// PERMISSÕES
+function aplicarPermissoes() {
+  if (!usuarioLogado) return;
+  const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico;
+  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes'];
+  document.querySelectorAll('.nav-tab').forEach((tab,i) => { tab.style.display = (p[tabs[i]]!==false)?'':'none'; });
+}
+
+// NAVEGAÇÃO
+function navegarPara(pagina) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+pagina).classList.add('active');
+  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes'];
+  const idx = tabs.indexOf(pagina);
+  if (idx >= 0) document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+  if (pagina==='clientes') renderLista();
+  if (pagina==='dashboard') renderDashboard();
+  if (pagina==='historico') { renderHistLista(); if (histClienteId) renderHistorico(); }
+  if (pagina==='estoque') renderEstoque();
+  if (pagina==='servicos') renderServicos();
+  if (pagina==='visaogeral') renderVisaoGeral();
+  if (pagina==='necessidades') renderNecessidades();
+  if (pagina==='configuracoes') { abrirConfigSecao('usuarios'); renderUsuarios(); }
+}
+
+// STATS
+function atualizarStats() {
+  const total = clientes.length;
+  const pagos = clientes.filter(c=>calcularStatus(c)==='pago').length;
+  const pendentes = clientes.filter(c=>calcularStatus(c)==='pendente').length;
+  const atrasados = clientes.filter(c=>calcularStatus(c)==='atrasado').length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statPagos').textContent = pagos;
+  document.getElementById('statPendentes').textContent = pendentes;
+  document.getElementById('statAtrasados').textContent = atrasados;
+  document.getElementById('statPctPagos').textContent = total>0?Math.round(pagos/total*100)+'% do total':'';
+  const receita = clientes.filter(c=>calcularStatus(c)==='pendente').reduce((s,c)=>s+Number(c.valor||0),0);
+  document.getElementById('statReceitaMes').textContent = 'R$ '+receita.toFixed(2)+' pendente';
+  const hoje = new Date();
+  const proximos = clientes.filter(c=>calcularStatus(c)==='atrasado');
+  document.getElementById('statProxVenc').textContent = proximos.length>0?proximos.length+' em atraso':'Tudo em dia 🎉';
+}
+
+// DASHBOARD
+function setFilter(btn, filtro) {
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); filtroAtual = filtro; renderDashboard();
+}
+function renderDashboard() {
+  const busca = document.getElementById('searchInput').value.toLowerCase();
+  const mesSel = document.getElementById('mesCobrar').value;
+  const mesIdx = mesSel!==''?parseInt(mesSel):new Date().getMonth();
+  const anoAtual = new Date().getFullYear();
+  let lista = clientes.filter(c => {
+    const match = c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
+    const pago = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual&&(h.status==='pago'||h.status==='isento'));
+    const statusMes = pago?'pago':calcularStatus(c);
+    if (filtroAtual==='todos') return match;
+    return match && statusMes===filtroAtual;
+  });
+  const tbody = document.getElementById('tableBody');
+  if (!lista.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">🏊</div><div>Nenhum cliente encontrado</div></div></td></tr>`; }
+  else {
+    tbody.innerHTML = lista.map(c => {
+      const pago = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual&&(h.status==='pago'||h.status==='isento'));
+      const statusMes = pago?'pago':calcularStatus(c);
+      const retro = c.tipoPag==='retro'?'<span class="tag-retro">↩ RETRO</span>':'';
+      return `<tr>
+        <td><div class="client-name">${c.nome} ${retro}</div><div class="client-phone">${c.tel||''}</div></td>
+        <td><span style="color:var(--muted);font-size:0.82rem;">${c.endereco||'—'}</span></td>
+        <td><span style="font-size:0.82rem;color:var(--muted);">${c.tecnico||'—'}</span></td>
+        <td><span class="vencimento">Dia ${c.dia}</span></td>
+        <td><span class="valor">R$ ${Number(c.valor).toFixed(2)}</span></td>
+        <td>${badgeHTML(statusMes)}</td>
+        <td style="display:flex;gap:5px;">
+          <button class="action-btn pay" title="${statusMes==='pago'?'Desfazer':'Pago'}" onclick="togglePago(${c.id})">${statusMes==='pago'?'↩':'✓'}</button>
+          <button class="action-btn msg" title="Cobrar" onclick="gerarCobranca(${c.id})">💬</button>
+        </td></tr>`;
+    }).join('');
+  }
+  atualizarStats();
+}
+
+// LISTA CLIENTES
+function preencherSelectTecnicos() {
+  const tecs = [...new Set(usuarios.filter(u=>u.perfil==='tecnico').map(u=>u.nome||u.usuario))];
+  document.getElementById('fTecnico').innerHTML = '<option value="">— Selecione —</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+function renderLista() {
+  const busca = (document.getElementById('searchClientes')?.value||'').toLowerCase();
+  const lista = clientes.filter(c=>c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca));
+  const container = document.getElementById('listaBody');
+  if (!lista.length) { container.innerHTML=`<div class="empty"><div class="empty-icon">👤</div><div>Nenhum cliente</div></div>`; return; }
+  container.innerHTML = lista.map(c=>{
+    const sel = c.id===clienteSelecionadoId;
+    const retro = c.tipoPag==='retro'?'<span class="tag-retro">↩</span>':'';
+    return `<div class="cliente-item ${sel?'selected':''}" onclick="selecionarCliente(${c.id})" ondblclick="selecionarClienteEScroll(${c.id})">
+      <div class="ci-info"><span class="ci-nome">${c.nome} ${retro}</span><span class="ci-sub">${c.endereco||''} · Dia ${c.dia} · R$ ${Number(c.valor).toFixed(2)}</span></div>
+      <div class="ci-right">${badgeHTML(calcularStatus(c))}<span class="chevron">›</span></div>
+    </div>`;
+  }).join('');
+}
+function selecionarClienteEScroll(id) {
+  selecionarCliente(id);
+  setTimeout(() => {
+    document.getElementById('painelCliente').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 150);
+}
+function selecionarCliente(id) {
+  clienteSelecionadoId = id;
+  const c = clientes.find(x=>x.id===id); if (!c) return;
+  const status = calcularStatus(c);
+  document.getElementById('painelAvatar').textContent = c.nome.charAt(0).toUpperCase();
+  document.getElementById('painelNome').textContent = c.nome;
+  document.getElementById('painelTel').textContent = c.tel||'Sem telefone';
+  document.getElementById('painelDia').textContent = 'Dia '+c.dia;
+  document.getElementById('painelValor').textContent = 'R$ '+Number(c.valor).toFixed(2);
+  document.getElementById('painelStatus').innerHTML = badgeHTML(status);
+  document.getElementById('painelTecnico').textContent = c.tecnico||'—';
+  document.getElementById('painelEnd').textContent = c.endereco||'—';
+  document.getElementById('btnPagarLabel').textContent = status==='pago'?'Desfazer pagamento':'Marcar como pago';
+  document.getElementById('painelCliente').classList.add('visible');
+  renderLista();
+  // Scroll automático para o painel em mobile
+  setTimeout(() => {
+    document.getElementById('painelCliente').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 100);
+}
+function editarClienteSelecionado() {
+  const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
+  document.getElementById('editId').value=c.id; document.getElementById('fNome').value=c.nome;
+  document.getElementById('fTel').value=c.tel||''; document.getElementById('fDia').value=c.dia;
+  document.getElementById('fValor').value=c.valor; document.getElementById('fStatus').value=c.status;
+  document.getElementById('fEndereco').value=c.endereco||''; document.getElementById('fTipoPag').value=c.tipoPag||'atual';
+  document.getElementById('fTecnico').value=c.tecnico||'';
+  document.getElementById('formTitulo').textContent='Editar Cliente'; document.getElementById('formIcon').textContent='✏️';
+  document.querySelector('.form-card').scrollIntoView({behavior:'smooth'}); navegarPara('clientes');
+}
+function pagarClienteSelecionado() {
+  const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
+  c.status = c.status==='pago'?'pendente':'pago';
+  salvar(); selecionarCliente(c.id); renderDashboard();
+  showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success'); fbSync();
+}
+function cobrarClienteSelecionado() { if (clienteSelecionadoId) gerarCobranca(clienteSelecionadoId); }
+function abrirHistoricoCliente() { if (!clienteSelecionadoId) return; histClienteId=clienteSelecionadoId; navegarPara('historico'); }
+function excluirClienteSelecionado() {
+  const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
+  document.getElementById('confirmNome').textContent=c.nome;
+  document.getElementById('modalConfirm').classList.add('open');
+}
+function confirmarExclusao() {
+  clientes = clientes.filter(c=>c.id!==clienteSelecionadoId);
+  historico = historico.filter(h=>h.clienteId!==clienteSelecionadoId);
+  clienteSelecionadoId=null; salvar(); salvarHistorico();
+  document.getElementById('painelCliente').classList.remove('visible');
+  fecharModal('modalConfirm'); renderLista(); renderDashboard();
+  showToast('Cliente removido','info'); fbSync();
+}
+function saveClient() {
+  const nome = document.getElementById('fNome').value.trim();
+  const tel = document.getElementById('fTel').value.trim();
+  const dia = parseInt(document.getElementById('fDia').value);
+  const valor = parseFloat(document.getElementById('fValor').value);
+  const status = document.getElementById('fStatus').value;
+  const endereco = document.getElementById('fEndereco').value.trim();
+  const tipoPag = document.getElementById('fTipoPag').value;
+  const tecnico = document.getElementById('fTecnico').value;
+  if (!nome||!dia||!valor) { showToast('⚠ Preencha os campos obrigatórios','error'); return; }
+  const editId = document.getElementById('editId').value;
+  if (editId) {
+    const idx = clientes.findIndex(c=>c.id==editId);
+    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico}; showToast('✓ Cliente atualizado!','success'); }
+  } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico}); showToast('✓ Cliente cadastrado!','success'); }
+  salvar(); limparForm(); renderLista(); renderDashboard(); fbSync();
+}
+function limparForm() {
+  ['editId','fNome','fTel','fDia','fValor','fEndereco'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fStatus').value='pendente'; document.getElementById('fTipoPag').value='atual';
+  document.getElementById('fTecnico').value='';
+  document.getElementById('formTitulo').textContent='Novo Cliente'; document.getElementById('formIcon').textContent='➕';
+}
+function togglePago(id) {
+  const c = clientes.find(x=>x.id===id);
+  if (c) { c.status=c.status==='pago'?'pendente':'pago'; salvar(); renderDashboard(); showToast(c.status==='pago'?'✓ Pago!':'Status atualizado','success'); fbSync(); }
+}
+
+// HISTÓRICO
+function renderHistLista() {
+  const busca = (document.getElementById('searchHistClientes')?.value||'').toLowerCase();
+  const lista = clientes.filter(c=>c.nome.toLowerCase().includes(busca));
+  const container = document.getElementById('histListaBody');
+  if (!lista.length) { container.innerHTML=`<div class="empty"><div>Nenhum cliente</div></div>`; return; }
+  container.innerHTML = lista.map(c=>`
+    <div class="hist-cliente-item ${c.id===histClienteId?'active':''}" onclick="selecionarHistCliente(${c.id})">
+      <div class="hist-cliente-nome">${c.nome}</div>
+      <div class="hist-cliente-sub">${c.endereco||''} · R$ ${Number(c.valor).toFixed(2)}</div>
+    </div>`).join('');
+}
+function selecionarHistCliente(id) { histClienteId=id; renderHistLista(); renderHistorico(); }
+function renderHistorico() {
+  const c = clientes.find(x=>x.id===histClienteId); if (!c) return;
+  let totalRecebido=0, totalPendente=0;
+  const pagsMes = MESES.map((_,mi)=>{
+    const reg = historico.find(h=>h.clienteId===histClienteId&&h.ano===histAno&&h.mes===mi);
+    return reg||{clienteId:histClienteId,ano:histAno,mes:mi,status:'pendente',valor:c.valor,data:'',obs:''};
+  });
+  pagsMes.forEach(p=>{ if(p.status==='pago'||p.status==='isento') totalRecebido+=Number(p.valor||0); else if(p.status!=='suspenso') totalPendente+=Number(c.valor||0); });
+  document.getElementById('histContent').innerHTML = `
+    <div class="hist-header-card">
+      <div class="hist-client-info">
+        <div class="hist-avatar">${c.nome.charAt(0).toUpperCase()}</div>
+        <div><div class="hist-client-name">${c.nome}</div><div class="hist-client-meta">${c.endereco||''} · Dia ${c.dia} · R$ ${Number(c.valor).toFixed(2)}/mês</div></div>
+      </div>
+      <div class="hist-year-selector">
+        <button class="year-btn" onclick="mudarAno(-1)">‹</button>
+        <span class="year-display">${histAno}</span>
+        <button class="year-btn" onclick="mudarAno(1)">›</button>
+      </div>
+    </div>
+    <div class="hist-resumo">
+      <div class="hist-resumo-card recebido"><div class="hist-resumo-label">Recebido</div><div class="hist-resumo-value">R$ ${totalRecebido.toFixed(2)}</div></div>
+      <div class="hist-resumo-card pendente"><div class="hist-resumo-label">Pendente</div><div class="hist-resumo-value">R$ ${totalPendente.toFixed(2)}</div></div>
+      <div class="hist-resumo-card total"><div class="hist-resumo-label">Total Anual</div><div class="hist-resumo-value">R$ ${(Number(c.valor)*12).toFixed(2)}</div></div>
+    </div>
+    <div class="hist-meses">
+      <div class="hist-meses-header">Pagamentos ${histAno}</div>
+      <div class="mes-row header"><span>Mês</span><span>Status</span><span>Valor Pago</span><span>Data</span><span>Observações</span><span></span></div>
+      ${pagsMes.map((p,mi)=>`
+        <div class="mes-row">
+          <span class="mes-nome">${MESES[mi]}</span>
+          <span>${badgeHTML(p.status||'pendente')}</span>
+          <span class="mes-valor">${(p.status==='pago'||p.status==='isento')?'R$ '+Number(p.valor||0).toFixed(2):'—'}</span>
+          <span class="mes-data">${p.data||'—'}</span>
+          <span class="mes-obs">${p.obs||'—'}</span>
+          <button class="mes-edit-btn" onclick="abrirModalPagamento(${histClienteId},${mi},${histAno})">✏ Editar</button>
+        </div>`).join('')}
+    </div>`;
+}
+function mudarAno(delta) { histAno+=delta; renderHistorico(); }
+function abrirModalPagamento(clienteId,mesIdx,ano) {
+  const reg = historico.find(h=>h.clienteId===clienteId&&h.ano===ano&&h.mes===mesIdx);
+  const c = clientes.find(x=>x.id===clienteId);
+  document.getElementById('pagClienteId').value=clienteId; document.getElementById('pagMesIdx').value=mesIdx; document.getElementById('pagAno').value=ano;
+  document.getElementById('modalPagTitulo').textContent=`${MESES[mesIdx]} ${ano} — ${c?c.nome:''}`;
+  document.getElementById('pagStatus').value=reg?.status||'pago';
+  document.getElementById('pagValor').value=reg?.valor||c?.valor||'';
+  document.getElementById('pagData').value=reg?.data||''; document.getElementById('pagObs').value=reg?.obs||'';
+  document.getElementById('modalPagamento').classList.add('open');
+}
+function salvarPagamento() {
+  const clienteId=Number(document.getElementById('pagClienteId').value);
+  const mesIdx=Number(document.getElementById('pagMesIdx').value);
+  const ano=Number(document.getElementById('pagAno').value);
+  const status=document.getElementById('pagStatus').value;
+  const valor=parseFloat(document.getElementById('pagValor').value)||0;
+  const data=document.getElementById('pagData').value;
+  const obs=document.getElementById('pagObs').value.trim();
+  const idx=historico.findIndex(h=>h.clienteId===clienteId&&h.ano===ano&&h.mes===mesIdx);
+  const reg={clienteId,ano,mes:mesIdx,status,valor,data,obs};
+  if(idx>=0) historico[idx]=reg; else historico.push(reg);
+  const hoje=new Date();
+  if(mesIdx===hoje.getMonth()&&ano===hoje.getFullYear()) { const c=clientes.find(x=>x.id===clienteId); if(c){c.status=status;salvar();} }
+  salvarHistorico(); fecharModal('modalPagamento'); renderHistorico(); renderDashboard();
+  showToast('✓ Pagamento registrado!','success'); fbSync();
+}
+
+// ESTOQUE
+function renderEstoque() {
+  const busca=(document.getElementById('searchEstoque')?.value||'').toLowerCase();
+  const lista=produtos.filter(p=>p.nome.toLowerCase().includes(busca)||(p.codigo||'').includes(busca));
+  const critico=produtos.filter(p=>p.qtd<p.minimo).length;
+  const valorTotal=produtos.reduce((s,p)=>s+Number(p.qtd||0)*Number(p.valor||0),0);
+  document.getElementById('estTotal').textContent=produtos.length;
+  document.getElementById('estCritico').textContent=critico;
+  document.getElementById('estValor').textContent='R$ '+valorTotal.toFixed(2);
+  const grid=document.getElementById('estoquGrid');
+  if(!lista.length){grid.innerHTML=`<div class="empty"><div class="empty-icon">📦</div><div>Nenhum produto</div></div>`;return;}
+  grid.innerHTML=lista.map(p=>{
+    const alerta=p.qtd<p.minimo;
+    return `<div class="produto-card ${alerta?'alerta':''}">
+      <div class="produto-card-header"><span style="font-weight:700;">${p.nome}</span><span class="produto-codigo">${p.codigo||''}</span></div>
+      <div class="produto-card-body">
+        ${alerta?`<div class="alerta-banner">⚠ Abaixo do mínimo (${p.minimo} un)</div>`:''}
+        <div class="produto-stats">
+          <div class="produto-stat"><div class="produto-stat-label">Em Estoque</div><div class="produto-stat-value" style="color:${alerta?'var(--red)':'var(--text)'}">${p.qtd} un</div></div>
+          <div class="produto-stat"><div class="produto-stat-label">Valor Unit.</div><div class="produto-stat-value">R$ ${Number(p.valor||0).toFixed(2)}</div></div>
+        </div>
+        <div class="produto-acoes">
+          <button class="btn btn-primary btn-sm" onclick="abrirModalMovimento(${p.id})">📦 Movimentar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalProduto(${p.id})">✏ Editar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function abrirModalProduto(id) {
+  const p=id?produtos.find(x=>x.id===id):null;
+  document.getElementById('prodEditId').value=p?p.id:'';
+  document.getElementById('modalProdTitulo').textContent=p?'Editar Produto':'Novo Produto';
+  document.getElementById('prodCodigo').value=p?.codigo||''; document.getElementById('prodNome').value=p?.nome||'';
+  document.getElementById('prodQtd').value=p?.qtd||0; document.getElementById('prodValor').value=p?.valor||0;
+  document.getElementById('prodMinimo').value=p?.minimo||7;
+  document.getElementById('modalProduto').classList.add('open');
+}
+function salvarProduto() {
+  const nome=document.getElementById('prodNome').value.trim(); if(!nome){showToast('⚠ Nome obrigatório','error');return;}
+  const prod={id:document.getElementById('prodEditId').value||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value)||7};
+  const idx=produtos.findIndex(p=>p.id==prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
+  salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success'); fbSync();
+}
+function abrirModalMovimento(id) {
+  const p=produtos.find(x=>x.id===id);
+  document.getElementById('movProdId').value=id;
+  document.getElementById('modalMovTitulo').textContent='Movimentar: '+(p?.nome||'');
+  document.getElementById('movQtd').value=''; document.getElementById('movObs').value='';
+  document.getElementById('modalMovimento').classList.add('open');
+}
+function salvarMovimento() {
+  const id=Number(document.getElementById('movProdId').value);
+  const tipo=document.getElementById('movTipo').value;
+  const qtd=parseInt(document.getElementById('movQtd').value)||0;
+  if(qtd<=0){showToast('⚠ Informe a quantidade','error');return;}
+  const p=produtos.find(x=>x.id===id); if(!p) return;
+  if(tipo==='entrada') p.qtd+=qtd;
+  else if(tipo==='saida'){if(p.qtd<qtd){showToast('⚠ Estoque insuficiente','error');return;}p.qtd-=qtd;}
+  else p.qtd=qtd;
+  salvarProdutos(); fecharModal('modalMovimento'); renderEstoque(); showToast('✓ Estoque atualizado!','success'); fbSync();
+}
+
+// SERVIÇOS
+function renderServicos() {
+  document.getElementById('servicosGrid').innerHTML=SERVICOS_DEF.map(s=>`
+    <div class="servico-card">
+      <div class="servico-card-header">
+        <div class="servico-icon">${s.icon}</div>
+        <div><div class="servico-titulo">${s.titulo}</div><div class="servico-desc">${s.desc}</div></div>
+      </div>
+      <div class="servico-card-body">
+        ${s.campos.map(c=>c.tipo==='select'
+          ?`<div class="form-group"><label class="form-label">${c.label}</label><select class="form-input" id="${c.id}">${c.opcoes.map(o=>`<option>${o}</option>`).join('')}</select></div>`
+          :`<div class="form-group"><label class="form-label">${c.label}</label><input type="number" class="form-input" id="${c.id}" placeholder="${c.placeholder||'0.00'}" oninput="calcularOrc('${s.id}')"></div>`
+        ).join('')}
+        <div class="orcamento-resultado" id="orc_${s.id}">
+          <div id="orcLinhas_${s.id}"></div>
+          <div class="orc-total"><span class="orc-total-label">Total</span><span class="orc-total-valor" id="orcTotal_${s.id}">R$ 0,00</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-primary btn-sm" onclick="calcularOrc('${s.id}')">💰 Calcular</button>
+          <button class="btn btn-green btn-sm" onclick="abrirOrcWpp('${s.id}')">💬 WhatsApp</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function calcularOrc(sId) {
+  const s=SERVICOS_DEF.find(x=>x.id===sId); if(!s) return;
+  let total=0;
+  const linhas=s.campos.filter(c=>c.tipo==='number').map(c=>{
+    const val=parseFloat(document.getElementById(c.id)?.value)||0; total+=val;
+    return `<div class="orc-linha"><span class="orc-linha-label">${c.label}</span><span class="orc-linha-valor">R$ ${val.toFixed(2)}</span></div>`;
+  }).join('');
+  document.getElementById('orcLinhas_'+sId).innerHTML=linhas;
+  document.getElementById('orcTotal_'+sId).textContent='R$ '+total.toFixed(2);
+  document.getElementById('orc_'+sId).classList.add('visible');
+}
+function abrirOrcWpp(sId) {
+  const s=SERVICOS_DEF.find(x=>x.id===sId); if(!s) return;
+  calcularOrc(sId);
+  const total=document.getElementById('orcTotal_'+sId).textContent;
+  const tipo=document.getElementById(s.campos[0].id)?.value||'';
+  const msg=`Olá! Segue orçamento para ${s.titulo}:\n\n*Tipo:* ${tipo}\n*Total:* ${total}\n\nQualquer dúvida estou à disposição! 😊\n\nAcqua Brise 🌊`;
+  const tel=prompt('WhatsApp do cliente (somente números):');
+  if(tel) window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+// VISÃO GERAL
+function mudarAnoVG(delta) { vgAno+=delta; document.getElementById('vgAnoDisplay').textContent=vgAno; renderVisaoGeral(); }
+function renderVisaoGeral() {
+  const rows=clientes.map(c=>{
+    const meses=MESES.map((_,mi)=>{
+      const reg=historico.find(h=>h.clienteId===c.id&&h.ano===vgAno&&h.mes===mi);
+      const st=reg?.status||'pendente';
+      const cor=st==='pago'||st==='isento'?'var(--green)':st==='atrasado'?'var(--red)':'var(--yellow)';
+      const label=st==='pago'?'✓':st==='isento'?'I':st==='atrasado'?'A':'·';
+      return `<td style="text-align:center;color:${cor};font-weight:700;">${label}</td>`;
+    }).join('');
+    return `<tr><td><div class="client-name" style="font-size:0.82rem;">${c.nome}</div></td>${meses}</tr>`;
+  }).join('');
+  const headers=MESES.map(m=>`<th style="text-align:center;">${m.substring(0,3)}</th>`).join('');
+  document.getElementById('vgTableBody').innerHTML=`<table><thead><tr><th>Cliente</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// NECESSIDADES
+function renderNecessidades() {
+  const busca=(document.getElementById('searchNec')?.value||'').toLowerCase();
+  const lista=necessidades.filter(n=>{ const c=clientes.find(x=>x.id===n.clienteId); return (c?.nome||'').toLowerCase().includes(busca); });
+  const container=document.getElementById('necPageBody');
+  if(!lista.length){container.innerHTML=`<div class="empty"><div class="empty-icon">🧴</div><div>Nenhuma necessidade registrada</div></div>`;return;}
+  container.innerHTML=lista.map(n=>{
+    const c=clientes.find(x=>x.id===n.clienteId); const p=produtos.find(x=>x.id===n.produtoId);
+    return `<div class="nec-row">
+      <div><div class="nec-nome">${c?.nome||'—'}</div><div class="nec-sub">${p?.nome||'—'} · Qtd: ${n.qtd} · ${n.data||'—'}</div>${n.obs?`<div class="nec-sub" style="color:var(--accent2);">📝 ${n.obs}</div>`:''}</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;"><input type="checkbox" ${n.entregue?'checked':''} onchange="toggleNec(${n.id},'entregue')"> Entregue</label>
+        <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;"><input type="checkbox" ${n.pago?'checked':''} onchange="toggleNec(${n.id},'pago')"> Pago</label>
+        <button class="btn btn-red btn-sm" onclick="excluirNec(${n.id})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function abrirModalNecessidade(clienteId) {
+  document.getElementById('necClienteSel').innerHTML=clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  if(clienteId) document.getElementById('necClienteSel').value=clienteId;
+  document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome} (${p.qtd} un)</option>`).join('');
+  document.getElementById('necQtd').value=1; document.getElementById('necData').value=new Date().toISOString().slice(0,10);
+  document.getElementById('necObs').value=''; document.getElementById('modalNecessidadeForm').classList.add('open');
+}
+function salvarNecessidade() {
+  const clienteId=Number(document.getElementById('necClienteSel').value);
+  const produtoId=Number(document.getElementById('necProdutoSel').value);
+  const qtd=parseInt(document.getElementById('necQtd').value)||1;
+  const data=document.getElementById('necData').value; const obs=document.getElementById('necObs').value.trim();
+  necessidades.push({id:Date.now(),clienteId,produtoId,qtd,data,obs,entregue:false,pago:false});
+  salvarNecessidades(); fecharModal('modalNecessidadeForm'); renderNecessidades();
+  showToast('✓ Necessidade registrada!','success'); fbSync();
+}
+function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
+function excluirNec(id) { necessidades=necessidades.filter(x=>x.id!==id); salvarNecessidades(); renderNecessidades(); showToast('Removida','info'); fbSync(); }
+
+// CONFIGURAÇÕES
+function abrirConfigSecao(secao) {
+  document.querySelectorAll('.config-section').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.config-menu-item').forEach(i=>i.classList.remove('active'));
+  const map={usuarios:'secUsuarios',permissoes:'secPermissoes',exportar:'secExportar'};
+  document.getElementById(map[secao]).style.display='block';
+  const idx=['usuarios','permissoes','exportar'].indexOf(secao);
+  document.querySelectorAll('.config-menu-item')[idx]?.classList.add('active');
+  if(secao==='usuarios') renderUsuarios();
+  if(secao==='permissoes') renderPermissoes();
+  if(secao==='exportar') {
+    atualizarInfoBackup();
+    const token = localStorage.getItem('drprime_gh_token');
+    const inp = document.getElementById('githubToken');
+    if (token && inp) inp.value = token;
+  }
+}
+function renderUsuarios() {
+  const perfis={admin:'👑 Admin',gerente:'👔 Gerente',tecnico:'🔧 Técnico',financeiro:'📊 Financeiro'};
+  document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead><tbody>
+    ${usuarios.map(u=>`<tr><td><div class="client-name">${u.usuario}</div></td><td>${perfis[u.perfil]||u.perfil}</td><td>${u.email||'—'}</td><td><button class="action-btn" onclick="editarUsuario(${u.id})">✏</button></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function abrirModalUsuario() {
+  document.getElementById('userEditId').value=''; document.getElementById('modalUserTitulo').textContent='Novo Usuário';
+  ['cfgUsuario','cfgSenha','cfgEmail'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cfgPerfil').value='tecnico'; document.getElementById('modalUsuario').classList.add('open');
+}
+function editarUsuario(id) {
+  const u=usuarios.find(x=>x.id===id); if(!u) return;
+  document.getElementById('userEditId').value=u.id; document.getElementById('modalUserTitulo').textContent='Editar Usuário';
+  document.getElementById('cfgUsuario').value=u.usuario; document.getElementById('cfgSenha').value=u.senha;
+  document.getElementById('cfgEmail').value=u.email||''; document.getElementById('cfgPerfil').value=u.perfil;
+  document.getElementById('modalUsuario').classList.add('open');
+}
+function salvarUsuario() {
+  const usuario=document.getElementById('cfgUsuario').value.trim(); const senha=document.getElementById('cfgSenha').value;
+  const email=document.getElementById('cfgEmail').value.trim(); const perfil=document.getElementById('cfgPerfil').value;
+  if(!usuario||senha.length<4){showToast('⚠ Preencha usuário e senha (mín. 4 chars)','error');return;}
+  const editId=document.getElementById('userEditId').value;
+  if(editId){const idx=usuarios.findIndex(u=>u.id==editId);if(idx>=0){usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil};showToast('✓ Usuário atualizado!','success');}}
+  else{usuarios.push({id:Date.now(),usuario,senha,email,perfil,nome:usuario});showToast('✓ Usuário criado!','success');}
+  salvarUsuarios(); fecharModal('modalUsuario'); renderUsuarios(); preencherSelectTecnicos(); fbSync();
+}
+function renderPermissoes() {
+  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes','excluir','exportar'];
+  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Configurações','Excluir','Exportar'];
+  const perfis=['admin','gerente','tecnico','financeiro'];
+  const nomePerfis=['👑 Admin','👔 Gerente','🔧 Técnico','📊 Financeiro'];
+  document.getElementById('permissoesContainer').innerHTML=`<div class="table-wrap"><table class="perm-table">
+    <thead><tr><th>Funcionalidade</th>${nomePerfis.map(n=>`<th>${n}</th>`).join('')}</tr></thead>
+    <tbody>${abas.map((aba,i)=>`<tr><td>${labels[i]}</td>${perfis.map(p=>`<td><input type="checkbox" class="perm-toggle" ${permissoes[p]?.[aba]?'checked':''} onchange="togglePermissao('${p}','${aba}',this.checked)"></td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>
+  <div style="margin-top:14px;"><button class="btn btn-primary btn-sm" onclick="salvarPermissoes();showToast('✓ Permissões salvas!','success');">💾 Salvar</button></div>`;
+}
+function togglePermissao(perfil,aba,val) { if(!permissoes[perfil]) permissoes[perfil]={}; permissoes[perfil][aba]=val; }
+
+// EXPORTAR
+function exportarExcel(tipo) {
+  if(typeof XLSX==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
+  let data,filename;
+  if(tipo==='clientes'){data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||''}));filename='clientes.xlsx';}
+  else{data=historico.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return{Cliente:c?.nome||'',Mês:MESES[h.mes],Ano:h.ano,Status:h.status,Valor:h.valor,Data:h.data||'',Obs:h.obs||''};});filename='historico.xlsx';}
+  const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo);XLSX.writeFile(wb,filename);
+  showToast('✓ Excel exportado!','success');
+}
+function exportarPDF(tipo) {
+  if(typeof jspdf==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
+  const{jsPDF}=jspdf;const doc=new jsPDF();
+  doc.setFontSize(16);doc.text('Acqua Brise — '+(tipo==='clientes'?'Clientes':'Histórico'),14,20);
+  doc.setFontSize(10);doc.text('Gerado em: '+new Date().toLocaleDateString('pt-BR'),14,28);
+  if(tipo==='clientes'){doc.autoTable({startY:35,head:[['Nome','Telefone','Dia','Valor','Status','Localização']],body:clientes.map(c=>[c.nome,c.tel||'',c.dia,`R$ ${Number(c.valor).toFixed(2)}`,c.status,c.endereco||''])});}
+  else{doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:historico.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,h.data||''];})});}
+  doc.save(tipo+'.pdf');showToast('✓ PDF exportado!','success');
+}
+
+// COBRANÇA
+function gerarCobranca(id) {
+  const c=clientes.find(x=>x.id===id); if(!c) return;
+  cobrancaAtual=c;
+  const status=calcularStatus(c); const nome=c.nome.split(' ')[0];
+  const msg=status==='atrasado'
+    ?`Olá, ${nome}! 🏊\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nPode me pagar via PIX! Qualquer dúvida, estou à disposição. 😊\n\nAtenciosamente,\nAcqua Brise 🌊`
+    :`Olá, ${nome}! 🏊\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.\n\nO pagamento pode ser feito via PIX.\n\nObrigado pela preferência! 😊\n\nAtenciosamente,\nAcqua Brise 🌊`;
+  document.getElementById('cobrancaNome').textContent=c.nome;
+  document.getElementById('cobrancaTexto').textContent=msg;
+  document.getElementById('modalCobranca').classList.add('open');
+}
+function cobrarTodos() {
+  const atrasados=clientes.filter(c=>calcularStatus(c)==='atrasado');
+  if(!atrasados.length){showToast('Nenhum cliente atrasado 🎉','success');return;}
+  gerarCobranca(atrasados[0].id);
+}
+function copiarMensagem() { navigator.clipboard.writeText(document.getElementById('cobrancaTexto').textContent).then(()=>showToast('✓ Copiado!','success')); }
+function abrirWhatsApp() {
+  if(!cobrancaAtual) return;
+  const tel=(cobrancaAtual.tel||'').replace(/\D/g,'');
+  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(document.getElementById('cobrancaTexto').textContent)}`,'_blank');
+}
+
+// BACKUP COMPLETO
+function fazerBackupCompleto() {
+  const hoje = new Date();
+  const dataStr = hoje.toISOString().slice(0,10);
+  const horaStr = hoje.toTimeString().slice(0,5).replace(':','h');
+  
+  const backup = {
+    versao: '3.0',
+    data: hoje.toISOString(),
+    sistema: 'Acqua Brise — DR Prime Piscinas',
+    clientes: JSON.parse(localStorage.getItem('aquagest_clientes') || '[]'),
+    historico: JSON.parse(localStorage.getItem('aquagest_historico') || '[]'),
+    produtos: JSON.parse(localStorage.getItem('aquagest_produtos') || '[]'),
+    necessidades: JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]'),
+    usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
+    permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}')
+  };
+  
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `backup_acqua_brise_${dataStr}_${horaStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  // Registrar data do último backup
+  localStorage.setItem('drprime_ultimo_backup', hoje.toISOString());
+  atualizarInfoBackup();
+  
+  showToast(`✓ Backup salvo! Guarde na pasta C:\\Backup Acqua Brise\\`, 'success');
+}
+
+function toggleVerToken() {
+  const inp = document.getElementById('githubToken');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function backupParaGitHub() {
+  const token = document.getElementById('githubToken')?.value || localStorage.getItem('drprime_gh_token') || '';
+  if (!token || token.length < 10) {
+    showToast('\u26a0 Insira o GitHub Token primeiro!', 'error');
+    document.getElementById('githubTokenWrap').style.border = '2px solid rgba(220,38,38,0.6)';
+    setTimeout(() => document.getElementById('githubTokenWrap').style.border = '', 3000);
+    return;
+  }
+
+  const OWNER = 'poolmastersac-maker';
+  const REPO = '-acqua-brise';
+  const hoje = new Date();
+  const dataStr = hoje.toISOString().slice(0,10);
+  const horaStr = hoje.toTimeString().slice(0,5).replace(':','h');
+
+  showToast('\u23f3 Enviando sistema para o GitHub...', 'info');
+
+  try {
+    // Salvar APENAS o HTML do sistema sem dados de clientes
+    // Criar versão limpa do HTML removendo os dados do _default inline
+    let htmlSistema = document.documentElement.outerHTML;
+
+    // Remover dados de clientes que ficam no localStorage — o HTML já nao tem dados sensiveis
+    // O outerHTML do sistema nao contem dados do localStorage, apenas o codigo
+    const htmlContent = btoa(unescape(encodeURIComponent(htmlSistema)));
+    const htmlPath = 'backups/sistema/index_' + dataStr + '_' + horaStr + '.html';
+
+    // Verificar se arquivo ja existe para pegar SHA
+    const existeResp = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + htmlPath, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    const shaExiste = existeResp.ok ? (await existeResp.json()).sha : undefined;
+
+    // Enviar HTML para o GitHub
+    const resp = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + htmlPath, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'backup sistema ' + dataStr + ' ' + horaStr,
+        content: htmlContent,
+        ...(shaExiste && { sha: shaExiste })
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.message || 'Erro na API do GitHub');
+    }
+
+    // Registrar data do backup e salvar token
+    localStorage.setItem('drprime_ultimo_backup', hoje.toISOString());
+    localStorage.setItem('drprime_gh_token', token);
+    atualizarInfoBackup();
+
+    showToast('\u2713 Sistema salvo no GitHub! Dados dos clientes ficam apenas localmente.', 'success');
+
+  } catch(e) {
+    console.error(e);
+    showToast('\u274c Erro ao salvar no GitHub. Verifique o token.', 'error');
+  }
+}
+
+function baixarSistema() {
+  const hoje = new Date();
+  const dataStr = hoje.toISOString().slice(0,10);
+  const horaStr = hoje.toTimeString().slice(0,5).replace(':','h');
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `index_${dataStr}_${horaStr}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Sistema salvo! Guarde em C:\\Backup Acqua Brise\\sistema\\', 'success');
+}
+
+function restaurarBackup() {
+  if (!confirm('⚠️ Restaurar um backup irá SUBSTITUIR todos os dados atuais.\n\nTem certeza que deseja continuar?')) return;
+  document.getElementById('inputRestaurar').click();
+}
+
+function lerArquivoBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.versao || !backup.clientes) {
+        showToast('❌ Arquivo inválido ou corrompido', 'error'); return;
+      }
+      // Restaurar dados
+      localStorage.setItem('aquagest_clientes', JSON.stringify(backup.clientes));
+      localStorage.setItem('aquagest_historico', JSON.stringify(backup.historico || []));
+      localStorage.setItem('aquagest_produtos', JSON.stringify(backup.produtos || []));
+      localStorage.setItem('aquagest_necessidades', JSON.stringify(backup.necessidades || []));
+      if (backup.usuarios?.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(backup.usuarios));
+      if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
+      
+      // Recarregar dados na memória
+      clientes = JSON.parse(localStorage.getItem('aquagest_clientes'));
+      historico = JSON.parse(localStorage.getItem('aquagest_historico'));
+      produtos = JSON.parse(localStorage.getItem('aquagest_produtos'));
+      necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades'));
+      
+      showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
+      renderDashboard();
+      atualizarStats();
+      fbSync();
+      
+    } catch(err) {
+      showToast('❌ Erro ao ler o arquivo de backup', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // limpar input
+}
+
+function atualizarInfoBackup() {
+  const el = document.getElementById('ultimoBackupInfo');
+  if (!el) return;
+  const ultimo = localStorage.getItem('drprime_ultimo_backup');
+  if (ultimo) {
+    const d = new Date(ultimo);
+    el.textContent = `Último backup: ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}`;
+  } else {
+    el.textContent = 'Último backup: nunca realizado ⚠️';
+  }
+}
+
+// UTILITÁRIOS
+function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+function showToast(msg,type='info') {
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className=`toast ${type} show`; setTimeout(()=>t.classList.remove('show'),3000);
+}
+function fbSync() { window.dispatchEvent(new Event('fbSyncRequest')); }
+
+// Ajustar offset do header fixo dinamicamente
+function ajustarOffsetHeader() {
+  const header = document.getElementById('mainHeader');
+  if (!header || window.getComputedStyle(header).position !== 'fixed') {
+    document.body.style.paddingTop = '0px';
+    return;
+  }
+  const altura = header.offsetHeight;
+  document.body.style.paddingTop = altura + 'px';
+}
+
+// INIT
+document.addEventListener('DOMContentLoaded', () => { verificarLogin(); atualizarInfoBackup(); });
+window.addEventListener('resize', ajustarOffsetHeader);
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+  import { getFirestore, collection, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAtn8uAazSzISsp_C91YXQzwJKdy6fZPII",
+    authDomain: "dr-prime-piscinas.firebaseapp.com",
+    projectId: "dr-prime-piscinas",
+    storageBucket: "dr-prime-piscinas.firebasestorage.app",
+    messagingSenderId: "594657212478",
+    appId: "1:594657212478:web:85dcec93f55cede6d1f96f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  async function syncToFirebase() {
+    try {
+      const clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
+      const historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
+      const produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
+      for (const c of clientes) await setDoc(doc(db,'clientes',String(c.id)), c);
+      for (const h of historico) await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
+      for (const p of produtos) await setDoc(doc(db,'produtos',String(p.id)), p);
+      const badge = document.getElementById('syncBadge');
+      if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
+    } catch(e) {
+      const badge = document.getElementById('syncBadge');
+      if (badge) { badge.textContent = '⚠ Offline'; badge.className = 'sync-badge sync-off'; }
+    }
+  }
+
+  window.addEventListener('fbSyncRequest', syncToFirebase);
+
+  // Carregar dados do Firebase na inicialização
+  try {
+    const snapC = await getDocs(collection(db, 'clientes'));
+    if (!snapC.empty) {
+      const fbClientes = snapC.docs.map(d => d.data());
+      if (fbClientes.length > 0) localStorage.setItem('aquagest_clientes', JSON.stringify(fbClientes));
+    }
+    const snapH = await getDocs(collection(db, 'historico'));
+    if (!snapH.empty) {
+      const fbHist = snapH.docs.map(d => d.data());
+      if (fbHist.length > 0) localStorage.setItem('aquagest_historico', JSON.stringify(fbHist));
+    }
+    const snapP = await getDocs(collection(db, 'produtos'));
+    if (!snapP.empty) {
+      const fbProd = snapP.docs.map(d => d.data());
+      if (fbProd.length > 0) localStorage.setItem('aquagest_produtos', JSON.stringify(fbProd));
+    }
+    const badge = document.getElementById('syncBadge');
+    if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
+  } catch(e) {
+    console.log('Firebase offline — usando dados locais');
+  }
+</script>
+
+
+</body></html>
