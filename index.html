@@ -911,7 +911,7 @@ const SERVICOS_DEF = [
 if (localStorage.getItem('drprime_versao') !== _versao) {
   localStorage.removeItem('aquagest_clientes');
   localStorage.removeItem('aquagest_historico');
-  localStorage.removeItem('aquagest_usuarios');
+  // NÃO remove usuários nem permissões ao atualizar versão
   localStorage.setItem('drprime_versao', _versao);
 }
 let clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || 'null');
@@ -930,7 +930,7 @@ if (!permissoes) {
   permissoes = {
     admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:true,excluir:true,exportar:true},
     gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:false,excluir:true,exportar:true},
-    tecnico:{dashboard:true,clientes:false,historico:false,estoque:true,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
+    tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
     financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,configuracoes:false,excluir:false,exportar:true}
   };
   salvarPermissoes();
@@ -959,8 +959,14 @@ function salvarPermissoes() { localStorage.setItem('aquagest_permissoes', JSON.s
 function calcularStatus(c) {
   if (c.status === 'suspenso') return 'suspenso';
   if (c.status === 'isento') return 'isento';
-  if (c.status === 'pago') return 'pago';
+  // Verificar se há registro no histórico do mês atual
   const hoje = new Date();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const regMes = historico.find(h=>h.clienteId===c.id&&h.mes===mesAtual&&h.ano===anoAtual);
+  if (regMes) return regMes.status;
+  // Sem registro no histórico — usar status do cliente
+  if (c.status === 'pago') return 'pago';
   if (hoje.getDate() > c.dia + 3) return 'atrasado';
   return 'pendente';
 }
@@ -1043,6 +1049,14 @@ function aplicarPermissoes() {
   const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico;
   const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes'];
   document.querySelectorAll('.nav-tab').forEach((tab,i) => { tab.style.display = (p[tabs[i]]!==false)?'':'none'; });
+
+  // Ocultar stats bar se não tem acesso ao dashboard
+  const statsBar = document.getElementById('statsBar');
+  if (statsBar) statsBar.style.display = p.dashboard !== false ? 'block' : 'none';
+
+  // Redirecionar para primeira aba permitida
+  const primeiraAba = tabs.find(t => p[t] !== false);
+  if (primeiraAba) navegarPara(primeiraAba);
 }
 
 // NAVEGAÇÃO
@@ -1179,8 +1193,23 @@ function editarClienteSelecionado() {
 function pagarClienteSelecionado() {
   const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
   c.status = c.status==='pago'?'pendente':'pago';
-  salvar(); selecionarCliente(c.id); renderDashboard();
-  showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success'); fbSync();
+  salvar();
+  // Registrar no histórico do mês atual
+  const hoje = new Date();
+  const mesIdx = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const idx = historico.findIndex(h=>h.clienteId===c.id&&h.ano===anoAtual&&h.mes===mesIdx);
+  if (c.status==='pago') {
+    const reg = {clienteId:c.id,ano:anoAtual,mes:mesIdx,status:'pago',valor:c.valor,data:hoje.toISOString().slice(0,10),obs:'Marcado via Painel'};
+    if (idx>=0) historico[idx]=reg; else historico.push(reg);
+  } else {
+    if (idx>=0) historico[idx].status='pendente';
+  }
+  salvarHistorico();
+  selecionarCliente(c.id);
+  renderDashboard();
+  showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success');
+  fbSync();
 }
 function cobrarClienteSelecionado() { if (clienteSelecionadoId) gerarCobranca(clienteSelecionadoId); }
 function abrirHistoricoCliente() { if (!clienteSelecionadoId) return; histClienteId=clienteSelecionadoId; navegarPara('historico'); }
@@ -1222,7 +1251,24 @@ function limparForm() {
 }
 function togglePago(id) {
   const c = clientes.find(x=>x.id===id);
-  if (c) { c.status=c.status==='pago'?'pendente':'pago'; salvar(); renderDashboard(); showToast(c.status==='pago'?'✓ Pago!':'Status atualizado','success'); fbSync(); }
+  if (!c) return;
+  c.status = c.status==='pago'?'pendente':'pago';
+  salvar();
+  // Registrar no histórico do mês atual
+  const hoje = new Date();
+  const mesIdx = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const idx = historico.findIndex(h=>h.clienteId===id&&h.ano===anoAtual&&h.mes===mesIdx);
+  if (c.status==='pago') {
+    const reg = {clienteId:id,ano:anoAtual,mes:mesIdx,status:'pago',valor:c.valor,data:hoje.toISOString().slice(0,10),obs:'Marcado via Dashboard'};
+    if (idx>=0) historico[idx]=reg; else historico.push(reg);
+  } else {
+    if (idx>=0) historico[idx].status='pendente';
+  }
+  salvarHistorico();
+  renderDashboard();
+  showToast(c.status==='pago'?'✓ Pago!':'Status atualizado','success');
+  fbSync();
 }
 
 // HISTÓRICO
@@ -1707,10 +1753,11 @@ function lerArquivoBackup(event) {
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
       
       // Recarregar dados na memória
-      clientes = JSON.parse(localStorage.getItem('aquagest_clientes'));
-      historico = JSON.parse(localStorage.getItem('aquagest_historico'));
-      produtos = JSON.parse(localStorage.getItem('aquagest_produtos'));
-      necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades'));
+      clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
+      historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
+      produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
+      necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
+      usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
       
       showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
       renderDashboard();
