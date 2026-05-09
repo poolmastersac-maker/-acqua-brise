@@ -1119,11 +1119,17 @@ function renderLista() {
   container.innerHTML = lista.map(c=>{
     const sel = c.id===clienteSelecionadoId;
     const retro = c.tipoPag==='retro'?'<span class="tag-retro">↩</span>':'';
-    return `<div class="cliente-item ${sel?'selected':''}" onclick="selecionarCliente(${c.id})">
+    return `<div class="cliente-item ${sel?'selected':''}" onclick="selecionarCliente(${c.id})" ondblclick="selecionarClienteEScroll(${c.id})">
       <div class="ci-info"><span class="ci-nome">${c.nome} ${retro}</span><span class="ci-sub">${c.endereco||''} · Dia ${c.dia} · R$ ${Number(c.valor).toFixed(2)}</span></div>
       <div class="ci-right">${badgeHTML(calcularStatus(c))}<span class="chevron">›</span></div>
     </div>`;
   }).join('');
+}
+function selecionarClienteEScroll(id) {
+  selecionarCliente(id);
+  setTimeout(() => {
+    document.getElementById('painelCliente').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 150);
 }
 function selecionarCliente(id) {
   clienteSelecionadoId = id;
@@ -1140,6 +1146,10 @@ function selecionarCliente(id) {
   document.getElementById('btnPagarLabel').textContent = status==='pago'?'Desfazer pagamento':'Marcar como pago';
   document.getElementById('painelCliente').classList.add('visible');
   renderLista();
+  // Scroll automático para o painel em mobile
+  setTimeout(() => {
+    document.getElementById('painelCliente').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 100);
 }
 function editarClienteSelecionado() {
   const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
