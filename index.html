@@ -925,15 +925,27 @@ if (!usuarios || usuarios.length === 0) {
   usuarios = [{id:1,usuario:'Diegoskamino',senha:'#Diegoskamino992801',email:'',perfil:'admin',nome:'Diego'}];
   salvarUsuarios();
 }
-let permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes') || 'null');
-if (!permissoes) {
-  permissoes = {
-    admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:true,excluir:true,exportar:true},
-    gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:false,excluir:true,exportar:true},
-    tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
-    financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,configuracoes:false,excluir:false,exportar:true}
-  };
+// Permissões padrão versionadas
+const _permissoesVersao = '2.0'; // Incrementar aqui sempre que mudar permissões
+const _permissoesDefault = {
+  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:true,excluir:true,exportar:true},
+  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:false,excluir:true,exportar:true},
+  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
+  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,configuracoes:false,excluir:false,exportar:true}
+};
+
+let permissoes;
+const permSalvas = localStorage.getItem('aquagest_permissoes');
+const permVersaoSalva = localStorage.getItem('aquagest_permissoes_versao');
+
+if (!permSalvas || permVersaoSalva !== _permissoesVersao) {
+  // Primeira vez OU versão desatualizada — aplicar padrão completo
+  permissoes = _permissoesDefault;
+  localStorage.setItem('aquagest_permissoes_versao', _permissoesVersao);
   salvarPermissoes();
+} else {
+  // Versão atual — usar o que está salvo (respeita customizações do admin)
+  permissoes = JSON.parse(permSalvas);
 }
 
 // ESTADO GLOBAL
