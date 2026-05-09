@@ -329,8 +329,8 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   .nav-tab.active{border-bottom:2px solid var(--accent);border-top:none;background:rgba(33,150,243,0.08);}
 
   /* OFFSET para o header fixo no topo */
-  #statsBar{margin-top:96px;}
-  .page{padding:10px;padding-bottom:20px;}
+  #statsBar{margin-top:118px;}
+  .page{padding:10px;padding-bottom:20px;margin-top:118px;}
 
   /* STATS — 2 colunas compactas */
   .stats-bar{
@@ -979,6 +979,7 @@ function entrar() {
   preencherSelectTecnicos();
   renderDashboard();
   atualizarStats();
+  setTimeout(ajustarOffsetHeader, 100);
 }
 function fazerLogout() {
   localStorage.removeItem('drprime_logado');
@@ -1657,8 +1658,18 @@ function showToast(msg,type='info') {
 }
 function fbSync() { window.dispatchEvent(new Event('fbSyncRequest')); }
 
+// Ajustar offset do header fixo dinamicamente
+function ajustarOffsetHeader() {
+  const header = document.getElementById('mainHeader');
+  if (!header) return;
+  const altura = header.offsetHeight;
+  document.getElementById('statsBar').style.marginTop = altura + 'px';
+  document.querySelectorAll('.page').forEach(p => p.style.marginTop = altura + 'px');
+}
+
 // INIT
 document.addEventListener('DOMContentLoaded', () => { verificarLogin(); atualizarInfoBackup(); });
+window.addEventListener('resize', ajustarOffsetHeader);
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
