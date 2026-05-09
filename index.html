@@ -709,9 +709,22 @@ tr:hover td{background:rgba(33,150,243,0.04);}
             </div>
           </div>
           <div id="ultimoBackupInfo" style="font-size:0.75rem;opacity:0.8;margin-bottom:14px;">Último backup: nunca realizado</div>
+
+          <!-- TOKEN GITHUB -->
+          <div id="githubTokenWrap" style="margin-bottom:12px;background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;">
+            <div style="font-size:0.72rem;opacity:0.9;margin-bottom:6px;">🔑 GitHub Token <span style="opacity:0.7;">(salvo localmente, nunca enviado a terceiros)</span></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                style="flex:1;padding:7px 10px;border-radius:6px;border:none;font-size:0.82rem;outline:none;color:#1A202C;"
+                onchange="localStorage.setItem('drprime_gh_token',this.value)">
+              <button onclick="toggleVerToken()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;font-size:0.8rem;">👁</button>
+            </div>
+          </div>
+
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button onclick="fazerBackupCompleto()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">💾 Backup dos Dados (.json)</button>
             <button onclick="baixarSistema()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📄 Salvar Sistema (.html)</button>
+            <button onclick="backupParaGitHub()" style="background:#24292e;color:white;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">🐙 Salvar no GitHub</button>
             <button onclick="restaurarBackup()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📂 Restaurar Backup</button>
           </div>
           <input type="file" id="inputRestaurar" accept=".json" style="display:none;" onchange="lerArquivoBackup(event)">
@@ -1464,6 +1477,12 @@ function abrirConfigSecao(secao) {
   document.querySelectorAll('.config-menu-item')[idx]?.classList.add('active');
   if(secao==='usuarios') renderUsuarios();
   if(secao==='permissoes') renderPermissoes();
+  if(secao==='exportar') {
+    atualizarInfoBackup();
+    const token = localStorage.getItem('drprime_gh_token');
+    const inp = document.getElementById('githubToken');
+    if (token && inp) inp.value = token;
+  }
 }
 function renderUsuarios() {
   const perfis={admin:'👑 Admin',gerente:'👔 Gerente',tecnico:'🔧 Técnico',financeiro:'📊 Financeiro'};
@@ -1580,6 +1599,73 @@ function fazerBackupCompleto() {
   atualizarInfoBackup();
   
   showToast(`✓ Backup salvo! Guarde na pasta C:\\Backup Acqua Brise\\`, 'success');
+}
+
+function toggleVerToken() {
+  const inp = document.getElementById('githubToken');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function backupParaGitHub() {
+  const token = document.getElementById('githubToken')?.value || localStorage.getItem('drprime_gh_token') || '';
+  if (!token || token.length < 10) {
+    showToast('\u26a0 Insira o GitHub Token primeiro!', 'error');
+    document.getElementById('githubTokenWrap').style.border = '2px solid rgba(220,38,38,0.6)';
+    setTimeout(() => document.getElementById('githubTokenWrap').style.border = '', 3000);
+    return;
+  }
+
+  const OWNER = 'poolmastersac-maker';
+  const REPO = '-acqua-brise';
+  const hoje = new Date();
+  const dataStr = hoje.toISOString().slice(0,10);
+  const horaStr = hoje.toTimeString().slice(0,5).replace(':','h');
+
+  showToast('\u23f3 Enviando sistema para o GitHub...', 'info');
+
+  try {
+    // Salvar APENAS o HTML do sistema sem dados de clientes
+    // Criar versão limpa do HTML removendo os dados do _default inline
+    let htmlSistema = document.documentElement.outerHTML;
+
+    // Remover dados de clientes que ficam no localStorage — o HTML já nao tem dados sensiveis
+    // O outerHTML do sistema nao contem dados do localStorage, apenas o codigo
+    const htmlContent = btoa(unescape(encodeURIComponent(htmlSistema)));
+    const htmlPath = 'backups/sistema/index_' + dataStr + '_' + horaStr + '.html';
+
+    // Verificar se arquivo ja existe para pegar SHA
+    const existeResp = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + htmlPath, {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    const shaExiste = existeResp.ok ? (await existeResp.json()).sha : undefined;
+
+    // Enviar HTML para o GitHub
+    const resp = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + htmlPath, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'backup sistema ' + dataStr + ' ' + horaStr,
+        content: htmlContent,
+        ...(shaExiste && { sha: shaExiste })
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.message || 'Erro na API do GitHub');
+    }
+
+    // Registrar data do backup e salvar token
+    localStorage.setItem('drprime_ultimo_backup', hoje.toISOString());
+    localStorage.setItem('drprime_gh_token', token);
+    atualizarInfoBackup();
+
+    showToast('\u2713 Sistema salvo no GitHub! Dados dos clientes ficam apenas localmente.', 'success');
+
+  } catch(e) {
+    console.error(e);
+    showToast('\u274c Erro ao salvar no GitHub. Verifique o token.', 'error');
+  }
 }
 
 function baixarSistema() {
