@@ -1152,19 +1152,23 @@ function renderDashboard() {
   const mesSel = document.getElementById('mesCobrar').value;
   const mesIdx = mesSel!==''?parseInt(mesSel):new Date().getMonth();
   const anoAtual = new Date().getFullYear();
+
+  const getStatusMes = (c) => {
+    const reg = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual);
+    if (reg) return reg.status;
+    return calcularStatus(c);
+  };
+
   let lista = clientes.filter(c => {
     const match = c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
-    const pago = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual&&(h.status==='pago'||h.status==='isento'));
-    const statusMes = pago?'pago':calcularStatus(c);
     if (filtroAtual==='todos') return match;
-    return match && statusMes===filtroAtual;
+    return match && getStatusMes(c)===filtroAtual;
   });
   const tbody = document.getElementById('tableBody');
   if (!lista.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">🏊</div><div>Nenhum cliente encontrado</div></div></td></tr>`; }
   else {
     tbody.innerHTML = lista.map(c => {
-      const pago = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual&&(h.status==='pago'||h.status==='isento'));
-      const statusMes = pago?'pago':calcularStatus(c);
+      const statusMes = getStatusMes(c);
       const retro = c.tipoPag==='retro'?'<span class="tag-retro">↩ RETRO</span>':'';
       return `<tr>
         <td><div class="client-name">${c.nome} ${retro}</div><div class="client-phone">${c.tel||''}</div></td>
@@ -1697,9 +1701,12 @@ function renderNecessidades() {
   const container=document.getElementById('necPageBody');
   if(!lista.length){container.innerHTML=`<div class="empty"><div class="empty-icon">🧴</div><div>Nenhuma necessidade registrada</div></div>`;return;}
   container.innerHTML=lista.map(n=>{
-    const c=clientes.find(x=>x.id===n.clienteId); const p=produtos.find(x=>x.id===n.produtoId);
+    const c=clientes.find(x=>x.id===n.clienteId);
+    const p=produtos.find(x=>x.id===n.produtoId);
+    const nomeCliente = c?.nome || '⚠ Cliente removido';
+    const nomeProduto = p?.nome || '⚠ Produto removido';
     return `<div class="nec-row">
-      <div><div class="nec-nome">${c?.nome||'—'}</div><div class="nec-sub">${p?.nome||'—'} · Qtd: ${n.qtd} · ${n.data||'—'}</div>${n.obs?`<div class="nec-sub" style="color:var(--accent2);">📝 ${n.obs}</div>`:''}</div>
+      <div><div class="nec-nome">${nomeCliente}</div><div class="nec-sub">${nomeProduto} · Qtd: ${n.qtd} · ${n.data||'—'}</div>${n.obs?`<div class="nec-sub" style="color:var(--accent2);">📝 ${n.obs}</div>`:''}</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;"><input type="checkbox" ${n.entregue?'checked':''} onchange="toggleNec(${n.id},'entregue')"> Entregue</label>
         <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;"><input type="checkbox" ${n.pago?'checked':''} onchange="toggleNec(${n.id},'pago')"> Pago</label>
@@ -1719,7 +1726,11 @@ function salvarNecessidade() {
   const clienteId=Number(document.getElementById('necClienteSel').value);
   const produtoId=Number(document.getElementById('necProdutoSel').value);
   const qtd=parseInt(document.getElementById('necQtd').value)||1;
-  const data=document.getElementById('necData').value; const obs=document.getElementById('necObs').value.trim();
+  const data=document.getElementById('necData').value;
+  const obs=document.getElementById('necObs').value.trim();
+  if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido','error'); return; }
+  if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido','error'); return; }
+  if (qtd < 1) { showToast('⚠ Quantidade deve ser ao menos 1','error'); return; }
   necessidades.push({id:Date.now(),clienteId,produtoId,qtd,data,obs,entregue:false,pago:false});
   salvarNecessidades(); fecharModal('modalNecessidadeForm'); renderNecessidades();
   showToast('✓ Necessidade registrada!','success'); fbSync();
@@ -1746,8 +1757,15 @@ function abrirConfigSecao(secao) {
 }
 function renderUsuarios() {
   const perfis={admin:'👑 Admin',gerente:'👔 Gerente',tecnico:'🔧 Técnico',financeiro:'📊 Financeiro'};
-  document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead><tbody>
-    ${usuarios.map(u=>`<tr><td><div class="client-name">${u.usuario}</div></td><td>${perfis[u.perfil]||u.perfil}</td><td>${u.email||'—'}</td><td><button class="action-btn" onclick="editarUsuario(${u.id})">✏</button></td></tr>`).join('')}
+  const isAdmin = usuarioLogado?.perfil === 'admin';
+  document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Senha</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead><tbody>
+    ${usuarios.map(u=>`<tr>
+      <td><div class="client-name">${u.usuario}</div></td>
+      <td><span style="font-family:monospace;font-size:0.85rem;color:var(--muted);">${isAdmin ? u.senha : '••••••••'}</span></td>
+      <td>${perfis[u.perfil]||u.perfil}</td>
+      <td>${u.email||'—'}</td>
+      <td><button class="action-btn" onclick="editarUsuario(${u.id})">✏</button></td>
+    </tr>`).join('')}
   </tbody></table></div>`;
 }
 function abrirModalUsuario() {
