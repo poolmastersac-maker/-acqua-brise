@@ -223,6 +223,27 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .nec-row{background:white;border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
 .nec-nome{font-weight:700;font-size:0.9rem;}
 .nec-sub{font-size:0.78rem;color:var(--muted);margin-top:2px;}
+/* PEDIDOS */
+.pedido-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
+.pedido-header{padding:14px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.pedido-titulo{font-weight:700;font-size:0.95rem;color:var(--accent2);}
+.pedido-data{font-size:0.75rem;color:var(--muted);}
+.pedido-body{padding:16px 18px;}
+.pedido-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border);font-size:0.88rem;}
+.pedido-item:last-child{border-bottom:none;}
+.pedido-item-nome{color:var(--text);font-weight:500;}
+.pedido-item-qtd{color:var(--muted);font-size:0.8rem;margin-left:6px;}
+.pedido-item-valor{font-weight:700;color:var(--accent2);}
+.pedido-total{display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border);}
+.pedido-total-label{font-weight:700;font-size:0.95rem;}
+.pedido-total-valor{font-weight:800;font-size:1.1rem;color:var(--green);}
+.pedido-footer{padding:12px 18px;background:var(--surface2);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.pedido-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.pedido-status-pendente{background:rgba(217,119,6,0.1);color:var(--yellow);}
+.pedido-status-enviado{background:rgba(5,150,105,0.1);color:var(--green);}
+.nec-enviar-btn{background:linear-gradient(135deg,var(--accent2),var(--accent));color:white;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;width:100%;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;}
+
+/* CONFIGURAÇÕES */
 .config-layout{display:grid;grid-template-columns:240px 1fr;gap:20px;}
 .config-menu{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:90px;}
 .config-menu-item{padding:12px 18px;cursor:pointer;font-size:0.85rem;font-weight:500;border-left:3px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
@@ -519,6 +540,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <button class="nav-tab" onclick="navegarPara('servicos')"><span>🔧</span><span>Serviços</span></button>
     <button class="nav-tab" onclick="navegarPara('visaogeral')"><span>📅</span><span>Visão Geral</span></button>
     <button class="nav-tab" onclick="navegarPara('necessidades')"><span>🧴</span><span>Necessidades</span></button>
+    <button class="nav-tab" onclick="navegarPara('pedidos')"><span>📋</span><span>Pedidos</span></button>
     <button class="nav-tab" onclick="navegarPara('configuracoes')"><span>⚙️</span><span>Config</span></button>
   </div>
 </header>
@@ -669,6 +691,17 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   </div>
 </div>
 
+<!-- PEDIDOS -->
+<div class="page" id="page-pedidos">
+  <div class="toolbar">
+    <div style="font-size:0.9rem;font-weight:700;color:var(--accent2);">📋 Pedidos de Produtos</div>
+    <button class="btn btn-green btn-sm" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
+  </div>
+  <div id="pedidosBody">
+    <div class="empty"><div class="empty-icon">📋</div><div>Nenhum pedido registrado</div></div>
+  </div>
+</div>
+
 <!-- NECESSIDADES -->
 <div class="page" id="page-necessidades">
   <div class="toolbar">
@@ -676,6 +709,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <button class="btn btn-primary btn-sm" onclick="abrirModalNecessidade(null)">➕ Nova Necessidade</button>
   </div>
   <div id="necPageBody"></div>
+  <button class="nec-enviar-btn" onclick="gerarPedido()">📋 Gerar Pedido com Itens Listados</button>
 </div>
 
 <!-- CONFIGURAÇÕES -->
@@ -926,12 +960,12 @@ if (!usuarios || usuarios.length === 0) {
   salvarUsuarios();
 }
 // Permissões padrão versionadas
-const _permissoesVersao = '2.0'; // Incrementar aqui sempre que mudar permissões
+const _permissoesVersao = '3.0'; // Incrementar aqui sempre que mudar permissões
 const _permissoesDefault = {
-  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:true,excluir:true,exportar:true},
-  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,configuracoes:false,excluir:true,exportar:true},
-  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,configuracoes:false,excluir:false,exportar:false},
-  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,configuracoes:false,excluir:false,exportar:true}
+  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,excluir:true,exportar:true},
+  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:false,excluir:true,exportar:true},
+  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,pedidos:true,configuracoes:false,excluir:false,exportar:false},
+  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,pedidos:false,configuracoes:false,excluir:false,exportar:true}
 };
 
 let permissoes;
@@ -1059,7 +1093,7 @@ function salvarNovaSenha() {
 function aplicarPermissoes() {
   if (!usuarioLogado) return;
   const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico;
-  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes'];
+  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes'];
   document.querySelectorAll('.nav-tab').forEach((tab,i) => { tab.style.display = (p[tabs[i]]!==false)?'':'none'; });
 
   // Ocultar stats bar se não tem acesso ao dashboard
@@ -1076,7 +1110,7 @@ function navegarPara(pagina) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+pagina).classList.add('active');
-  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes'];
+  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes'];
   const idx = tabs.indexOf(pagina);
   if (idx >= 0) document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
   if (pagina==='clientes') renderLista();
@@ -1086,6 +1120,7 @@ function navegarPara(pagina) {
   if (pagina==='servicos') renderServicos();
   if (pagina==='visaogeral') renderVisaoGeral();
   if (pagina==='necessidades') renderNecessidades();
+  if (pagina==='pedidos') renderPedidos();
   if (pagina==='configuracoes') { abrirConfigSecao('usuarios'); renderUsuarios(); }
 }
 
@@ -1488,6 +1523,173 @@ function renderVisaoGeral() {
   document.getElementById('vgTableBody').innerHTML=`<table><thead><tr><th>Cliente</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+// PEDIDOS
+let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
+
+function gerarPedido() {
+  // Pegar necessidades não entregues
+  const itens = necessidades.filter(n => !n.entregue);
+  if (!itens.length) { showToast('⚠ Nenhuma necessidade pendente para gerar pedido', 'error'); return; }
+
+  const hoje = new Date();
+  const pedido = {
+    id: Date.now(),
+    data: hoje.toISOString(),
+    status: 'pendente',
+    itens: itens.map(n => {
+      const p = produtos.find(x => x.id === n.produtoId);
+      const c = clientes.find(x => x.id === n.clienteId);
+      return {
+        necessidadeId: n.id,
+        produto: p?.nome || '—',
+        produtoId: n.produtoId,
+        cliente: c?.nome || '—',
+        qtd: n.qtd,
+        valorUnit: Number(p?.valor || 0),
+        obs: n.obs || ''
+      };
+    })
+  };
+
+  pedidos.push(pedido);
+  salvarPedidos();
+  showToast('✓ Pedido gerado com sucesso!', 'success');
+  navegarPara('pedidos');
+  fbSync();
+}
+
+function renderPedidos() {
+  const container = document.getElementById('pedidosBody');
+  if (!pedidos.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>Nenhum pedido registrado</div></div>`;
+    return;
+  }
+
+  // Ordenar do mais recente para o mais antigo
+  const sorted = [...pedidos].sort((a,b) => b.id - a.id);
+
+  container.innerHTML = sorted.map(ped => {
+    const data = new Date(ped.data);
+    const dataStr = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
+    const statusClass = ped.status === 'enviado' ? 'pedido-status-enviado' : 'pedido-status-pendente';
+    const statusLabel = ped.status === 'enviado' ? '✓ Enviado' : '⏳ Pendente';
+
+    return `
+    <div class="pedido-card" id="pedido_${ped.id}">
+      <div class="pedido-header">
+        <div>
+          <div class="pedido-titulo">Pedido #${String(ped.id).slice(-6)}</div>
+          <div class="pedido-data">${dataStr} · ${ped.itens.length} produto(s)</div>
+        </div>
+        <span class="pedido-status ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="pedido-body">
+        ${ped.itens.map(item => `
+          <div class="pedido-item">
+            <div>
+              <span class="pedido-item-nome">${item.produto}</span>
+              <span class="pedido-item-qtd">x${item.qtd}</span>
+              ${item.cliente ? `<div style="font-size:0.75rem;color:var(--muted);">Cliente: ${item.cliente}</div>` : ''}
+              ${item.obs ? `<div style="font-size:0.75rem;color:var(--muted);font-style:italic;">${item.obs}</div>` : ''}
+            </div>
+            <span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '—'}</span>
+          </div>`).join('')}
+        <div class="pedido-total">
+          <span class="pedido-total-label">Total do Pedido</span>
+          <span class="pedido-total-valor">R$ ${total.toFixed(2)}</span>
+        </div>
+      </div>
+      <div class="pedido-footer">
+        <button class="btn btn-ghost btn-sm" onclick="excluirPedido(${ped.id})">🗑 Excluir</button>
+        <button class="btn btn-green btn-sm" onclick="enviarPedidoWhatsApp(${ped.id})">💬 Enviar WhatsApp</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function enviarPedidoWhatsApp(id) {
+  const ped = pedidos.find(x => x.id === id);
+  if (!ped) return;
+
+  const data = new Date(ped.data).toLocaleDateString('pt-BR');
+  const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
+
+  let msg = `🏊 *Acqua Brise — Pedido de Produtos*\n`;
+  msg += `📅 Data: ${data}\n`;
+  msg += `─────────────────────\n`;
+  ped.itens.forEach(item => {
+    const subtotal = item.valorUnit * item.qtd;
+    msg += `\n📦 *${item.produto}*\n`;
+    msg += `   Qtd: ${item.qtd} un\n`;
+    if (item.valorUnit > 0) msg += `   Valor unit.: R$ ${Number(item.valorUnit).toFixed(2)}\n`;
+    if (item.valorUnit > 0) msg += `   Subtotal: R$ ${subtotal.toFixed(2)}\n`;
+    if (item.cliente) msg += `   Cliente: ${item.cliente}\n`;
+    if (item.obs) msg += `   Obs: ${item.obs}\n`;
+  });
+  msg += `─────────────────────\n`;
+  msg += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n`;
+  msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
+
+  const tel = prompt('WhatsApp do fornecedor (somente números):');
+  if (tel) {
+    window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    // Marcar como enviado
+    const idx = pedidos.findIndex(x => x.id === id);
+    if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
+    showToast('✓ Pedido enviado!', 'success');
+    fbSync();
+  }
+}
+
+function enviarTodosPedidos() {
+  const pendentes = pedidos.filter(p => p.status === 'pendente');
+  if (!pendentes.length) { showToast('Nenhum pedido pendente para enviar', 'info'); return; }
+
+  const data = new Date().toLocaleDateString('pt-BR');
+  const total = pendentes.reduce((s, ped) => s + ped.itens.reduce((si,i) => si + (i.valorUnit * i.qtd), 0), 0);
+
+  let msg = `🏊 *Acqua Brise — Pedido Completo de Produtos*\n`;
+  msg += `📅 Data: ${data}\n`;
+  msg += `─────────────────────\n`;
+
+  pendentes.forEach((ped, pi) => {
+    msg += `\n*Pedido ${pi+1}:*\n`;
+    ped.itens.forEach(item => {
+      const subtotal = item.valorUnit * item.qtd;
+      msg += `📦 ${item.produto} x${item.qtd}`;
+      if (item.valorUnit > 0) msg += ` — R$ ${subtotal.toFixed(2)}`;
+      if (item.cliente) msg += ` (${item.cliente})`;
+      msg += `\n`;
+    });
+  });
+
+  msg += `─────────────────────\n`;
+  msg += `💰 *TOTAL GERAL: R$ ${total.toFixed(2)}*\n`;
+  msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
+
+  const tel = prompt('WhatsApp do fornecedor (somente números):');
+  if (tel) {
+    window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    // Marcar todos como enviados
+    pendentes.forEach(p => { const idx = pedidos.findIndex(x => x.id === p.id); if (idx >= 0) pedidos[idx].status = 'enviado'; });
+    salvarPedidos();
+    renderPedidos();
+    showToast('✓ Todos os pedidos enviados!', 'success');
+    fbSync();
+  }
+}
+
+function excluirPedido(id) {
+  if (!confirm('Excluir este pedido?')) return;
+  pedidos = pedidos.filter(x => x.id !== id);
+  salvarPedidos();
+  renderPedidos();
+  showToast('Pedido removido', 'info');
+  fbSync();
+}
+
 // NECESSIDADES
 function renderNecessidades() {
   const busca=(document.getElementById('searchNec')?.value||'').toLowerCase();
@@ -1509,7 +1711,7 @@ function renderNecessidades() {
 function abrirModalNecessidade(clienteId) {
   document.getElementById('necClienteSel').innerHTML=clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
   if(clienteId) document.getElementById('necClienteSel').value=clienteId;
-  document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome} (${p.qtd} un)</option>`).join('');
+  document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('necQtd').value=1; document.getElementById('necData').value=new Date().toISOString().slice(0,10);
   document.getElementById('necObs').value=''; document.getElementById('modalNecessidadeForm').classList.add('open');
 }
@@ -1570,8 +1772,8 @@ function salvarUsuario() {
   salvarUsuarios(); fecharModal('modalUsuario'); renderUsuarios(); preencherSelectTecnicos(); fbSync();
 }
 function renderPermissoes() {
-  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','configuracoes','excluir','exportar'];
-  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Configurações','Excluir','Exportar'];
+  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes','excluir','exportar'];
+  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Configurações','Excluir','Exportar'];
   const perfis=['admin','gerente','tecnico','financeiro'];
   const nomePerfis=['👑 Admin','👔 Gerente','🔧 Técnico','📊 Financeiro'];
   document.getElementById('permissoesContainer').innerHTML=`<div class="table-wrap"><table class="perm-table">
@@ -1639,6 +1841,7 @@ function fazerBackupCompleto() {
     historico: JSON.parse(localStorage.getItem('aquagest_historico') || '[]'),
     produtos: JSON.parse(localStorage.getItem('aquagest_produtos') || '[]'),
     necessidades: JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]'),
+    pedidos: JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]'),
     usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
     permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}')
   };
@@ -1761,6 +1964,7 @@ function lerArquivoBackup(event) {
       localStorage.setItem('aquagest_historico', JSON.stringify(backup.historico || []));
       localStorage.setItem('aquagest_produtos', JSON.stringify(backup.produtos || []));
       localStorage.setItem('aquagest_necessidades', JSON.stringify(backup.necessidades || []));
+      localStorage.setItem('aquagest_pedidos', JSON.stringify(backup.pedidos || []));
       if (backup.usuarios?.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(backup.usuarios));
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
       
@@ -1769,6 +1973,7 @@ function lerArquivoBackup(event) {
       historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
       produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
       necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
+      pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
       usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
       
       showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
@@ -1848,6 +2053,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
       for (const h of historico) await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
       for (const p of produtos) await setDoc(doc(db,'produtos',String(p.id)), p);
       for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), n);
+      for (const p2 of pedidos) await setDoc(doc(db,'pedidos',String(p2.id)), p2);
       for (const u of usuarios) await setDoc(doc(db,'usuarios',String(u.id)), u);
       await setDoc(doc(db,'config','permissoes'), permissoes);
 
@@ -1882,6 +2088,11 @@ window.addEventListener('resize', ajustarOffsetHeader);
     if (!snapN.empty) {
       const fbNec = snapN.docs.map(d => d.data());
       if (fbNec.length > 0) localStorage.setItem('aquagest_necessidades', JSON.stringify(fbNec));
+    }
+    const snapPed = await getDocs(collection(db, 'pedidos'));
+    if (!snapPed.empty) {
+      const fbPed = snapPed.docs.map(d => d.data());
+      if (fbPed.length > 0) localStorage.setItem('aquagest_pedidos', JSON.stringify(fbPed));
     }
     const snapU = await getDocs(collection(db, 'usuarios'));
     if (!snapU.empty) {
