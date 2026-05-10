@@ -823,6 +823,42 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   </div>
 </div>
 
+<div class="modal-overlay" id="modalWhatsApp">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-title"><span>💬 Enviar por WhatsApp</span><button class="modal-close" onclick="fecharModal('modalWhatsApp')">✕</button></div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Digite o número do WhatsApp (somente números com DDD):</p>
+    <div class="form-group"><input type="tel" class="form-input" id="wppNumero" placeholder="Ex: 11999998888" maxlength="15"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalWhatsApp')">Cancelar</button>
+      <button class="btn btn-green btn-sm" onclick="confirmarEnvioWhatsApp()">💬 Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalConfirmRestore">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:10px;">⚠️</div>
+    <div style="font-size:1rem;font-weight:800;margin-bottom:8px;">Restaurar Backup?</div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:22px;">Esta ação irá <strong style="color:var(--red);">substituir todos os dados atuais</strong> pelos dados do backup selecionado.<br><br>Tem certeza que deseja continuar?</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmRestore')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarRestore()">Sim, restaurar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalConfirmPedido">
+  <div class="modal" style="max-width:340px;text-align:center;">
+    <div style="font-size:2rem;margin-bottom:10px;">🗑️</div>
+    <div style="font-size:1rem;font-weight:800;margin-bottom:8px;">Excluir pedido?</div>
+    <p style="color:var(--muted);font-size:0.84rem;margin-bottom:22px;">Deseja excluir este pedido?<br>Esta ação não pode ser desfeita.</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmPedido')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarExclusaoPedido()">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalConfirm">
   <div class="modal" style="max-width:340px;text-align:center;">
     <div style="font-size:2rem;margin-bottom:10px;">🗑️</div>
@@ -980,6 +1016,7 @@ if (!usuarios || usuarios.length === 0) {
 }
 // Permissões padrão versionadas
 const _permissoesVersao = '3.0'; // Incrementar aqui sempre que mudar permissões
+window._permissoesVersao = _permissoesVersao;
 const _permissoesDefault = {
   admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,excluir:true,exportar:true},
   gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:false,excluir:true,exportar:true},
@@ -1018,7 +1055,10 @@ function salvarHistorico() { localStorage.setItem('aquagest_historico', JSON.str
 function salvarProdutos() { localStorage.setItem('aquagest_produtos', JSON.stringify(produtos)); }
 function salvarNecessidades() { localStorage.setItem('aquagest_necessidades', JSON.stringify(necessidades)); }
 function salvarUsuarios() { localStorage.setItem('aquagest_usuarios', JSON.stringify(usuarios)); }
-function salvarPermissoes() { localStorage.setItem('aquagest_permissoes', JSON.stringify(permissoes)); }
+function salvarPermissoes() { 
+  localStorage.setItem('aquagest_permissoes', JSON.stringify(permissoes)); 
+  fbSync();
+}
 
 // STATUS
 function calcularStatus(c) {
@@ -1537,8 +1577,7 @@ function abrirOrcWpp(sId) {
   const total=document.getElementById('orcTotal_'+sId).textContent;
   const tipo=document.getElementById(s.campos[0].id)?.value||'';
   const msg=`Olá! Segue orçamento para ${s.titulo}:\n\n*Tipo:* ${tipo}\n*Total:* ${total}\n\nQualquer dúvida estou à disposição! 😊\n\nAcqua Brise 🌊`;
-  const tel=prompt('WhatsApp do cliente (somente números):');
-  if(tel) window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+  abrirModalWhatsApp(msg);
 }
 
 // VISÃO GERAL
@@ -1558,7 +1597,26 @@ function renderVisaoGeral() {
   document.getElementById('vgTableBody').innerHTML=`<table><thead><tr><th>Cliente</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-// PEDIDOS
+// WhatsApp — modal para número
+let _wppMsgPendente = null;
+function abrirModalWhatsApp(msg) {
+  _wppMsgPendente = msg;
+  document.getElementById('wppNumero').value = '';
+  document.getElementById('modalWhatsApp').classList.add('open');
+}
+function confirmarEnvioWhatsApp() {
+  const tel = document.getElementById('wppNumero').value.replace(/\D/g,'');
+  if (!tel || tel.length < 10) { showToast('⚠ Digite um número válido com DDD','error'); return; }
+  if (_wppMsgPendente) {
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(_wppMsgPendente)}`, '_blank');
+    _wppMsgPendente = null;
+  }
+  if (typeof window._onWppConfirm === 'function') {
+    window._onWppConfirm();
+    window._onWppConfirm = null;
+  }
+  fecharModal('modalWhatsApp');
+}
 let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
 
@@ -1667,15 +1725,16 @@ function enviarPedidoWhatsApp(id) {
   msg += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n`;
   msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
 
-  const tel = prompt('WhatsApp do fornecedor (somente números):');
-  if (tel) {
-    window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
-    // Marcar como enviado
-    const idx = pedidos.findIndex(x => x.id === id);
+  // Marcar como enviado ao confirmar
+  const idPedido = id;
+  const msgFinal = msg;
+  window._onWppConfirm = () => {
+    const idx = pedidos.findIndex(x => x.id === idPedido);
     if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
     showToast('✓ Pedido enviado!', 'success');
     fbSync();
-  }
+  };
+  abrirModalWhatsApp(msgFinal);
 }
 
 function enviarTodosPedidos() {
@@ -1704,22 +1763,27 @@ function enviarTodosPedidos() {
   msg += `💰 *TOTAL GERAL: R$ ${total.toFixed(2)}*\n`;
   msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
 
-  const tel = prompt('WhatsApp do fornecedor (somente números):');
-  if (tel) {
-    window.open(`https://wa.me/55${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
-    // Marcar todos como enviados
+  window._onWppConfirm = () => {
     pendentes.forEach(p => { const idx = pedidos.findIndex(x => x.id === p.id); if (idx >= 0) pedidos[idx].status = 'enviado'; });
     salvarPedidos();
     renderPedidos();
     showToast('✓ Todos os pedidos enviados!', 'success');
     fbSync();
-  }
+  };
+  abrirModalWhatsApp(msg);
 }
 
+let pedidoParaExcluirId = null;
 function excluirPedido(id) {
-  if (!confirm('Excluir este pedido?')) return;
-  pedidos = pedidos.filter(x => x.id !== id);
+  pedidoParaExcluirId = id;
+  document.getElementById('modalConfirmPedido').classList.add('open');
+}
+function confirmarExclusaoPedido() {
+  if (!pedidoParaExcluirId) return;
+  pedidos = pedidos.filter(x => x.id !== pedidoParaExcluirId);
+  pedidoParaExcluirId = null;
   salvarPedidos();
+  fecharModal('modalConfirmPedido');
   renderPedidos();
   showToast('Pedido removido', 'info');
   fbSync();
@@ -2024,7 +2088,10 @@ function baixarSistema() {
 }
 
 function restaurarBackup() {
-  if (!confirm('⚠️ Restaurar um backup irá SUBSTITUIR todos os dados atuais.\n\nTem certeza que deseja continuar?')) return;
+  document.getElementById('modalConfirmRestore').classList.add('open');
+}
+function confirmarRestore() {
+  fecharModal('modalConfirmRestore');
   document.getElementById('inputRestaurar').click();
 }
 
@@ -2134,7 +2201,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
       for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), n);
       for (const p2 of pedidos) await setDoc(doc(db,'pedidos',String(p2.id)), p2);
       for (const u of usuarios) await setDoc(doc(db,'usuarios',String(u.id)), u);
-      await setDoc(doc(db,'config','permissoes'), permissoes);
+      await setDoc(doc(db,'config','permissoes'), {...permissoes, _versao: window._permissoesVersao || '4.0'});
 
       const badge = document.getElementById('syncBadge');
       if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
@@ -2185,7 +2252,22 @@ window.addEventListener('resize', ajustarOffsetHeader);
     const snapPerm = await getDocs(collection(db, 'config'));
     if (!snapPerm.empty) {
       const permDoc = snapPerm.docs.find(d => d.id === 'permissoes');
-      if (permDoc) localStorage.setItem('aquagest_permissoes', JSON.stringify(permDoc.data()));
+      if (permDoc) {
+        const permVersaoFB = permDoc.data()._versao;
+        if (permVersaoFB === window._permissoesVersao) {
+          const dadosFB = {...permDoc.data()};
+          delete dadosFB._versao;
+          localStorage.setItem('aquagest_permissoes', JSON.stringify(dadosFB));
+          // Atualizar variável em memória e reaplicar na tela
+          if (typeof permissoes !== 'undefined') {
+            Object.assign(permissoes, dadosFB);
+            if (typeof aplicarPermissoes === 'function' && typeof usuarioLogado !== 'undefined' && usuarioLogado) {
+              aplicarPermissoes();
+            }
+          }
+        }
+        // Versão antiga — ignorar Firebase, manter padrão local
+      }
     }
     const badge = document.getElementById('syncBadge');
     if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
