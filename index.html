@@ -809,7 +809,19 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   </div>
 </div>
 
-<div class="modal-overlay" id="modalConfirm">
+<div class="modal-overlay" id="modalConfirmUsuario">
+  <div class="modal" style="max-width:360px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:10px;">⚠️</div>
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:10px;color:var(--text);">Você tem certeza disso?</div>
+    <p style="color:var(--muted);font-size:0.88rem;margin-bottom:6px;">Deseja excluir o usuário</p>
+    <p style="font-size:1rem;font-weight:700;color:var(--red);margin-bottom:20px;" id="confirmUsuarioNome">—</p>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:22px;">Esta ação não pode ser desfeita.</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmUsuario')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarExclusaoUsuario()">Sim, excluir</button>
+    </div>
+  </div>
+</div>
   <div class="modal" style="max-width:340px;text-align:center;">
     <div style="font-size:2rem;margin-bottom:10px;">🗑️</div>
     <div style="font-size:1rem;font-weight:800;margin-bottom:8px;">Excluir cliente?</div>
@@ -885,7 +897,12 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div class="modal-title"><span id="modalUserTitulo">Novo Usuário</span><button class="modal-close" onclick="fecharModal('modalUsuario')">✕</button></div>
     <input type="hidden" id="userEditId">
     <div class="form-group"><label class="form-label">Nome de Usuário *</label><input type="text" class="form-input" id="cfgUsuario" placeholder="Ex: diego"></div>
-    <div class="form-group"><label class="form-label">Senha *</label><input type="password" class="form-input" id="cfgSenha" placeholder="Mínimo 4 caracteres"></div>
+    <div class="form-group"><label class="form-label">Senha *</label>
+      <div style="position:relative;">
+        <input type="password" class="form-input" id="cfgSenha" placeholder="Mínimo 4 caracteres" style="padding-right:44px;">
+        <button type="button" onclick="toggleSenhaCfg()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted);">👁</button>
+      </div>
+    </div>
     <div class="form-group"><label class="form-label">E-mail (recuperação)</label><input type="email" class="form-input" id="cfgEmail" placeholder="email@exemplo.com"></div>
     <div class="form-group"><label class="form-label">Perfil</label>
       <select class="form-input" id="cfgPerfil"><option value="admin">👑 Admin</option><option value="gerente">👔 Gerente</option><option value="tecnico">🔧 Técnico</option><option value="financeiro">📊 Financeiro</option></select>
@@ -1764,19 +1781,49 @@ function renderUsuarios() {
       <td><span style="font-family:monospace;font-size:0.85rem;color:var(--muted);">${isAdmin ? u.senha : '••••••••'}</span></td>
       <td>${perfis[u.perfil]||u.perfil}</td>
       <td>${u.email||'—'}</td>
-      <td><button class="action-btn" onclick="editarUsuario(${u.id})">✏</button></td>
+      <td style="display:flex;gap:5px;">
+        <button class="action-btn" title="Editar" onclick="editarUsuario(${u.id})">✏</button>
+        ${u.id !== usuarioLogado?.id ? `<button class="action-btn" title="Excluir" style="color:var(--red);border-color:var(--red);" onclick="excluirUsuario(${u.id})">🗑</button>` : ''}
+      </td>
     </tr>`).join('')}
   </tbody></table></div>`;
+}
+let usuarioParaExcluirId = null;
+function excluirUsuario(id) {
+  const u = usuarios.find(x => x.id === id);
+  if (!u) return;
+  usuarioParaExcluirId = id;
+  document.getElementById('confirmUsuarioNome').textContent = u.usuario;
+  document.getElementById('modalConfirmUsuario').classList.add('open');
+}
+function confirmarExclusaoUsuario() {
+  if (!usuarioParaExcluirId) return;
+  usuarios = usuarios.filter(x => x.id !== usuarioParaExcluirId);
+  usuarioParaExcluirId = null;
+  salvarUsuarios();
+  fecharModal('modalConfirmUsuario');
+  renderUsuarios();
+  preencherSelectTecnicos();
+  showToast('Usuário excluído!', 'info');
+  fbSync();
+}
+function toggleSenhaCfg() {
+  const inp = document.getElementById('cfgSenha');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 function abrirModalUsuario() {
   document.getElementById('userEditId').value=''; document.getElementById('modalUserTitulo').textContent='Novo Usuário';
   ['cfgUsuario','cfgSenha','cfgEmail'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cfgSenha').type = 'password';
   document.getElementById('cfgPerfil').value='tecnico'; document.getElementById('modalUsuario').classList.add('open');
 }
 function editarUsuario(id) {
   const u=usuarios.find(x=>x.id===id); if(!u) return;
   document.getElementById('userEditId').value=u.id; document.getElementById('modalUserTitulo').textContent='Editar Usuário';
-  document.getElementById('cfgUsuario').value=u.usuario; document.getElementById('cfgSenha').value=u.senha;
+  document.getElementById('cfgUsuario').value=u.usuario;
+  document.getElementById('cfgSenha').value=u.senha;
+  // Admin vê a senha exposta ao editar
+  document.getElementById('cfgSenha').type = usuarioLogado?.perfil === 'admin' ? 'text' : 'password';
   document.getElementById('cfgEmail').value=u.email||''; document.getElementById('cfgPerfil').value=u.perfil;
   document.getElementById('modalUsuario').classList.add('open');
 }
