@@ -1041,6 +1041,9 @@ function badgeHTML(status) {
 
 // LOGIN
 function verificarLogin() {
+  // Recarregar usuários do localStorage (pode ter sido atualizado pelo Firebase)
+  const fresh = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
+  if (fresh && fresh.length > 0) usuarios = fresh;
   const saved = localStorage.getItem('drprime_logado');
   if (saved) { const u = usuarios.find(x => x.usuario === saved); if (u) { usuarioLogado = u; entrar(); return; } }
   document.getElementById('loginOverlay').style.display = 'flex';
@@ -1048,6 +1051,15 @@ function verificarLogin() {
 function fazerLogin() {
   const usr = document.getElementById('loginUsuario').value.trim();
   const sen = document.getElementById('loginSenha').value;
+  // Usar dados do Firebase se já carregaram, senão usar variável local
+  if (window._fbUsuarios && window._fbUsuarios.length > 0) {
+    usuarios = window._fbUsuarios;
+    localStorage.setItem('aquagest_usuarios', JSON.stringify(usuarios));
+  } else {
+    // Tentar recarregar do localStorage (pode ter sido atualizado pelo Firebase)
+    const fresh = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
+    if (fresh && fresh.length > 0) usuarios = fresh;
+  }
   const u = usuarios.find(x => x.usuario === usr && x.senha === sen);
   if (u) { usuarioLogado = u; localStorage.setItem('drprime_logado', u.usuario); entrar(); }
   else document.getElementById('loginErro').classList.add('show');
@@ -2162,7 +2174,11 @@ window.addEventListener('resize', ajustarOffsetHeader);
     const snapU = await getDocs(collection(db, 'usuarios'));
     if (!snapU.empty) {
       const fbUsers = snapU.docs.map(d => d.data());
-      if (fbUsers.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(fbUsers));
+      if (fbUsers.length > 0) {
+        localStorage.setItem('aquagest_usuarios', JSON.stringify(fbUsers));
+        // Recarregar variável global para que o login use dados atualizados
+        window._fbUsuarios = fbUsers;
+      }
     }
     const snapPerm = await getDocs(collection(db, 'config'));
     if (!snapPerm.empty) {
