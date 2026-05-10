@@ -551,7 +551,10 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div class="stat"><div class="stat-label">Total Clientes</div><div class="stat-value" id="statTotal">0</div><div class="stat-sub" id="statNovosMes"></div></div>
     <div class="stat"><div class="stat-label">Pagos</div><div class="stat-value" id="statPagos" style="color:var(--green)">0</div><div class="stat-sub" id="statPctPagos"></div></div>
     <div class="stat"><div class="stat-label">Pendentes</div><div class="stat-value" id="statPendentes" style="color:var(--yellow)">0</div><div class="stat-sub" id="statReceitaMes"></div></div>
-    <div class="stat"><div class="stat-label">Atrasados</div><div class="stat-value" id="statAtrasados" style="color:var(--red)">0</div><div class="stat-sub" id="statProxVenc"></div></div>
+    <div class="stat" style="position:relative;">
+      <div class="stat-label">Atrasados</div><div class="stat-value" id="statAtrasados" style="color:var(--red)">0</div><div class="stat-sub" id="statProxVenc"></div>
+      <button onclick="togglePrivacidade()" id="btnPrivacidade" title="Ocultar/mostrar dados" style="position:absolute;top:10px;right:10px;background:rgba(74,100,120,0.1);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all 0.2s;">👁</button>
+    </div>
   </div>
 </div>
 
@@ -731,7 +734,19 @@ tr:hover td{background:rgba(33,150,243,0.04);}
         <div id="permissoesContainer"></div>
       </div>
       <div class="config-section" id="secExportar" style="display:none;">
-        <div class="config-section-title">📤 Exportar Dados</div>
+        <div class="config-section-title">📤 Exportar / Importar Dados</div>
+
+        <!-- IMPORTAR PAGAMENTOS -->
+        <div style="background:linear-gradient(135deg,#059669,#10B981);border-radius:14px;padding:20px;margin-bottom:22px;color:white;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+            <div style="font-size:2rem;">📥</div>
+            <div>
+              <div style="font-size:1rem;font-weight:800;">Importar Pagamentos em Lote</div>
+              <div style="font-size:0.78rem;opacity:0.85;">Cole o extrato de pagamentos e o sistema atualiza o histórico automaticamente</div>
+            </div>
+          </div>
+          <button onclick="abrirModalImportacao()" style="background:white;color:#059669;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📥 Importar Pagamentos</button>
+        </div>
 
         <!-- BACKUP COMPLETO -->
         <div style="background:linear-gradient(135deg,#1565C0,#2196F3);border-radius:14px;padding:20px;margin-bottom:22px;color:white;">
@@ -786,6 +801,14 @@ tr:hover td{background:rgba(33,150,243,0.04);}
         <div style="font-weight:700;font-size:0.88rem;margin-bottom:12px;color:var(--muted);">📊 Exportar Relatórios</div>
         <div class="export-grid">
           <div class="export-card" onclick="exportarExcel('clientes')"><div class="export-icon">📊</div><div class="export-name">Clientes (Excel)</div><div class="export-desc">Todos os clientes</div></div>
+          <!-- SELETOR DE ANO PARA HISTÓRICO -->
+          <div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">📅 Filtrar histórico por ano:</span>
+            <select class="form-input" id="exportAnoHistorico" style="width:auto;min-width:140px;">
+              <option value="todos">Todos os anos</option>
+            </select>
+            <span style="font-size:0.75rem;color:var(--muted);">Aplica-se às exportações de histórico abaixo</span>
+          </div>
           <div class="export-card" onclick="exportarExcel('historico')"><div class="export-icon">📈</div><div class="export-name">Histórico (Excel)</div><div class="export-desc">Pagamentos registrados</div></div>
           <div class="export-card" onclick="exportarPDF('clientes')"><div class="export-icon">📄</div><div class="export-name">Clientes (PDF)</div><div class="export-desc">Relatório em PDF</div></div>
           <div class="export-card" onclick="exportarPDF('historico')"><div class="export-icon">📋</div><div class="export-name">Histórico (PDF)</div><div class="export-desc">Relatório financeiro</div></div>
@@ -819,6 +842,66 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div style="display:flex;gap:10px;justify-content:center;">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmUsuario')">Cancelar</button>
       <button class="btn btn-red btn-sm" onclick="confirmarExclusaoUsuario()">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalImportacao">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-title">
+      <span>📥 Importar Pagamentos em Lote</span>
+      <button class="modal-close" onclick="fecharModal('modalImportacao')">✕</button>
+    </div>
+
+    <!-- PASSO 1 -->
+    <div id="importStep1">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">
+          Cole abaixo os pagamentos no formato:<br>
+          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;font-size:0.8rem;">Nome do Cliente | Valor | Data (opcional) | Observação (opcional)</code>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">Exemplo:<br>
+          <code style="background:var(--surface2);padding:3px 8px;border-radius:4px;font-size:0.78rem;display:block;margin-top:4px;">Abel Monteiro | 220 | 05/04/2026 | Pago via PIX</code>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group">
+          <label class="form-label">Mês de referência</label>
+          <select class="form-input" id="importMes">
+            <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+            <option value="2">Março</option><option value="3">Abril</option>
+            <option value="4">Maio</option><option value="5">Junho</option>
+            <option value="6">Julho</option><option value="7">Agosto</option>
+            <option value="8">Setembro</option><option value="9">Outubro</option>
+            <option value="10">Novembro</option><option value="11">Dezembro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ano de referência</label>
+          <input type="number" class="form-input" id="importAno" value="2026" min="2020" max="2099">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cole os pagamentos aqui</label>
+        <textarea class="form-input" id="importTexto" rows="8" placeholder="Abel Monteiro | 220 | 05/04/2026 | Pago via PIX&#10;Ana Maria | 250 | 07/04/2026&#10;João Silva | 300" style="resize:vertical;font-family:monospace;font-size:0.82rem;"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalImportacao')">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="processarImportacao()">🔍 Processar</button>
+      </div>
+    </div>
+
+    <!-- PASSO 2 — Resultado do processamento -->
+    <div id="importStep2" style="display:none;">
+      <div style="font-size:0.88rem;font-weight:700;margin-bottom:12px;">Resultado do processamento:</div>
+      <div id="importResultado" style="max-height:320px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="voltarImportacao()">← Voltar</button>
+        <button class="btn btn-green btn-sm" id="btnConfirmarImport" onclick="confirmarImportacao()">✓ Confirmar Importação</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1060,6 +1143,38 @@ function salvarPermissoes() {
   fbSync();
 }
 
+// PRIVACIDADE — ocultar cards
+let _dadosOcultos = localStorage.getItem('drprime_privacidade') === '1';
+function togglePrivacidade() {
+  _dadosOcultos = !_dadosOcultos;
+  localStorage.setItem('drprime_privacidade', _dadosOcultos ? '1' : '0');
+  aplicarPrivacidade();
+}
+function aplicarPrivacidade() {
+  const ids = ['statTotal','statPagos','statPendentes','statAtrasados','statNovosMes','statPctPagos','statReceitaMes','statProxVenc'];
+  const btn = document.getElementById('btnPrivacidade');
+  if (_dadosOcultos) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (!el.dataset.original) el.dataset.original = el.textContent;
+        el.style.color = 'transparent';
+        el.style.userSelect = 'none';
+      }
+    });
+    if (btn) { btn.textContent = '🙈'; btn.title = 'Mostrar dados'; btn.style.background = 'rgba(220,38,38,0.1)'; btn.style.borderColor = 'var(--red)'; }
+  } else {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.color = '';
+        el.style.userSelect = '';
+      }
+    });
+    if (btn) { btn.textContent = '👁'; btn.title = 'Ocultar dados'; btn.style.background = 'rgba(74,100,120,0.1)'; btn.style.borderColor = 'var(--border)'; }
+  }
+}
+
 // STATUS
 function calcularStatus(c) {
   if (c.status === 'suspenso') return 'suspenso';
@@ -1211,6 +1326,8 @@ function atualizarStats() {
   const hoje = new Date();
   const proximos = clientes.filter(c=>calcularStatus(c)==='atrasado');
   document.getElementById('statProxVenc').textContent = proximos.length>0?proximos.length+' em atraso':'Tudo em dia 🎉';
+  // Aplicar modo privacidade se ativo
+  aplicarPrivacidade();
 }
 
 // DASHBOARD
@@ -1597,6 +1714,154 @@ function renderVisaoGeral() {
   document.getElementById('vgTableBody').innerHTML=`<table><thead><tr><th>Cliente</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+// IMPORTAÇÃO DE PAGAMENTOS EM LOTE
+let _importacaoPendente = [];
+
+function abrirModalImportacao() {
+  // Pré-selecionar mês atual
+  const hoje = new Date();
+  document.getElementById('importMes').value = hoje.getMonth();
+  document.getElementById('importAno').value = hoje.getFullYear();
+  document.getElementById('importTexto').value = '';
+  document.getElementById('importStep1').style.display = 'block';
+  document.getElementById('importStep2').style.display = 'none';
+  document.getElementById('modalImportacao').classList.add('open');
+}
+
+function voltarImportacao() {
+  document.getElementById('importStep1').style.display = 'block';
+  document.getElementById('importStep2').style.display = 'none';
+  _importacaoPendente = [];
+}
+
+function processarImportacao() {
+  const texto = document.getElementById('importTexto').value.trim();
+  const mesIdx = parseInt(document.getElementById('importMes').value);
+  const ano = parseInt(document.getElementById('importAno').value);
+
+  if (!texto) { showToast('⚠ Cole os pagamentos antes de processar', 'error'); return; }
+
+  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  _importacaoPendente = [];
+
+  const encontrados = [];
+  const naoEncontrados = [];
+
+  linhas.forEach(linha => {
+    const partes = linha.split('|').map(p => p.trim());
+    const nomeDigitado = partes[0] || '';
+    const valorDigitado = parseFloat((partes[1] || '0').replace(',', '.')) || 0;
+    const dataDigitada = partes[2] || '';
+    const obsDigitada = partes[3] || 'Importado em lote';
+
+    if (!nomeDigitado) return;
+
+    // Buscar cliente por nome (busca flexível)
+    const nomeLower = nomeDigitado.toLowerCase().trim();
+    let cliente = clientes.find(c => c.nome.toLowerCase() === nomeLower);
+
+    // Se não achou exato, buscar parcial
+    if (!cliente) {
+      const partsNome = nomeLower.split(' ');
+      cliente = clientes.find(c => {
+        const cNomeLower = c.nome.toLowerCase();
+        return partsNome.some(p => p.length > 3 && cNomeLower.includes(p));
+      });
+    }
+
+    if (cliente) {
+      const jaExiste = historico.find(h => h.clienteId === cliente.id && h.mes === mesIdx && h.ano === ano && h.status === 'pago');
+      _importacaoPendente.push({
+        clienteId: cliente.id,
+        nomeCliente: cliente.nome,
+        nomeDigitado,
+        mes: mesIdx,
+        ano,
+        status: 'pago',
+        valor: valorDigitado || cliente.valor,
+        data: dataDigitada,
+        obs: obsDigitada,
+        jaRegistrado: !!jaExiste,
+        encontrado: true
+      });
+      encontrados.push(cliente.nome);
+    } else {
+      naoEncontrados.push(nomeDigitado);
+      _importacaoPendente.push({
+        nomeDigitado,
+        encontrado: false
+      });
+    }
+  });
+
+  // Montar resultado
+  const mesesNome = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let html = '';
+
+  const encontradosLista = _importacaoPendente.filter(i => i.encontrado);
+  const naoEncontradosLista = _importacaoPendente.filter(i => !i.encontrado);
+
+  if (encontradosLista.length > 0) {
+    html += `<div style="font-weight:700;font-size:0.82rem;color:var(--green);margin-bottom:8px;">✓ ${encontradosLista.length} cliente(s) encontrado(s):</div>`;
+    html += encontradosLista.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;margin-bottom:6px;background:${i.jaRegistrado ? 'rgba(217,119,6,0.08)' : 'rgba(5,150,105,0.08)'};border:1px solid ${i.jaRegistrado ? 'rgba(217,119,6,0.2)' : 'rgba(5,150,105,0.2)'};">
+        <div>
+          <div style="font-weight:700;font-size:0.85rem;">${i.nomeCliente}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">${mesesNome[i.mes]}/${i.ano} · R$ ${Number(i.valor).toFixed(2)}${i.data ? ' · '+i.data : ''}</div>
+        </div>
+        <span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;background:${i.jaRegistrado ? 'rgba(217,119,6,0.15)' : 'rgba(5,150,105,0.15)'};color:${i.jaRegistrado ? 'var(--yellow)' : 'var(--green)'};">
+          ${i.jaRegistrado ? '⚠ Já registrado' : '✓ Novo'}
+        </span>
+      </div>`).join('');
+  }
+
+  if (naoEncontradosLista.length > 0) {
+    html += `<div style="font-weight:700;font-size:0.82rem;color:var(--red);margin:12px 0 8px;">❌ ${naoEncontradosLista.length} não encontrado(s) no sistema:</div>`;
+    html += naoEncontradosLista.map(i => `
+      <div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);font-size:0.85rem;color:var(--red);">
+        ❌ "${i.nomeDigitado}"
+      </div>`).join('');
+    html += `<div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Estes não serão importados. Verifique se o nome está correto.</div>`;
+  }
+
+  document.getElementById('importResultado').innerHTML = html;
+
+  // Desabilitar botão se não há nada para importar
+  const temNovos = encontradosLista.some(i => !i.jaRegistrado);
+  const btn = document.getElementById('btnConfirmarImport');
+  btn.disabled = !temNovos;
+  btn.style.opacity = temNovos ? '1' : '0.5';
+
+  document.getElementById('importStep1').style.display = 'none';
+  document.getElementById('importStep2').style.display = 'block';
+}
+
+function confirmarImportacao() {
+  const novos = _importacaoPendente.filter(i => i.encontrado && !i.jaRegistrado);
+  if (!novos.length) { showToast('Nenhum pagamento novo para importar', 'info'); return; }
+
+  novos.forEach(item => {
+    const idx = historico.findIndex(h => h.clienteId === item.clienteId && h.mes === item.mes && h.ano === item.ano);
+    const reg = { clienteId: item.clienteId, mes: item.mes, ano: item.ano, status: 'pago', valor: item.valor, data: item.data, obs: item.obs };
+    if (idx >= 0) historico[idx] = reg;
+    else historico.push(reg);
+
+    // Atualizar status do cliente se for mês atual
+    const hoje = new Date();
+    if (item.mes === hoje.getMonth() && item.ano === hoje.getFullYear()) {
+      const c = clientes.find(x => x.id === item.clienteId);
+      if (c) { c.status = 'pago'; salvar(); }
+    }
+  });
+
+  salvarHistorico();
+  fecharModal('modalImportacao');
+  renderDashboard();
+  showToast(`✓ ${novos.length} pagamento(s) importado(s) com sucesso!`, 'success');
+  fbSync();
+  _importacaoPendente = [];
+}
+
 // WhatsApp — modal para número
 let _wppMsgPendente = null;
 function abrirModalWhatsApp(msg) {
@@ -1848,6 +2113,7 @@ function abrirConfigSecao(secao) {
     const token = localStorage.getItem('drprime_gh_token');
     const inp = document.getElementById('githubToken');
     if (token && inp) inp.value = token;
+    popularAnosHistorico();
   }
 }
 function renderUsuarios() {
@@ -1928,22 +2194,58 @@ function renderPermissoes() {
 function togglePermissao(perfil,aba,val) { if(!permissoes[perfil]) permissoes[perfil]={}; permissoes[perfil][aba]=val; }
 
 // EXPORTAR
+function popularAnosHistorico() {
+  const sel = document.getElementById('exportAnoHistorico');
+  if (!sel) return;
+  const anos = [...new Set(historico.map(h => h.ano))].sort((a,b) => b - a);
+  const anoAtual = new Date().getFullYear();
+  if (!anos.includes(anoAtual)) anos.unshift(anoAtual);
+  sel.innerHTML = '<option value="todos">Todos os anos</option>' +
+    anos.map(a => `<option value="${a}" ${a === anoAtual ? 'selected' : ''}>${a}</option>`).join('');
+}
+
+function getHistoricoFiltrado() {
+  const sel = document.getElementById('exportAnoHistorico');
+  const anoSel = sel ? sel.value : 'todos';
+  if (anoSel === 'todos') return historico;
+  return historico.filter(h => String(h.ano) === String(anoSel));
+}
+
 function exportarExcel(tipo) {
   if(typeof XLSX==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
-  let data,filename;
-  if(tipo==='clientes'){data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||''}));filename='clientes.xlsx';}
-  else{data=historico.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return{Cliente:c?.nome||'',Mês:MESES[h.mes],Ano:h.ano,Status:h.status,Valor:h.valor,Data:h.data||'',Obs:h.obs||''};});filename='historico.xlsx';}
+  let data, filename;
+  if(tipo==='clientes'){
+    data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||''}));
+    filename='clientes.xlsx';
+  } else {
+    const histFiltrado = getHistoricoFiltrado();
+    const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
+    data=histFiltrado.map(h=>{
+      const c=clientes.find(x=>x.id===h.clienteId);
+      return{Cliente:c?.nome||'',Mês:MESES[h.mes],Ano:h.ano,Status:h.status,Valor:h.valor,Data:h.data||'',Obs:h.obs||''};
+    });
+    filename = anoSel === 'todos' ? 'historico_completo.xlsx' : `historico_${anoSel}.xlsx`;
+  }
   const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo);XLSX.writeFile(wb,filename);
   showToast('✓ Excel exportado!','success');
 }
+
 function exportarPDF(tipo) {
   if(typeof jspdf==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
   const{jsPDF}=jspdf;const doc=new jsPDF();
-  doc.setFontSize(16);doc.text('Acqua Brise — '+(tipo==='clientes'?'Clientes':'Histórico'),14,20);
+  const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
+  const titulo = tipo==='clientes' ? 'Clientes' : (anoSel === 'todos' ? 'Histórico Completo' : `Histórico ${anoSel}`);
+  doc.setFontSize(16);doc.text('Acqua Brise — '+titulo,14,20);
   doc.setFontSize(10);doc.text('Gerado em: '+new Date().toLocaleDateString('pt-BR'),14,28);
-  if(tipo==='clientes'){doc.autoTable({startY:35,head:[['Nome','Telefone','Dia','Valor','Status','Localização']],body:clientes.map(c=>[c.nome,c.tel||'',c.dia,`R$ ${Number(c.valor).toFixed(2)}`,c.status,c.endereco||''])});}
-  else{doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:historico.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,h.data||''];})});}
-  doc.save(tipo+'.pdf');showToast('✓ PDF exportado!','success');
+  if(tipo==='clientes'){
+    doc.autoTable({startY:35,head:[['Nome','Telefone','Dia','Valor','Status','Localização']],body:clientes.map(c=>[c.nome,c.tel||'',c.dia,`R$ ${Number(c.valor).toFixed(2)}`,c.status,c.endereco||''])});
+  } else {
+    const histFiltrado = getHistoricoFiltrado();
+    doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:histFiltrado.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,h.data||''];})});
+  }
+  const filename = tipo==='clientes' ? 'clientes.pdf' : (anoSel === 'todos' ? 'historico_completo.pdf' : `historico_${anoSel}.pdf`);
+  doc.save(filename);
+  showToast('✓ PDF exportado!','success');
 }
 
 // COBRANÇA
