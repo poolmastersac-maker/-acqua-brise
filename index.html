@@ -1137,7 +1137,9 @@ function salvar() { localStorage.setItem('aquagest_clientes', JSON.stringify(cli
 function salvarHistorico() { localStorage.setItem('aquagest_historico', JSON.stringify(historico)); }
 function salvarProdutos() { localStorage.setItem('aquagest_produtos', JSON.stringify(produtos)); }
 function salvarNecessidades() { localStorage.setItem('aquagest_necessidades', JSON.stringify(necessidades)); }
-function salvarUsuarios() { localStorage.setItem('aquagest_usuarios', JSON.stringify(usuarios)); }
+function salvarUsuarios() { 
+  localStorage.setItem('aquagest_usuarios', JSON.stringify(usuarios));
+}
 function salvarPermissoes() { 
   localStorage.setItem('aquagest_permissoes', JSON.stringify(permissoes)); 
   fbSync();
@@ -2172,13 +2174,29 @@ function editarUsuario(id) {
   document.getElementById('modalUsuario').classList.add('open');
 }
 function salvarUsuario() {
-  const usuario=document.getElementById('cfgUsuario').value.trim(); const senha=document.getElementById('cfgSenha').value;
-  const email=document.getElementById('cfgEmail').value.trim(); const perfil=document.getElementById('cfgPerfil').value;
+  const usuario=document.getElementById('cfgUsuario').value.trim();
+  const senha=document.getElementById('cfgSenha').value;
+  const email=document.getElementById('cfgEmail').value.trim();
+  const perfil=document.getElementById('cfgPerfil').value;
   if(!usuario||senha.length<4){showToast('⚠ Preencha usuário e senha (mín. 4 chars)','error');return;}
   const editId=document.getElementById('userEditId').value;
-  if(editId){const idx=usuarios.findIndex(u=>u.id==editId);if(idx>=0){usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil};showToast('✓ Usuário atualizado!','success');}}
-  else{usuarios.push({id:Date.now(),usuario,senha,email,perfil,nome:usuario});showToast('✓ Usuário criado!','success');}
-  salvarUsuarios(); fecharModal('modalUsuario'); renderUsuarios(); preencherSelectTecnicos(); fbSync();
+  if(editId){
+    const idx=usuarios.findIndex(u=>u.id==editId);
+    if(idx>=0){
+      usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil};
+      showToast('✓ Usuário atualizado!','success');
+    }
+  } else {
+    usuarios.push({id:Date.now(),usuario,senha,email,perfil,nome:usuario});
+    showToast('✓ Usuário criado!','success');
+  }
+  salvarUsuarios();
+  // Atualizar _fbUsuarios imediatamente para evitar sobrescrita pelo Firebase load
+  window._fbUsuarios = [...usuarios];
+  fecharModal('modalUsuario');
+  renderUsuarios();
+  preencherSelectTecnicos();
+  fbSync();
 }
 function renderPermissoes() {
   const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes','excluir','exportar'];
@@ -2488,94 +2506,136 @@ window.addEventListener('resize', ajustarOffsetHeader);
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+  function setBadge(ok) {
+    const badge = document.getElementById('syncBadge');
+    if (badge) {
+      badge.textContent = ok ? '✓ Sincronizado' : '⚠ Offline';
+      badge.className = 'sync-badge ' + (ok ? 'sync-ok' : 'sync-off');
+    }
+  }
+
+  // ESCREVER no Firebase — chamado via fbSyncRequest
   async function syncToFirebase() {
     try {
-      const clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
-      const historico = JSON.parse(localStorage.getItem('aquagest_historico') || '[]');
-      const produtos = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
+      const clientes   = JSON.parse(localStorage.getItem('aquagest_clientes')     || '[]');
+      const historico  = JSON.parse(localStorage.getItem('aquagest_historico')    || '[]');
+      const produtos   = JSON.parse(localStorage.getItem('aquagest_produtos')     || '[]');
       const necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
-      const usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
-      const permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}');
+      const pedidos    = JSON.parse(localStorage.getItem('aquagest_pedidos')      || '[]');
+      const usuarios   = JSON.parse(localStorage.getItem('aquagest_usuarios')     || '[]');
+      const permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes')   || '{}');
 
-      for (const c of clientes) await setDoc(doc(db,'clientes',String(c.id)), c);
-      for (const h of historico) await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
-      for (const p of produtos) await setDoc(doc(db,'produtos',String(p.id)), p);
+      for (const c of clientes)    await setDoc(doc(db,'clientes',String(c.id)), c);
+      for (const h of historico)   await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
+      for (const p of produtos)    await setDoc(doc(db,'produtos',String(p.id)), p);
       for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), n);
-      for (const p2 of pedidos) await setDoc(doc(db,'pedidos',String(p2.id)), p2);
-      for (const u of usuarios) await setDoc(doc(db,'usuarios',String(u.id)), u);
-      await setDoc(doc(db,'config','permissoes'), {...permissoes, _versao: window._permissoesVersao || '4.0'});
+      for (const p2 of pedidos)    await setDoc(doc(db,'pedidos',String(p2.id)), p2);
+      for (const u of usuarios)    await setDoc(doc(db,'usuarios',String(u.id)), u);
+      await setDoc(doc(db,'config','permissoes'), {...permissoes, _versao: window._permissoesVersao || '3.0'});
 
-      const badge = document.getElementById('syncBadge');
-      if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
+      setBadge(true);
     } catch(e) {
-      const badge = document.getElementById('syncBadge');
-      if (badge) { badge.textContent = '⚠ Offline'; badge.className = 'sync-badge sync-off'; }
+      console.error('Erro ao sincronizar:', e);
+      setBadge(false);
     }
   }
 
   window.addEventListener('fbSyncRequest', syncToFirebase);
 
-  // Carregar dados do Firebase na inicialização
-  try {
-    const snapC = await getDocs(collection(db, 'clientes'));
-    if (!snapC.empty) {
-      const fbClientes = snapC.docs.map(d => d.data());
-      if (fbClientes.length > 0) localStorage.setItem('aquagest_clientes', JSON.stringify(fbClientes));
-    }
-    const snapH = await getDocs(collection(db, 'historico'));
-    if (!snapH.empty) {
-      const fbHist = snapH.docs.map(d => d.data());
-      if (fbHist.length > 0) localStorage.setItem('aquagest_historico', JSON.stringify(fbHist));
-    }
-    const snapP = await getDocs(collection(db, 'produtos'));
-    if (!snapP.empty) {
-      const fbProd = snapP.docs.map(d => d.data());
-      if (fbProd.length > 0) localStorage.setItem('aquagest_produtos', JSON.stringify(fbProd));
-    }
-    const snapN = await getDocs(collection(db, 'necessidades'));
-    if (!snapN.empty) {
-      const fbNec = snapN.docs.map(d => d.data());
-      if (fbNec.length > 0) localStorage.setItem('aquagest_necessidades', JSON.stringify(fbNec));
-    }
-    const snapPed = await getDocs(collection(db, 'pedidos'));
-    if (!snapPed.empty) {
-      const fbPed = snapPed.docs.map(d => d.data());
-      if (fbPed.length > 0) localStorage.setItem('aquagest_pedidos', JSON.stringify(fbPed));
-    }
-    const snapU = await getDocs(collection(db, 'usuarios'));
-    if (!snapU.empty) {
-      const fbUsers = snapU.docs.map(d => d.data());
-      if (fbUsers.length > 0) {
-        localStorage.setItem('aquagest_usuarios', JSON.stringify(fbUsers));
-        // Recarregar variável global para que o login use dados atualizados
-        window._fbUsuarios = fbUsers;
+  // LER do Firebase — Firebase é fonte principal
+  async function carregarDoFirebase() {
+    try {
+      // CLIENTES
+      const snapC = await getDocs(collection(db, 'clientes'));
+      if (!snapC.empty) {
+        const dados = snapC.docs.map(d => d.data());
+        if (dados.length > 0) {
+          localStorage.setItem('aquagest_clientes', JSON.stringify(dados));
+          if (typeof clientes !== 'undefined') { clientes = dados; }
+        }
       }
-    }
-    const snapPerm = await getDocs(collection(db, 'config'));
-    if (!snapPerm.empty) {
-      const permDoc = snapPerm.docs.find(d => d.id === 'permissoes');
-      if (permDoc) {
-        const permVersaoFB = permDoc.data()._versao;
-        if (permVersaoFB === window._permissoesVersao) {
-          const dadosFB = {...permDoc.data()};
-          delete dadosFB._versao;
-          localStorage.setItem('aquagest_permissoes', JSON.stringify(dadosFB));
-          // Atualizar variável em memória e reaplicar na tela
-          if (typeof permissoes !== 'undefined') {
-            Object.assign(permissoes, dadosFB);
-            if (typeof aplicarPermissoes === 'function' && typeof usuarioLogado !== 'undefined' && usuarioLogado) {
-              aplicarPermissoes();
+
+      // HISTÓRICO
+      const snapH = await getDocs(collection(db, 'historico'));
+      if (!snapH.empty) {
+        const dados = snapH.docs.map(d => d.data());
+        localStorage.setItem('aquagest_historico', JSON.stringify(dados));
+        if (typeof historico !== 'undefined') { historico = dados; }
+      }
+
+      // PRODUTOS
+      const snapP = await getDocs(collection(db, 'produtos'));
+      if (!snapP.empty) {
+        const dados = snapP.docs.map(d => d.data());
+        if (dados.length > 0) {
+          localStorage.setItem('aquagest_produtos', JSON.stringify(dados));
+          if (typeof produtos !== 'undefined') { produtos = dados; }
+        }
+      }
+
+      // NECESSIDADES
+      const snapN = await getDocs(collection(db, 'necessidades'));
+      if (!snapN.empty) {
+        const dados = snapN.docs.map(d => d.data());
+        localStorage.setItem('aquagest_necessidades', JSON.stringify(dados));
+        if (typeof necessidades !== 'undefined') { necessidades = dados; }
+      }
+
+      // PEDIDOS
+      const snapPed = await getDocs(collection(db, 'pedidos'));
+      if (!snapPed.empty) {
+        const dados = snapPed.docs.map(d => d.data());
+        localStorage.setItem('aquagest_pedidos', JSON.stringify(dados));
+        if (typeof pedidos !== 'undefined') { pedidos = dados; }
+      }
+
+      // USUÁRIOS — sempre sobrescreve para garantir senhas atualizadas
+      const snapU = await getDocs(collection(db, 'usuarios'));
+      if (!snapU.empty) {
+        const dados = snapU.docs.map(d => d.data());
+        if (dados.length > 0) {
+          localStorage.setItem('aquagest_usuarios', JSON.stringify(dados));
+          if (typeof usuarios !== 'undefined') { usuarios = dados; }
+          window._fbUsuarios = dados;
+        }
+      }
+
+      // PERMISSÕES — respeita versionamento
+      const snapPerm = await getDocs(collection(db, 'config'));
+      if (!snapPerm.empty) {
+        const permDoc = snapPerm.docs.find(d => d.id === 'permissoes');
+        if (permDoc) {
+          const permVersaoFB = permDoc.data()._versao;
+          if (permVersaoFB === window._permissoesVersao) {
+            const dadosFB = {...permDoc.data()};
+            delete dadosFB._versao;
+            localStorage.setItem('aquagest_permissoes', JSON.stringify(dadosFB));
+            if (typeof permissoes !== 'undefined') {
+              Object.assign(permissoes, dadosFB);
+              if (typeof aplicarPermissoes === 'function' && typeof usuarioLogado !== 'undefined' && usuarioLogado) {
+                aplicarPermissoes();
+              }
             }
           }
         }
-        // Versão antiga — ignorar Firebase, manter padrão local
       }
+
+      setBadge(true);
+
+      // Atualizar tela se usuário já estiver logado
+      if (typeof usuarioLogado !== 'undefined' && usuarioLogado) {
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof atualizarStats === 'function') atualizarStats();
+      }
+
+    } catch(e) {
+      console.log('Firebase offline — usando cache local');
+      setBadge(false);
     }
-    const badge = document.getElementById('syncBadge');
-    if (badge) { badge.textContent = '✓ Sincronizado'; badge.className = 'sync-badge sync-ok'; }
-  } catch(e) {
-    console.log('Firebase offline — usando dados locais');
   }
+
+  // Carregar do Firebase ao iniciar
+  carregarDoFirebase();
 </script>
 </body>
 </html>
