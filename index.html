@@ -2048,13 +2048,10 @@ function renderPedidos() {
   let pedidosFiltrados;
   if (isTecnico) {
     // Técnico vê apenas seus pedidos não consolidados
+    // Usa o campo tecnico salvo no pedido (necessidades já foram removidas ao gerar)
     pedidosFiltrados = pedidos.filter(ped => {
       if (ped.consolidado) return false;
-      return ped.itens.some(item => {
-        const nec = necessidades.find(n => n.produtoId === item.produtoId);
-        const c = nec ? clientes.find(x => x.id === nec.clienteId) : null;
-        return c?.tecnico === vinculo;
-      });
+      return ped.tecnico === usuarioLogado?.usuario;
     });
   } else {
     // Gestor: sub-aba meus = não consolidados | consolidado = consolidados
