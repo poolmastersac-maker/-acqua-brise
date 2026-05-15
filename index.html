@@ -1221,12 +1221,43 @@ function badgeHTML(status) {
 }
 
 // LOGIN
+const TIMEOUT_SESSAO = 60 * 60 * 1000; // 1 hora em ms
+let _timerSessao = null;
+
+function registrarAtividade() {
+  localStorage.setItem('drprime_ultimoUso', Date.now().toString());
+  reiniciarTimerSessao();
+}
+
+function reiniciarTimerSessao() {
+  if (_timerSessao) clearTimeout(_timerSessao);
+  _timerSessao = setTimeout(() => {
+    if (usuarioLogado) {
+      fazerLogout();
+      document.getElementById('loginErro').textContent = '⏱ Sessão expirada por inatividade. Faça login novamente.';
+      document.getElementById('loginErro').classList.add('show');
+    }
+  }, TIMEOUT_SESSAO);
+}
+
+function sessaoValida() {
+  const ultimoUso = parseInt(localStorage.getItem('drprime_ultimoUso') || '0', 10);
+  if (!ultimoUso) return false;
+  return (Date.now() - ultimoUso) < TIMEOUT_SESSAO;
+}
+
 function verificarLogin() {
   // Recarregar usuários do localStorage (pode ter sido atualizado pelo Firebase)
   const fresh = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
   if (fresh && fresh.length > 0) usuarios = fresh;
   const saved = localStorage.getItem('drprime_logado');
-  if (saved) { const u = usuarios.find(x => x.usuario === saved); if (u) { usuarioLogado = u; entrar(); return; } }
+  if (saved && sessaoValida()) {
+    const u = usuarios.find(x => x.usuario === saved);
+    if (u) { usuarioLogado = u; entrar(); reiniciarTimerSessao(); return; }
+  }
+  // Sessão expirada ou inválida — limpar e exibir login
+  localStorage.removeItem('drprime_logado');
+  localStorage.removeItem('drprime_ultimoUso');
   document.getElementById('loginOverlay').style.display = 'flex';
 }
 function fazerLogin() {
@@ -1242,8 +1273,12 @@ function fazerLogin() {
     if (fresh && fresh.length > 0) usuarios = fresh;
   }
   const u = usuarios.find(x => x.usuario === usr && x.senha === sen);
-  if (u) { usuarioLogado = u; localStorage.setItem('drprime_logado', u.usuario); entrar(); }
-  else document.getElementById('loginErro').classList.add('show');
+  if (u) {
+    usuarioLogado = u;
+    localStorage.setItem('drprime_logado', u.usuario);
+    registrarAtividade();
+    entrar();
+  } else document.getElementById('loginErro').classList.add('show');
 }
 function entrar() {
   document.getElementById('loginOverlay').style.display = 'none';
@@ -1259,6 +1294,8 @@ function entrar() {
 }
 function fazerLogout() {
   localStorage.removeItem('drprime_logado');
+  localStorage.removeItem('drprime_ultimoUso');
+  if (_timerSessao) { clearTimeout(_timerSessao); _timerSessao = null; }
   usuarioLogado = null;
   document.getElementById('mainHeader').style.display = 'none';
   document.getElementById('statsBar').style.display = 'none';
@@ -2703,6 +2740,10 @@ function ajustarOffsetHeader() {
 
 // INIT
 document.addEventListener('DOMContentLoaded', () => { verificarLogin(); atualizarInfoBackup(); });
+// Registrar atividade em qualquer clique ou tecla do usuário
+['click','keydown','touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => { if (usuarioLogado) registrarAtividade(); }, { passive: true })
+);
 window.addEventListener('resize', ajustarOffsetHeader);
 </script>
 <script type="module">
