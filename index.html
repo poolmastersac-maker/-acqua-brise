@@ -1240,7 +1240,7 @@ function entrar() {
   document.getElementById('statsBar').style.display = 'block';
   document.getElementById('userAv').textContent = (usuarioLogado.nome||usuarioLogado.usuario).charAt(0).toUpperCase();
   document.getElementById('userNm').textContent = usuarioLogado.nome||usuarioLogado.usuario;
-  aplicarPermissoes();
+  aplicarPermissoes(true);
   preencherSelectTecnicos();
   renderDashboard();
   atualizarStats();
@@ -1293,7 +1293,7 @@ function salvarNovaSenha() {
 }
 
 // PERMISSÕES
-function aplicarPermissoes() {
+function aplicarPermissoes(forcarRedirecionamento) {
   if (!usuarioLogado) return;
   const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico;
   const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes'];
@@ -1303,9 +1303,16 @@ function aplicarPermissoes() {
   const statsBar = document.getElementById('statsBar');
   if (statsBar) statsBar.style.display = p.dashboard !== false ? 'block' : 'none';
 
-  // Redirecionar para primeira aba permitida
-  const primeiraAba = tabs.find(t => p[t] !== false);
-  if (primeiraAba) navegarPara(primeiraAba);
+  // Verificar se a aba atual ainda é permitida
+  const abaAtiva = document.querySelector('.page.active');
+  const abaAtivaId = abaAtiva ? abaAtiva.id.replace('page-','') : null;
+  const abaPermitida = abaAtivaId && p[abaAtivaId] !== false;
+
+  // Só redirecionar se forçado (login) ou se a aba atual não é permitida
+  if (forcarRedirecionamento || !abaPermitida) {
+    const primeiraAba = tabs.find(t => p[t] !== false);
+    if (primeiraAba) navegarPara(primeiraAba);
+  }
 }
 
 // NAVEGAÇÃO
