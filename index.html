@@ -1026,7 +1026,13 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     </div>
     <div class="form-group"><label class="form-label">E-mail (recuperação)</label><input type="email" class="form-input" id="cfgEmail" placeholder="email@exemplo.com"></div>
     <div class="form-group"><label class="form-label">Perfil</label>
-      <select class="form-input" id="cfgPerfil"><option value="admin">👑 Admin</option><option value="gerente">👔 Gerente</option><option value="tecnico">🔧 Técnico</option><option value="financeiro">📊 Financeiro</option></select>
+      <select class="form-input" id="cfgPerfil" onchange="toggleCampoVinculo()"><option value="admin">👑 Admin</option><option value="gerente">👔 Gerente</option><option value="tecnico">🔧 Técnico</option><option value="financeiro">📊 Financeiro</option></select>
+    </div>
+    <div class="form-group" id="grupoVinculo" style="display:none;">
+      <label class="form-label">Técnico Vinculado <span style="color:var(--muted);font-size:0.75rem;">(valor do campo técnico nos clientes)</span></label>
+      <select class="form-input" id="cfgVinculo">
+        <option value="">— Selecione —</option>
+      </select>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalUsuario')">Cancelar</button>
@@ -1189,7 +1195,10 @@ function calcularStatus(c) {
   if (regMes) return regMes.status;
   // Sem registro no histórico — usar status do cliente
   if (c.status === 'pago') return 'pago';
-  if (hoje.getDate() > c.dia + 3) return 'atrasado';
+  // Calcular data limite de vencimento (dia + 3 dias de tolerância)
+  const diaVenc = Math.min(Number(c.dia), new Date(anoAtual, mesAtual + 1, 0).getDate());
+  const dataLimite = new Date(anoAtual, mesAtual, diaVenc + 3);
+  if (hoje > dataLimite) return 'atrasado';
   return 'pendente';
 }
 function badgeHTML(status) {
@@ -1241,8 +1250,12 @@ function fazerLogout() {
   document.getElementById('mainHeader').style.display = 'none';
   document.getElementById('statsBar').style.display = 'none';
   document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginUsuario').value = '';
   document.getElementById('loginSenha').value = '';
   document.getElementById('loginErro').classList.remove('show');
+  // Resetar para aba inicial ao próximo login
+  filtroAtual = 'todos';
+  clienteSelecionadoId = null;
 }
 function toggleSenhaLogin() { const i = document.getElementById('loginSenha'); i.type = i.type==='password'?'text':'password'; }
 function irParaRecuperacao() { document.getElementById('stepLogin').classList.remove('active'); document.getElementById('stepEmail').classList.add('active'); }
@@ -1314,19 +1327,21 @@ function navegarPara(pagina) {
 
 // STATS
 function atualizarStats() {
-  const total = clientes.length;
-  const pagos = clientes.filter(c=>calcularStatus(c)==='pago').length;
-  const pendentes = clientes.filter(c=>calcularStatus(c)==='pendente').length;
-  const atrasados = clientes.filter(c=>calcularStatus(c)==='atrasado').length;
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const base = isTecnico && vinculo ? clientes.filter(c => c.tecnico === vinculo) : clientes;
+  const total = base.length;
+  const pagos = base.filter(c=>calcularStatus(c)==='pago').length;
+  const pendentes = base.filter(c=>calcularStatus(c)==='pendente').length;
+  const atrasados = base.filter(c=>calcularStatus(c)==='atrasado').length;
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statPagos').textContent = pagos;
   document.getElementById('statPendentes').textContent = pendentes;
   document.getElementById('statAtrasados').textContent = atrasados;
   document.getElementById('statPctPagos').textContent = total>0?Math.round(pagos/total*100)+'% do total':'';
-  const receita = clientes.filter(c=>calcularStatus(c)==='pendente').reduce((s,c)=>s+Number(c.valor||0),0);
+  const receita = base.filter(c=>calcularStatus(c)==='pendente').reduce((s,c)=>s+Number(c.valor||0),0);
   document.getElementById('statReceitaMes').textContent = 'R$ '+receita.toFixed(2)+' pendente';
-  const hoje = new Date();
-  const proximos = clientes.filter(c=>calcularStatus(c)==='atrasado');
+  const proximos = base.filter(c=>calcularStatus(c)==='atrasado');
   document.getElementById('statProxVenc').textContent = proximos.length>0?proximos.length+' em atraso':'Tudo em dia 🎉';
   // Aplicar modo privacidade se ativo
   aplicarPrivacidade();
@@ -1340,7 +1355,7 @@ function setFilter(btn, filtro) {
 function renderDashboard() {
   const busca = document.getElementById('searchInput').value.toLowerCase();
   const mesSel = document.getElementById('mesCobrar').value;
-  const mesIdx = mesSel!==''?parseInt(mesSel):new Date().getMonth();
+  const mesIdx = mesSel!==''?parseInt(mesSel,10):new Date().getMonth();
   const anoAtual = new Date().getFullYear();
 
   const getStatusMes = (c) => {
@@ -1349,7 +1364,10 @@ function renderDashboard() {
     return calcularStatus(c);
   };
 
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
   let lista = clientes.filter(c => {
+    if (isTecnico && vinculo && c.tecnico !== vinculo) return false;
     const match = c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
     if (filtroAtual==='todos') return match;
     return match && getStatusMes(c)===filtroAtual;
@@ -1383,7 +1401,12 @@ function preencherSelectTecnicos() {
 }
 function renderLista() {
   const busca = (document.getElementById('searchClientes')?.value||'').toLowerCase();
-  const lista = clientes.filter(c=>c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca));
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const lista = clientes.filter(c => {
+    if (isTecnico && vinculo && c.tecnico !== vinculo) return false;
+    return c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
+  });
   const container = document.getElementById('listaBody');
   if (!lista.length) { container.innerHTML=`<div class="empty"><div class="empty-icon">👤</div><div>Nenhum cliente</div></div>`; return; }
   container.innerHTML = lista.map(c=>{
@@ -1470,7 +1493,7 @@ function confirmarExclusao() {
 function saveClient() {
   const nome = document.getElementById('fNome').value.trim();
   const tel = document.getElementById('fTel').value.trim();
-  const dia = parseInt(document.getElementById('fDia').value);
+  const dia = parseInt(document.getElementById('fDia').value, 10);
   const valor = parseFloat(document.getElementById('fValor').value);
   const status = document.getElementById('fStatus').value;
   const endereco = document.getElementById('fEndereco').value.trim();
@@ -1479,7 +1502,7 @@ function saveClient() {
   if (!nome||!dia||!valor) { showToast('⚠ Preencha os campos obrigatórios','error'); return; }
   const editId = document.getElementById('editId').value;
   if (editId) {
-    const idx = clientes.findIndex(c=>c.id==editId);
+    const idx = clientes.findIndex(c=>c.id===Number(editId));
     if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico}; showToast('✓ Cliente atualizado!','success'); }
   } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico}); showToast('✓ Cliente cadastrado!','success'); }
   salvar(); limparForm(); renderLista(); renderDashboard(); fbSync();
@@ -1632,8 +1655,8 @@ function abrirModalProduto(id) {
 }
 function salvarProduto() {
   const nome=document.getElementById('prodNome').value.trim(); if(!nome){showToast('⚠ Nome obrigatório','error');return;}
-  const prod={id:document.getElementById('prodEditId').value||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value)||7};
-  const idx=produtos.findIndex(p=>p.id==prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
+  const prod={id:document.getElementById('prodEditId').value||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
+  const idx=produtos.findIndex(p=>p.id===prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
   salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success'); fbSync();
 }
 function abrirModalMovimento(id) {
@@ -1646,7 +1669,7 @@ function abrirModalMovimento(id) {
 function salvarMovimento() {
   const id=Number(document.getElementById('movProdId').value);
   const tipo=document.getElementById('movTipo').value;
-  const qtd=parseInt(document.getElementById('movQtd').value)||0;
+  const qtd=parseInt(document.getElementById('movQtd').value,10)||0;
   if(qtd<=0){showToast('⚠ Informe a quantidade','error');return;}
   const p=produtos.find(x=>x.id===id); if(!p) return;
   if(tipo==='entrada') p.qtd+=qtd;
@@ -1657,6 +1680,19 @@ function salvarMovimento() {
 
 // SERVIÇOS
 function renderServicos() {
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const clientesFiltrados = isTecnico && vinculo
+    ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso')
+    : clientes.filter(c => c.status !== 'suspenso');
+  const selectClienteHTML = `
+    <div class="form-group">
+      <label class="form-label">Cliente</label>
+      <select class="form-input serv-cliente-sel">
+        <option value="">— Selecione o cliente —</option>
+        ${clientesFiltrados.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}
+      </select>
+    </div>`;
   document.getElementById('servicosGrid').innerHTML=SERVICOS_DEF.map(s=>`
     <div class="servico-card">
       <div class="servico-card-header">
@@ -1664,6 +1700,7 @@ function renderServicos() {
         <div><div class="servico-titulo">${s.titulo}</div><div class="servico-desc">${s.desc}</div></div>
       </div>
       <div class="servico-card-body">
+        ${selectClienteHTML}
         ${s.campos.map(c=>c.tipo==='select'
           ?`<div class="form-group"><label class="form-label">${c.label}</label><select class="form-input" id="${c.id}">${c.opcoes.map(o=>`<option>${o}</option>`).join('')}</select></div>`
           :`<div class="form-group"><label class="form-label">${c.label}</label><input type="number" class="form-input" id="${c.id}" placeholder="${c.placeholder||'0.00'}" oninput="calcularOrc('${s.id}')"></div>`
@@ -1695,7 +1732,13 @@ function abrirOrcWpp(sId) {
   calcularOrc(sId);
   const total=document.getElementById('orcTotal_'+sId).textContent;
   const tipo=document.getElementById(s.campos[0].id)?.value||'';
-  const msg=`Olá! Segue orçamento para ${s.titulo}:\n\n*Tipo:* ${tipo}\n*Total:* ${total}\n\nQualquer dúvida estou à disposição! 😊\n\nAcqua Brise 🌊`;
+  // Pegar cliente selecionado no card do serviço
+  const card = document.getElementById('orcTotal_'+sId)?.closest('.servico-card');
+  const clienteSel = card?.querySelector('.serv-cliente-sel');
+  const clienteId = clienteSel ? Number(clienteSel.value) : null;
+  const cliente = clienteId ? clientes.find(c=>c.id===clienteId) : null;
+  const nomeCliente = cliente ? `\n*Cliente:* ${cliente.nome}` : '';
+  const msg=`Olá! Segue orçamento para ${s.titulo}:${nomeCliente}\n\n*Tipo:* ${tipo}\n*Total:* ${total}\n\nQualquer dúvida estou à disposição! 😊\n\nAcqua Brise 🌊`;
   abrirModalWhatsApp(msg);
 }
 
@@ -1738,8 +1781,8 @@ function voltarImportacao() {
 
 function processarImportacao() {
   const texto = document.getElementById('importTexto').value.trim();
-  const mesIdx = parseInt(document.getElementById('importMes').value);
-  const ano = parseInt(document.getElementById('importAno').value);
+  const mesIdx = parseInt(document.getElementById('importMes').value, 10);
+  const ano = parseInt(document.getElementById('importAno').value, 10);
 
   if (!texto) { showToast('⚠ Cole os pagamentos antes de processar', 'error'); return; }
 
@@ -1888,8 +1931,17 @@ let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
 
 function gerarPedido() {
-  // Pegar necessidades não entregues
-  const itens = necessidades.filter(n => !n.entregue);
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  // Pegar necessidades não entregues (filtradas por técnico se necessário)
+  const itens = necessidades.filter(n => {
+    if (n.entregue) return false;
+    if (isTecnico && vinculo) {
+      const c = clientes.find(x => x.id === n.clienteId);
+      return c?.tecnico === vinculo;
+    }
+    return true;
+  });
   if (!itens.length) { showToast('⚠ Nenhuma necessidade pendente para gerar pedido', 'error'); return; }
 
   const hoje = new Date();
@@ -1921,13 +1973,25 @@ function gerarPedido() {
 
 function renderPedidos() {
   const container = document.getElementById('pedidosBody');
-  if (!pedidos.length) {
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+
+  // Filtrar pedidos por técnico se necessário
+  const pedidosFiltrados = isTecnico && vinculo
+    ? pedidos.filter(ped => ped.itens.some(item => {
+        const nec = necessidades.find(n => n.produtoId === item.produtoId);
+        const c = nec ? clientes.find(x => x.id === nec.clienteId) : null;
+        return c?.tecnico === vinculo;
+      }))
+    : pedidos;
+
+  if (!pedidosFiltrados.length) {
     container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>Nenhum pedido registrado</div></div>`;
     return;
   }
 
   // Ordenar do mais recente para o mais antigo
-  const sorted = [...pedidos].sort((a,b) => b.id - a.id);
+  const sorted = [...pedidosFiltrados].sort((a,b) => b.id - a.id);
 
   container.innerHTML = sorted.map(ped => {
     const data = new Date(ped.data);
@@ -2059,7 +2123,13 @@ function confirmarExclusaoPedido() {
 // NECESSIDADES
 function renderNecessidades() {
   const busca=(document.getElementById('searchNec')?.value||'').toLowerCase();
-  const lista=necessidades.filter(n=>{ const c=clientes.find(x=>x.id===n.clienteId); return (c?.nome||'').toLowerCase().includes(busca); });
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const lista=necessidades.filter(n=>{ 
+    const c=clientes.find(x=>x.id===n.clienteId); 
+    if (isTecnico && vinculo && c?.tecnico !== vinculo) return false;
+    return (c?.nome||'').toLowerCase().includes(busca); 
+  });
   const container=document.getElementById('necPageBody');
   if(!lista.length){container.innerHTML=`<div class="empty"><div class="empty-icon">🧴</div><div>Nenhuma necessidade registrada</div></div>`;return;}
   container.innerHTML=lista.map(n=>{
@@ -2078,7 +2148,12 @@ function renderNecessidades() {
   }).join('');
 }
 function abrirModalNecessidade(clienteId) {
-  document.getElementById('necClienteSel').innerHTML=clientes.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const clientesFiltrados = isTecnico && vinculo
+    ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso')
+    : clientes;
+  document.getElementById('necClienteSel').innerHTML=clientesFiltrados.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
   if(clienteId) document.getElementById('necClienteSel').value=clienteId;
   document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('necQtd').value=1; document.getElementById('necData').value=new Date().toISOString().slice(0,10);
@@ -2087,7 +2162,7 @@ function abrirModalNecessidade(clienteId) {
 function salvarNecessidade() {
   const clienteId=Number(document.getElementById('necClienteSel').value);
   const produtoId=Number(document.getElementById('necProdutoSel').value);
-  const qtd=parseInt(document.getElementById('necQtd').value)||1;
+  const qtd=parseInt(document.getElementById('necQtd').value,10)||1;
   const data=document.getElementById('necData').value;
   const obs=document.getElementById('necObs').value.trim();
   if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido','error'); return; }
@@ -2121,11 +2196,12 @@ function abrirConfigSecao(secao) {
 function renderUsuarios() {
   const perfis={admin:'👑 Admin',gerente:'👔 Gerente',tecnico:'🔧 Técnico',financeiro:'📊 Financeiro'};
   const isAdmin = usuarioLogado?.perfil === 'admin';
-  document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Senha</th><th>Perfil</th><th>E-mail</th><th></th></tr></thead><tbody>
+  document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Senha</th><th>Perfil</th><th>Vínculo Técnico</th><th>E-mail</th><th></th></tr></thead><tbody>
     ${usuarios.map(u=>`<tr>
       <td><div class="client-name">${u.usuario}</div></td>
       <td><span style="font-family:monospace;font-size:0.85rem;color:var(--muted);">${isAdmin ? u.senha : '••••••••'}</span></td>
       <td>${perfis[u.perfil]||u.perfil}</td>
+      <td><span style="font-size:0.82rem;color:var(--muted);">${u.perfil==='tecnico'?(u.tecnicoVinculo||'⚠ Não vinculado'):'—'}</span></td>
       <td>${u.email||'—'}</td>
       <td style="display:flex;gap:5px;">
         <button class="action-btn" title="Editar" onclick="editarUsuario(${u.id})">✏</button>
@@ -2157,20 +2233,38 @@ function toggleSenhaCfg() {
   const inp = document.getElementById('cfgSenha');
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
+function toggleCampoVinculo() {
+  const perfil = document.getElementById('cfgPerfil').value;
+  const grupo = document.getElementById('grupoVinculo');
+  grupo.style.display = perfil === 'tecnico' ? 'block' : 'none';
+  if (perfil === 'tecnico') {
+    // Preencher opções com os valores de técnico existentes nos clientes
+    const tecs = [...new Set(clientes.map(c=>c.tecnico).filter(Boolean))].sort();
+    const sel = document.getElementById('cfgVinculo');
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">— Selecione —</option>' + tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
+    if (atual) sel.value = atual;
+  }
+}
 function abrirModalUsuario() {
   document.getElementById('userEditId').value=''; document.getElementById('modalUserTitulo').textContent='Novo Usuário';
   ['cfgUsuario','cfgSenha','cfgEmail'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cfgSenha').type = 'password';
-  document.getElementById('cfgPerfil').value='tecnico'; document.getElementById('modalUsuario').classList.add('open');
+  document.getElementById('cfgPerfil').value='tecnico';
+  document.getElementById('cfgVinculo').value='';
+  toggleCampoVinculo();
+  document.getElementById('modalUsuario').classList.add('open');
 }
 function editarUsuario(id) {
   const u=usuarios.find(x=>x.id===id); if(!u) return;
   document.getElementById('userEditId').value=u.id; document.getElementById('modalUserTitulo').textContent='Editar Usuário';
   document.getElementById('cfgUsuario').value=u.usuario;
   document.getElementById('cfgSenha').value=u.senha;
-  // Admin vê a senha exposta ao editar
   document.getElementById('cfgSenha').type = usuarioLogado?.perfil === 'admin' ? 'text' : 'password';
-  document.getElementById('cfgEmail').value=u.email||''; document.getElementById('cfgPerfil').value=u.perfil;
+  document.getElementById('cfgEmail').value=u.email||'';
+  document.getElementById('cfgPerfil').value=u.perfil;
+  toggleCampoVinculo();
+  if (u.perfil === 'tecnico') document.getElementById('cfgVinculo').value = u.tecnicoVinculo||'';
   document.getElementById('modalUsuario').classList.add('open');
 }
 function salvarUsuario() {
@@ -2178,20 +2272,21 @@ function salvarUsuario() {
   const senha=document.getElementById('cfgSenha').value;
   const email=document.getElementById('cfgEmail').value.trim();
   const perfil=document.getElementById('cfgPerfil').value;
+  const tecnicoVinculo = perfil==='tecnico' ? document.getElementById('cfgVinculo').value : '';
   if(!usuario||senha.length<4){showToast('⚠ Preencha usuário e senha (mín. 4 chars)','error');return;}
+  if(perfil==='tecnico'&&!tecnicoVinculo){showToast('⚠ Selecione o técnico vinculado','error');return;}
   const editId=document.getElementById('userEditId').value;
   if(editId){
-    const idx=usuarios.findIndex(u=>u.id==editId);
+    const idx=usuarios.findIndex(u=>u.id===Number(editId));
     if(idx>=0){
-      usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil};
+      usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil,tecnicoVinculo};
       showToast('✓ Usuário atualizado!','success');
     }
   } else {
-    usuarios.push({id:Date.now(),usuario,senha,email,perfil,nome:usuario});
+    usuarios.push({id:Date.now(),usuario,senha,email,perfil,tecnicoVinculo,nome:usuario});
     showToast('✓ Usuário criado!','success');
   }
   salvarUsuarios();
-  // Atualizar _fbUsuarios imediatamente para evitar sobrescrita pelo Firebase load
   window._fbUsuarios = [...usuarios];
   fecharModal('modalUsuario');
   renderUsuarios();
@@ -2287,6 +2382,7 @@ function copiarMensagem() { navigator.clipboard.writeText(document.getElementByI
 function abrirWhatsApp() {
   if(!cobrancaAtual) return;
   const tel=(cobrancaAtual.tel||'').replace(/\D/g,'');
+  if(!tel || tel.length < 10) { showToast('⚠ Cliente sem telefone cadastrado','error'); return; }
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(document.getElementById('cobrancaTexto').textContent)}`,'_blank');
 }
 
