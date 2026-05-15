@@ -1993,6 +1993,8 @@ function gerarPedido() {
   const idsUsados = new Set(itens.map(n => n.id));
   necessidades = necessidades.filter(n => !idsUsados.has(n.id));
   salvarNecessidades();
+  // Deletar do Firebase para não retornar ao recarregar
+  if (window.fbDeleteDoc) idsUsados.forEach(id => window.fbDeleteDoc('necessidades', id));
 
   showToast('✓ Pedido gerado! Necessidades limpas.', 'success');
   navegarPara('pedidos');
@@ -2274,7 +2276,15 @@ function gerarPedidoDoModal() {
   gerarPedido();
 }
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
-function excluirNec(id) { necessidades=necessidades.filter(x=>x.id!==id); salvarNecessidades(); renderNecessidades(); showToast('Removida','info'); fbSync(); }
+function excluirNec(id) {
+  necessidades = necessidades.filter(x => x.id !== id);
+  salvarNecessidades();
+  renderNecessidades();
+  showToast('Removida', 'info');
+  // Deletar do Firebase para não retornar ao recarregar
+  if (window.fbDeleteDoc) window.fbDeleteDoc('necessidades', id);
+  fbSync();
+}
 
 // CONFIGURAÇÕES
 function abrirConfigSecao(secao) {
@@ -2689,7 +2699,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-  import { getFirestore, collection, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAtn8uAazSzISsp_C91YXQzwJKdy6fZPII",
@@ -2738,6 +2748,15 @@ window.addEventListener('resize', ajustarOffsetHeader);
   }
 
   window.addEventListener('fbSyncRequest', syncToFirebase);
+
+  // Expor função de delete para uso no JS principal
+  window.fbDeleteDoc = async function(colecao, id) {
+    try {
+      await deleteDoc(doc(db, colecao, String(id)));
+    } catch(e) {
+      console.error('Erro ao deletar do Firebase:', e);
+    }
+  };
 
   // LER do Firebase — Firebase é fonte principal
   async function carregarDoFirebase() {
