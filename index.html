@@ -1988,7 +1988,13 @@ function gerarPedido() {
 
   pedidos.push(pedido);
   salvarPedidos();
-  showToast('✓ Pedido gerado com sucesso!', 'success');
+
+  // Remover as necessidades que foram incluídas no pedido
+  const idsUsados = new Set(itens.map(n => n.id));
+  necessidades = necessidades.filter(n => !idsUsados.has(n.id));
+  salvarNecessidades();
+
+  showToast('✓ Pedido gerado! Necessidades limpas.', 'success');
   navegarPara('pedidos');
   fbSync();
 }
@@ -2262,6 +2268,9 @@ function atualizarContadorNec(clienteId) {
 }
 function gerarPedidoDoModal() {
   fecharModal('modalNecessidadeForm');
+  // Limpar contador do modal
+  const contador = document.getElementById('necContador');
+  if (contador) { contador.textContent = ''; contador.style.display = 'none'; }
   gerarPedido();
 }
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
