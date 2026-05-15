@@ -1349,7 +1349,7 @@ function navegarPara(pagina) {
 function atualizarStats() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  const base = isTecnico && vinculo ? clientes.filter(c => c.tecnico === vinculo) : clientes;
+  const base = isTecnico ? (vinculo ? clientes.filter(c => c.tecnico === vinculo) : []) : clientes;
   const total = base.length;
   const pagos = base.filter(c=>calcularStatus(c)==='pago').length;
   const pendentes = base.filter(c=>calcularStatus(c)==='pendente').length;
@@ -1387,7 +1387,7 @@ function renderDashboard() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   let lista = clientes.filter(c => {
-    if (isTecnico && vinculo && c.tecnico !== vinculo) return false;
+    if (isTecnico) { if (!vinculo || c.tecnico !== vinculo) return false; }
     const match = c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
     if (filtroAtual==='todos') return match;
     return match && getStatusMes(c)===filtroAtual;
@@ -1424,7 +1424,7 @@ function renderLista() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   const lista = clientes.filter(c => {
-    if (isTecnico && vinculo && c.tecnico !== vinculo) return false;
+    if (isTecnico) { if (!vinculo || c.tecnico !== vinculo) return false; }
     return c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
   });
   const container = document.getElementById('listaBody');
@@ -1706,8 +1706,8 @@ function salvarMovimento() {
 function renderServicos() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  const clientesFiltrados = isTecnico && vinculo
-    ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso')
+  const clientesFiltrados = isTecnico
+    ? (vinculo ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso') : [])
     : clientes.filter(c => c.status !== 'suspenso');
   const selectClienteHTML = `
     <div class="form-group">
@@ -1960,7 +1960,8 @@ function gerarPedido() {
   // Pegar necessidades não entregues (filtradas por técnico se necessário)
   const itens = necessidades.filter(n => {
     if (n.entregue) return false;
-    if (isTecnico && vinculo) {
+    if (isTecnico) {
+      if (!vinculo) return false;
       const c = clientes.find(x => x.id === n.clienteId);
       return c?.tecnico === vinculo;
     }
@@ -2052,11 +2053,11 @@ function renderPedidos() {
   let pedidosFiltrados;
   if (isTecnico) {
     // Técnico vê apenas seus pedidos não consolidados
-    // Usa o campo tecnico salvo no pedido (necessidades já foram removidas ao gerar)
-    pedidosFiltrados = pedidos.filter(ped => {
+    // Sem vínculo = não vê nenhum pedido
+    pedidosFiltrados = vinculo ? pedidos.filter(ped => {
       if (ped.consolidado) return false;
       return ped.tecnico === usuarioLogado?.usuario;
-    });
+    }) : [];
   } else {
     // Gestor: sub-aba meus = não consolidados | consolidado = consolidados
     pedidosFiltrados = _subTabAtiva === 'todos'
@@ -2213,7 +2214,7 @@ function renderNecessidades() {
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   const lista=necessidades.filter(n=>{ 
     const c=clientes.find(x=>x.id===n.clienteId); 
-    if (isTecnico && vinculo && c?.tecnico !== vinculo) return false;
+    if (isTecnico) { if (!vinculo || c?.tecnico !== vinculo) return false; }
     return (c?.nome||'').toLowerCase().includes(busca); 
   });
   const container=document.getElementById('necPageBody');
@@ -2236,8 +2237,8 @@ function renderNecessidades() {
 function abrirModalNecessidade(clienteId) {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  const clientesFiltrados = isTecnico && vinculo
-    ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso')
+  const clientesFiltrados = isTecnico
+    ? (vinculo ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso') : [])
     : clientes;
   document.getElementById('necClienteSel').innerHTML=clientesFiltrados.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
   if(clienteId) document.getElementById('necClienteSel').value=clienteId;
