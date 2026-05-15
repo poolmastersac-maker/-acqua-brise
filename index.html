@@ -224,6 +224,8 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .nec-nome{font-weight:700;font-size:0.9rem;}
 .nec-sub{font-size:0.78rem;color:var(--muted);margin-top:2px;}
 /* PEDIDOS */
+.sub-tab{padding:7px 16px;border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;background:var(--surface2);color:var(--muted);font-size:0.82rem;font-family:var(--font);cursor:pointer;}
+.sub-tab.active{background:var(--surface);color:var(--accent2);font-weight:700;border-bottom:2px solid var(--accent);}
 .pedido-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
 .pedido-header{padding:14px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .pedido-titulo{font-weight:700;font-size:0.95rem;color:var(--accent2);}
@@ -696,9 +698,18 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 
 <!-- PEDIDOS -->
 <div class="page" id="page-pedidos">
-  <div class="toolbar">
-    <div style="font-size:0.9rem;font-weight:700;color:var(--accent2);">📋 Pedidos de Produtos</div>
-    <button class="btn btn-green btn-sm" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
+  <!-- TOOLBAR TÉCNICO -->
+  <div class="toolbar" id="pedidosToolbarTecnico" style="display:none;">
+    <div style="font-size:0.9rem;font-weight:700;color:var(--accent2);">📋 Meus Pedidos</div>
+    <button class="btn btn-primary btn-sm" onclick="enviarParaConsolidado()">📤 Enviar para Consolidado</button>
+  </div>
+  <!-- TOOLBAR GESTOR -->
+  <div class="toolbar" id="pedidosToolbarGestor" style="display:none;">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="sub-tab" id="subTabMeus" onclick="trocarSubTabPedidos('meus')">📋 Meus Pedidos</button>
+      <button class="sub-tab active" id="subTabTodos" onclick="trocarSubTabPedidos('todos')">🗂 Consolidado</button>
+    </div>
+    <button class="btn btn-green btn-sm" id="btnEnviarTodosWpp" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
   </div>
   <div id="pedidosBody">
     <div class="empty"><div class="empty-icon">📋</div><div>Nenhum pedido registrado</div></div>
@@ -1958,6 +1969,8 @@ function gerarPedido() {
     id: Date.now(),
     data: hoje.toISOString(),
     status: 'pendente',
+    consolidado: false,
+    tecnico: usuarioLogado?.usuario || '',
     itens: itens.map(n => {
       const p = produtos.find(x => x.id === n.produtoId);
       const c = clientes.find(x => x.id === n.clienteId);
@@ -1980,22 +1993,71 @@ function gerarPedido() {
   fbSync();
 }
 
+let _subTabAtiva = 'todos'; // gestor começa no consolidado
+
+function trocarSubTabPedidos(aba) {
+  _subTabAtiva = aba;
+  const btnMeus = document.getElementById('subTabMeus');
+  const btnTodos = document.getElementById('subTabTodos');
+  if (btnMeus) { if(aba==='meus') btnMeus.classList.add('active'); else btnMeus.classList.remove('active'); }
+  if (btnTodos) { if(aba==='todos') btnTodos.classList.add('active'); else btnTodos.classList.remove('active'); }
+  // mostrar/ocultar botão enviar todos só no consolidado
+  const btnWpp = document.getElementById('btnEnviarTodosWpp');
+  if (btnWpp) btnWpp.style.display = aba === 'todos' ? '' : 'none';
+  renderPedidos();
+}
+
+function enviarParaConsolidado() {
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  const meusPendentes = pedidos.filter(ped => {
+    if (ped.consolidado) return false;
+    // Verificar pelo campo tecnico do pedido (registrado ao gerar)
+    if (isTecnico && vinculo) return ped.tecnico === usuarioLogado?.usuario;
+    return true;
+  });
+  if (!meusPendentes.length) { showToast('⚠ Nenhum pedido pendente para enviar', 'error'); return; }
+  meusPendentes.forEach(ped => {
+    const idx = pedidos.findIndex(x => x.id === ped.id);
+    if (idx >= 0) { pedidos[idx].consolidado = true; pedidos[idx].tecnico = usuarioLogado?.usuario || ''; }
+  });
+  salvarPedidos(); renderPedidos(); fbSync();
+  showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+}
+
 function renderPedidos() {
   const container = document.getElementById('pedidosBody');
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
 
-  // Filtrar pedidos por técnico se necessário
-  const pedidosFiltrados = isTecnico && vinculo
-    ? pedidos.filter(ped => ped.itens.some(item => {
+  // Mostrar toolbar correta
+  const toolbarTec = document.getElementById('pedidosToolbarTecnico');
+  const toolbarGes = document.getElementById('pedidosToolbarGestor');
+  if (toolbarTec) toolbarTec.style.display = isTecnico ? 'flex' : 'none';
+  if (toolbarGes) toolbarGes.style.display = !isTecnico ? 'flex' : 'none';
+
+  // Definir lista conforme perfil e sub-aba
+  let pedidosFiltrados;
+  if (isTecnico) {
+    // Técnico vê apenas seus pedidos não consolidados
+    pedidosFiltrados = pedidos.filter(ped => {
+      if (ped.consolidado) return false;
+      return ped.itens.some(item => {
         const nec = necessidades.find(n => n.produtoId === item.produtoId);
         const c = nec ? clientes.find(x => x.id === nec.clienteId) : null;
         return c?.tecnico === vinculo;
-      }))
-    : pedidos;
+      });
+    });
+  } else {
+    // Gestor: sub-aba meus = não consolidados | consolidado = consolidados
+    pedidosFiltrados = _subTabAtiva === 'todos'
+      ? pedidos.filter(ped => ped.consolidado)
+      : pedidos.filter(ped => !ped.consolidado);
+  }
 
   if (!pedidosFiltrados.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>Nenhum pedido registrado</div></div>`;
+    const msg = isTecnico ? 'Nenhum pedido pendente' : (_subTabAtiva === 'todos' ? 'Nenhum pedido consolidado' : 'Nenhum pedido aberto');
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>${msg}</div></div>`;
     return;
   }
 
@@ -2008,12 +2070,18 @@ function renderPedidos() {
     const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
     const statusClass = ped.status === 'enviado' ? 'pedido-status-enviado' : 'pedido-status-pendente';
     const statusLabel = ped.status === 'enviado' ? '✓ Enviado' : '⏳ Pendente';
+    const tecLabel = ped.tecnico ? `<span style="font-size:0.72rem;color:var(--muted);">👤 ${ped.tecnico}</span>` : '';
+
+    // Botão WhatsApp só para gestor no consolidado
+    const btnWpp = !isTecnico && _subTabAtiva === 'todos'
+      ? `<button class="btn btn-green btn-sm" onclick="enviarPedidoWhatsApp(${ped.id})">💬 Enviar WhatsApp</button>`
+      : '';
 
     return `
     <div class="pedido-card" id="pedido_${ped.id}">
       <div class="pedido-header">
         <div>
-          <div class="pedido-titulo">Pedido #${String(ped.id).slice(-6)}</div>
+          <div class="pedido-titulo">Pedido #${String(ped.id).slice(-6)} ${tecLabel}</div>
           <div class="pedido-data">${dataStr} · ${ped.itens.length} produto(s)</div>
         </div>
         <span class="pedido-status ${statusClass}">${statusLabel}</span>
@@ -2029,14 +2097,11 @@ function renderPedidos() {
             </div>
             <span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '—'}</span>
           </div>`).join('')}
-        <div class="pedido-total">
-          <span class="pedido-total-label">Total do Pedido</span>
-          <span class="pedido-total-valor">R$ ${total.toFixed(2)}</span>
-        </div>
+
       </div>
       <div class="pedido-footer">
         <button class="btn btn-ghost btn-sm" onclick="excluirPedido(${ped.id})">🗑 Excluir</button>
-        <button class="btn btn-green btn-sm" onclick="enviarPedidoWhatsApp(${ped.id})">💬 Enviar WhatsApp</button>
+        ${btnWpp}
       </div>
     </div>`;
   }).join('');
