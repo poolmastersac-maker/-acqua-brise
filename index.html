@@ -1503,12 +1503,16 @@ function excluirClienteSelecionado() {
   document.getElementById('modalConfirm').classList.add('open');
 }
 function confirmarExclusao() {
-  clientes = clientes.filter(c=>c.id!==clienteSelecionadoId);
-  historico = historico.filter(h=>h.clienteId!==clienteSelecionadoId);
+  const idParaDeletar = clienteSelecionadoId;
+  clientes = clientes.filter(c=>c.id!==idParaDeletar);
+  historico = historico.filter(h=>h.clienteId!==idParaDeletar);
   clienteSelecionadoId=null; salvar(); salvarHistorico();
   document.getElementById('painelCliente').classList.remove('visible');
   fecharModal('modalConfirm'); renderLista(); renderDashboard();
-  showToast('Cliente removido','info'); fbSync();
+  showToast('Cliente removido','info');
+  // Deletar do Firebase para não retornar ao recarregar
+  if (window.fbDeleteDoc) window.fbDeleteDoc('clientes', idParaDeletar);
+  fbSync();
 }
 function saveClient() {
   const nome = document.getElementById('fNome').value.trim();
@@ -2190,12 +2194,15 @@ function excluirPedido(id) {
 }
 function confirmarExclusaoPedido() {
   if (!pedidoParaExcluirId) return;
-  pedidos = pedidos.filter(x => x.id !== pedidoParaExcluirId);
+  const idParaDeletar = pedidoParaExcluirId;
+  pedidos = pedidos.filter(x => x.id !== idParaDeletar);
   pedidoParaExcluirId = null;
   salvarPedidos();
   fecharModal('modalConfirmPedido');
   renderPedidos();
   showToast('Pedido removido', 'info');
+  // Deletar do Firebase para não retornar ao recarregar
+  if (window.fbDeleteDoc) window.fbDeleteDoc('pedidos', idParaDeletar);
   fbSync();
 }
 
@@ -2328,13 +2335,16 @@ function excluirUsuario(id) {
 }
 function confirmarExclusaoUsuario() {
   if (!usuarioParaExcluirId) return;
-  usuarios = usuarios.filter(x => x.id !== usuarioParaExcluirId);
+  const idParaDeletar = usuarioParaExcluirId;
+  usuarios = usuarios.filter(x => x.id !== idParaDeletar);
   usuarioParaExcluirId = null;
   salvarUsuarios();
   fecharModal('modalConfirmUsuario');
   renderUsuarios();
   preencherSelectTecnicos();
   showToast('Usuário excluído!', 'info');
+  // Deletar do Firebase para não retornar ao recarregar
+  if (window.fbDeleteDoc) window.fbDeleteDoc('usuarios', idParaDeletar);
   fbSync();
 }
 function toggleSenhaCfg() {
