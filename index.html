@@ -1044,16 +1044,18 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 <div class="modal-overlay" id="modalNecessidadeForm">
   <div class="modal" style="max-width:500px;">
     <div class="modal-title"><span>🧴 Registrar Necessidade</span><button class="modal-close" onclick="fecharModal('modalNecessidadeForm')">✕</button></div>
-    <div class="form-group"><label class="form-label">Cliente</label><select class="form-input" id="necClienteSel"></select></div>
+    <div class="form-group"><label class="form-label">Cliente</label><select class="form-input" id="necClienteSel" onchange="atualizarContadorNec(Number(this.value))"></select></div>
+    <div id="necContador" style="display:none;background:rgba(33,150,243,0.08);border:1px solid rgba(33,150,243,0.3);border-radius:8px;padding:6px 12px;font-size:0.82rem;color:var(--accent2);margin-bottom:8px;"></div>
     <div class="form-group"><label class="form-label">Produto</label><select class="form-input" id="necProdutoSel"></select></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Quantidade</label><input type="number" class="form-input" id="necQtd" placeholder="1" min="1"></div>
       <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-input" id="necData"></div>
     </div>
     <div class="form-group"><label class="form-label">Observação do Técnico</label><input type="text" class="form-input" id="necObs" placeholder="Ex: Produto urgente..."></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalNecessidadeForm')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="salvarNecessidade()">💾 Salvar</button>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalNecessidadeForm')">Fechar</button>
+      <button class="btn btn-green btn-sm" onclick="gerarPedidoDoModal()">📋 Gerar Pedido</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarNecessidade()">➕ Adicionar</button>
     </div>
   </div>
 </div>
@@ -2169,8 +2171,26 @@ function salvarNecessidade() {
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido','error'); return; }
   if (qtd < 1) { showToast('⚠ Quantidade deve ser ao menos 1','error'); return; }
   necessidades.push({id:Date.now(),clienteId,produtoId,qtd,data,obs,entregue:false,pago:false});
-  salvarNecessidades(); fecharModal('modalNecessidadeForm'); renderNecessidades();
-  showToast('✓ Necessidade registrada!','success'); fbSync();
+  salvarNecessidades(); renderNecessidades();
+  showToast('✓ Adicionado! Selecione mais produtos ou gere o pedido.','success');
+  fbSync();
+  // Manter modal aberto com mesmo cliente — limpar só produto/qtd/obs
+  document.getElementById('necProdutoSel').selectedIndex=0;
+  document.getElementById('necQtd').value=1;
+  document.getElementById('necObs').value='';
+  atualizarContadorNec(clienteId);
+}
+function atualizarContadorNec(clienteId) {
+  const total = necessidades.filter(n=>n.clienteId===clienteId&&!n.entregue).length;
+  const el = document.getElementById('necContador');
+  if (el) {
+    el.textContent = total > 0 ? total+' item(s) na lista' : '';
+    el.style.display = total > 0 ? 'block' : 'none';
+  }
+}
+function gerarPedidoDoModal() {
+  fecharModal('modalNecessidadeForm');
+  gerarPedido();
 }
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
 function excluirNec(id) { necessidades=necessidades.filter(x=>x.id!==id); salvarNecessidades(); renderNecessidades(); showToast('Removida','info'); fbSync(); }
