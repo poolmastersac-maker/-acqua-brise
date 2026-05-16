@@ -2007,12 +2007,16 @@ function gerarPedido() {
   if (!itens.length) { showToast('⚠ Nenhuma necessidade pendente para gerar pedido', 'error'); return; }
 
   const hoje = new Date();
+  // Todos os itens são do mesmo cliente (opção A: 1 pedido = 1 cliente)
+  const clienteIdPedido = itens[0]?.clienteId || null;
+
   const pedido = {
     id: Date.now(),
     data: hoje.toISOString(),
     status: 'pendente',
     consolidado: false,
     tecnico: usuarioLogado?.usuario || '',
+    clienteId: clienteIdPedido,
     itens: itens.map(n => {
       const p = produtos.find(x => x.id === n.produtoId);
       const c = clientes.find(x => x.id === n.clienteId);
@@ -2158,10 +2162,16 @@ function enviarPedidoWhatsApp(id) {
   const ped = pedidos.find(x => x.id === id);
   if (!ped) return;
 
+  // Buscar cliente vinculado ao pedido
+  const cliente = ped.clienteId ? clientes.find(c => c.id === ped.clienteId) : null;
+  const tel = cliente ? (cliente.tel || '').replace(/\D/g, '') : '';
+
   const data = new Date(ped.data).toLocaleDateString('pt-BR');
   const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
+  const nomeCliente = cliente?.nome || ped.itens[0]?.cliente || '';
 
-  let msg = `🏊 *Acqua Brise — Pedido de Produtos*\n`;
+  let msg = `🏊 *Acqua Brise — Orçamento de Produtos*\n`;
+  if (nomeCliente) msg += `👤 Cliente: *${nomeCliente}*\n`;
   msg += `📅 Data: ${data}\n`;
   msg += `─────────────────────\n`;
   ped.itens.forEach(item => {
@@ -2170,23 +2180,26 @@ function enviarPedidoWhatsApp(id) {
     msg += `   Qtd: ${item.qtd} un\n`;
     if (item.valorUnit > 0) msg += `   Valor unit.: R$ ${Number(item.valorUnit).toFixed(2)}\n`;
     if (item.valorUnit > 0) msg += `   Subtotal: R$ ${subtotal.toFixed(2)}\n`;
-    if (item.cliente) msg += `   Cliente: ${item.cliente}\n`;
     if (item.obs) msg += `   Obs: ${item.obs}\n`;
   });
   msg += `─────────────────────\n`;
   msg += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n`;
   msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
 
-  // Marcar como enviado ao confirmar
+  // Marcar como enviado
   const idPedido = id;
-  const msgFinal = msg;
-  window._onWppConfirm = () => {
-    const idx = pedidos.findIndex(x => x.id === idPedido);
-    if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
-    showToast('✓ Pedido enviado!', 'success');
-    fbSync();
-  };
-  abrirModalWhatsApp(msgFinal);
+  const idx = pedidos.findIndex(x => x.id === idPedido);
+  if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
+  showToast('✓ Pedido enviado!', 'success');
+  fbSync();
+
+  // Abrir WhatsApp direto se tiver telefone, senão abrir modal
+  if (tel && tel.length >= 10) {
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+  } else {
+    showToast('⚠ Cliente sem telefone cadastrado — informe o número', 'error');
+    abrirModalWhatsApp(msg);
+  }
 }
 
 function enviarTodosPedidos() {
