@@ -2008,7 +2008,10 @@ function gerarPedido() {
 
   const hoje = new Date();
   // Todos os itens são do mesmo cliente (opção A: 1 pedido = 1 cliente)
+  // clienteId vem diretamente da necessidade, que é selecionada no modal
   const clienteIdPedido = itens[0]?.clienteId || null;
+  // Garantir que clienteId é number para bater com clientes[].id
+  const clienteIdNum = clienteIdPedido ? Number(clienteIdPedido) : null;
 
   const pedido = {
     id: Date.now(),
@@ -2016,7 +2019,7 @@ function gerarPedido() {
     status: 'pendente',
     consolidado: false,
     tecnico: usuarioLogado?.usuario || '',
-    clienteId: clienteIdPedido,
+    clienteId: clienteIdNum,
     itens: itens.map(n => {
       const p = produtos.find(x => x.id === n.produtoId);
       const c = clientes.find(x => x.id === n.clienteId);
@@ -2024,6 +2027,7 @@ function gerarPedido() {
         necessidadeId: n.id,
         produto: p?.nome || '—',
         produtoId: n.produtoId,
+        clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
         valorUnit: Number(p?.valor || 0),
@@ -2163,7 +2167,17 @@ function enviarPedidoWhatsApp(id) {
   if (!ped) return;
 
   // Buscar cliente vinculado ao pedido
-  const cliente = ped.clienteId ? clientes.find(c => c.id === ped.clienteId) : null;
+  // Tenta pelo clienteId salvo; fallback: busca pelo nome do primeiro item (pedidos antigos sem clienteId)
+  // Busca em cascata: clienteId do pedido → clienteId do item → nome do item
+  let cliente = ped.clienteId ? clientes.find(c => c.id === Number(ped.clienteId)) : null;
+  if (!cliente && ped.itens?.length) {
+    const itemClienteId = ped.itens[0].clienteId;
+    if (itemClienteId) cliente = clientes.find(c => c.id === Number(itemClienteId));
+  }
+  if (!cliente && ped.itens?.length) {
+    const nomeItem = ped.itens[0].cliente || '';
+    if (nomeItem) cliente = clientes.find(c => c.nome === nomeItem);
+  }
   const tel = cliente ? (cliente.tel || '').replace(/\D/g, '') : '';
 
   const data = new Date(ped.data).toLocaleDateString('pt-BR');
