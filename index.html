@@ -2516,10 +2516,32 @@ function exportarExcel(tipo) {
   } else {
     const histFiltrado = getHistoricoFiltrado();
     const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
-    data=histFiltrado.map(h=>{
-      const c=clientes.find(x=>x.id===h.clienteId);
-      return{Cliente:c?.nome||'',Mês:MESES[h.mes],Ano:h.ano,Status:h.status,Valor:h.valor,Data:h.data||'',Obs:h.obs||''};
-    });
+    data = histFiltrado
+      .sort((a,b) => new Date(a.data||0) - new Date(b.data||0))
+      .map(h => {
+        const c = clientes.find(x => x.id === h.clienteId);
+        // Formatar data DD/MM/YYYY
+        let dataFmt = h.data || '';
+        if (dataFmt && dataFmt.includes('-')) {
+          const [y,m,d] = dataFmt.split('-');
+          dataFmt = `${d}/${m}/${y}`;
+        }
+        // Formatar valor R$ 0,00
+        const valorFmt = `R$ ${Number(h.valor||0).toFixed(2).replace('.',',')}`;
+        // Tipo de pagamento
+        const tipoPag = c?.tipoPag === 'retro' ? 'Retroativo - mês anterior' : 'Mês Atual';
+        return {
+          Cliente: c?.nome || '',
+          Mês: MESES[h.mes],
+          Ano: h.ano,
+          'Tipo Pagamento': tipoPag,
+          Status: h.status,
+          Valor: valorFmt,
+          Data: dataFmt,
+          'Nome Pix': (h.obs||'').replace(/^Pix\s+/i,'').trim(),
+          Obs: h.obs || ''
+        };
+      });
     filename = anoSel === 'todos' ? 'historico_completo.xlsx' : `historico_${anoSel}.xlsx`;
   }
   const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo);XLSX.writeFile(wb,filename);
