@@ -1206,9 +1206,8 @@ function calcularStatus(c) {
   const anoAtual = hoje.getFullYear();
   const regMes = historico.find(h=>h.clienteId===c.id&&h.mes===mesAtual&&h.ano===anoAtual);
   if (regMes) return regMes.status;
-  // Sem registro no histórico — usar status do cliente
-  if (c.status === 'pago') return 'pago';
-  // Calcular data limite de vencimento (dia + 3 dias de tolerância)
+  // Sem registro no histórico — calcular por data de vencimento
+  // NUNCA retornar 'pago' sem registro no histórico pois propagaria para meses anteriores
   const diaVenc = Math.min(Number(c.dia), new Date(anoAtual, mesAtual + 1, 0).getDate());
   const dataLimite = new Date(anoAtual, mesAtual, diaVenc + 3);
   if (hoje > dataLimite) return 'atrasado';
