@@ -2009,7 +2009,16 @@ function confirmarImportacao() {
   fecharModal('modalImportacao');
   renderDashboard();
   showToast(`✓ ${novos.length} pagamento(s) importado(s) com sucesso!`, 'success');
-  fbSync();
+  // Salvar diretamente no Firebase sem depender do ciclo fbSync
+  // para evitar race condition com carregarDoFirebase
+  if (window.fbSalvarHistorico) {
+    window.fbSalvarHistorico(novos.map(item => ({
+      clienteId: item.clienteId, mes: item.mes, ano: item.ano,
+      status: 'pago', valor: item.valor, data: item.data, obs: item.obs
+    })));
+  } else {
+    fbSync();
+  }
   _importacaoPendente = [];
 }
 
@@ -2898,6 +2907,20 @@ window.addEventListener('resize', ajustarOffsetHeader);
       await deleteDoc(doc(db, colecao, String(id)));
     } catch(e) {
       console.error('Erro ao deletar do Firebase:', e);
+    }
+  };
+
+  // Expor escrita direta de registros de histórico no Firebase
+  // Usado pela importação em lote para garantir persistência imediata
+  window.fbSalvarHistorico = async function(registros) {
+    try {
+      for (const h of registros) {
+        await setDoc(doc(db, 'historico', `${h.clienteId}_${h.ano}_${h.mes}`), h);
+      }
+      setBadge(true);
+    } catch(e) {
+      console.error('Erro ao salvar histórico no Firebase:', e);
+      setBadge(false);
     }
   };
 
