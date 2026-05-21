@@ -1599,7 +1599,11 @@ function togglePago(id) {
     if (idx>=0) historico[idx].status='pendente';
   }
   salvarHistorico();
+  // Garantir que o seletor de mês aponta para o mês atual ao marcar pago
+  const selMes = document.getElementById('mesCobrar');
+  if (selMes) selMes.value = String(mesIdx);
   renderDashboard();
+  atualizarStats();
   showToast(c.status==='pago'?'✓ Pago!':'Status atualizado','success');
   fbSync();
 }
