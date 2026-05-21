@@ -1848,7 +1848,6 @@ function renderVisaoGeral() {
 let _importacaoPendente = [];
 
 function abrirModalImportacao() {
-  // Pré-selecionar mês atual
   const hoje = new Date();
   document.getElementById('importMes').value = hoje.getMonth();
   document.getElementById('importAno').value = hoje.getFullYear();
@@ -1886,17 +1885,39 @@ function processarImportacao() {
 
     if (!nomeDigitado) return;
 
-    // Buscar cliente por nome (busca flexível)
-    const nomeLower = nomeDigitado.toLowerCase().trim();
-    let cliente = clientes.find(c => c.nome.toLowerCase() === nomeLower);
+    // Converter data DD/MM/YYYY → YYYY-MM-DD
+    let dataFormatada = dataDigitada.trim();
+    if (dataFormatada.includes('/')) {
+      const pd = dataFormatada.split('/');
+      if (pd.length === 3) {
+        dataFormatada = pd[0].length === 4
+          ? `${pd[0]}-${pd[1].padStart(2,'0')}-${pd[2].padStart(2,'0')}`  // YYYY/MM/DD
+          : `${pd[2].trim()}-${pd[1].trim().padStart(2,'0')}-${pd[0].trim().padStart(2,'0')}`; // DD/MM/YYYY
+      }
+    }
 
-    // Se não achou exato, buscar parcial
+    // Normalizar texto (remover acentos) para comparação robusta
+    const normStr = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const nomeLower = normStr(nomeDigitado);
+    let cliente = clientes.find(c => normStr(c.nome) === nomeLower);
+
     if (!cliente) {
-      const partsNome = nomeLower.split(' ');
-      cliente = clientes.find(c => {
-        const cNomeLower = c.nome.toLowerCase();
-        return partsNome.some(p => p.length > 3 && cNomeLower.includes(p));
-      });
+      const partsNome = nomeLower.split(' ').filter(p => p.length > 2);
+      if (partsNome.length > 0) {
+        let melhorCliente = null;
+        let melhorScore = 0;
+        clientes.forEach(c => {
+          const cNorm = normStr(c.nome);
+          const matches = partsNome.filter(p => cNorm.includes(p));
+          const score = matches.length;
+          const needed = partsNome.length === 1 ? 1 : 2;
+          if (score >= needed && score > melhorScore) {
+            melhorScore = score;
+            melhorCliente = c;
+          }
+        });
+        cliente = melhorCliente;
+      }
     }
 
     if (cliente) {
@@ -1909,7 +1930,7 @@ function processarImportacao() {
         ano,
         status: 'pago',
         valor: valorDigitado || cliente.valor,
-        data: dataDigitada,
+        data: dataFormatada,
         obs: obsDigitada,
         jaRegistrado: !!jaExiste,
         encontrado: true
