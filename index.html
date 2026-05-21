@@ -1417,7 +1417,16 @@ function renderDashboard() {
   const getStatusMes = (c) => {
     const reg = historico.find(h=>h.clienteId===c.id&&h.mes===mesIdx&&h.ano===anoAtual);
     if (reg) return reg.status;
-    return calcularStatus(c);
+    if (c.status === 'suspenso') return 'suspenso';
+    if (c.status === 'isento') return 'isento';
+    // Calcular status baseado no mês/ano selecionado (não no mês atual)
+    const hoje = new Date();
+    const mesRef = new Date(anoAtual, mesIdx + 1, 0); // último dia do mês selecionado
+    const diaVenc = Math.min(Number(c.dia), mesRef.getDate());
+    const dataLimite = new Date(anoAtual, mesIdx, diaVenc + 3);
+    // Se o mês selecionado já passou completamente → atrasado
+    if (hoje > dataLimite) return 'atrasado';
+    return 'pendente';
   };
 
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
