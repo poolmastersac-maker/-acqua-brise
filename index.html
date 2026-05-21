@@ -1585,26 +1585,38 @@ function limparForm() {
 function togglePago(id) {
   const c = clientes.find(x=>x.id===id);
   if (!c) return;
-  c.status = c.status==='pago'?'pendente':'pago';
-  salvar();
-  // Registrar no histórico do mês atual
   const hoje = new Date();
-  const mesIdx = hoje.getMonth();
   const anoAtual = hoje.getFullYear();
-  const idx = historico.findIndex(h=>h.clienteId===id&&h.ano===anoAtual&&h.mes===mesIdx);
-  if (c.status==='pago') {
-    const reg = {clienteId:id,ano:anoAtual,mes:mesIdx,status:'pago',valor:c.valor,data:hoje.toISOString().slice(0,10),obs:'Marcado via Dashboard'};
-    if (idx>=0) historico[idx]=reg; else historico.push(reg);
-  } else {
-    if (idx>=0) historico[idx].status='pendente';
-  }
-  salvarHistorico();
-  // Garantir que o seletor de mês aponta para o mês atual ao marcar pago
+  const mesAtualSistema = hoje.getMonth();
+
+  // Usar o mês do seletor do Dashboard — se nenhum selecionado, usa mês atual
   const selMes = document.getElementById('mesCobrar');
-  if (selMes) selMes.value = String(mesIdx);
+  const mesIdx = (selMes && selMes.value !== '') ? parseInt(selMes.value, 10) : mesAtualSistema;
+
+  // Verificar status ATUAL do mês selecionado no histórico
+  const idx = historico.findIndex(h=>h.clienteId===id&&h.ano===anoAtual&&h.mes===mesIdx);
+  const statusAtualMes = idx >= 0 ? historico[idx].status : 'pendente';
+  const novoStatus = statusAtualMes === 'pago' ? 'pendente' : 'pago';
+
+  // Atualizar histórico do mês selecionado
+  const reg = {
+    clienteId: id, ano: anoAtual, mes: mesIdx,
+    status: novoStatus, valor: c.valor,
+    data: novoStatus === 'pago' ? hoje.toISOString().slice(0,10) : '',
+    obs: novoStatus === 'pago' ? 'Marcado via Dashboard' : ''
+  };
+  if (idx >= 0) historico[idx] = reg; else historico.push(reg);
+
+  // Atualizar c.status APENAS se for o mês atual do sistema
+  if (mesIdx === mesAtualSistema) {
+    c.status = novoStatus;
+    salvar();
+  }
+
+  salvarHistorico();
   renderDashboard();
   atualizarStats();
-  showToast(c.status==='pago'?'✓ Pago!':'Status atualizado','success');
+  showToast(novoStatus === 'pago' ? '✓ Pago!' : 'Pagamento desfeito', 'success');
   fbSync();
 }
 
