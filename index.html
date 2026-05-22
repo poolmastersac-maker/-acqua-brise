@@ -810,19 +810,36 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 
         <!-- EXPORTAR RELATÓRIOS -->
         <div style="font-weight:700;font-size:0.88rem;margin-bottom:12px;color:var(--muted);">📊 Exportar Relatórios</div>
-        <div class="export-grid">
-          <div class="export-card" onclick="exportarExcel('clientes')"><div class="export-icon">📊</div><div class="export-name">Clientes (Excel)</div><div class="export-desc">Todos os clientes</div></div>
-          <!-- SELETOR DE ANO PARA HISTÓRICO -->
-          <div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">📅 Filtrar histórico por ano:</span>
-            <select class="form-input" id="exportAnoHistorico" style="width:auto;min-width:140px;">
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+          <!-- Cabeçalho da tabela -->
+          <div style="display:grid;grid-template-columns:1fr 2fr 140px 180px;background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 16px;gap:12px;">
+            <span style="font-size:0.75rem;font-weight:600;color:var(--muted);">Relatório</span>
+            <span style="font-size:0.75rem;font-weight:600;color:var(--muted);">Descrição</span>
+            <span style="font-size:0.75rem;font-weight:600;color:var(--muted);">Filtro</span>
+            <span style="font-size:0.75rem;font-weight:600;color:var(--muted);text-align:center;">Exportar</span>
+          </div>
+          <!-- Linha: Clientes -->
+          <div style="display:grid;grid-template-columns:1fr 2fr 140px 180px;padding:12px 16px;gap:12px;align-items:center;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.85rem;font-weight:600;color:var(--text);">👥 Clientes</span>
+            <span style="font-size:0.82rem;color:var(--muted);">Lista completa de clientes cadastrados</span>
+            <span style="font-size:0.78rem;color:var(--muted);">—</span>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button class="btn btn-primary btn-sm" onclick="exportarExcel('clientes')" title="Exportar clientes em Excel">📊 Excel</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportarPDF('clientes')" title="Exportar clientes em PDF">📄 PDF</button>
+            </div>
+          </div>
+          <!-- Linha: Histórico -->
+          <div style="display:grid;grid-template-columns:1fr 2fr 140px 180px;padding:12px 16px;gap:12px;align-items:center;">
+            <span style="font-size:0.85rem;font-weight:600;color:var(--text);">💰 Histórico</span>
+            <span style="font-size:0.82rem;color:var(--muted);">Pagamentos registrados por período</span>
+            <select class="form-input" id="exportAnoHistorico" style="width:100%;font-size:0.82rem;padding:5px 8px;">
               <option value="todos">Todos os anos</option>
             </select>
-            <span style="font-size:0.75rem;color:var(--muted);">Aplica-se às exportações de histórico abaixo</span>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button class="btn btn-primary btn-sm" onclick="exportarExcel('historico')" title="Exportar histórico em Excel">📊 Excel</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportarPDF('historico')" title="Exportar histórico em PDF">📄 PDF</button>
+            </div>
           </div>
-          <div class="export-card" onclick="exportarExcel('historico')"><div class="export-icon">📈</div><div class="export-name">Histórico (Excel)</div><div class="export-desc">Pagamentos registrados</div></div>
-          <div class="export-card" onclick="exportarPDF('clientes')"><div class="export-icon">📄</div><div class="export-name">Clientes (PDF)</div><div class="export-desc">Relatório em PDF</div></div>
-          <div class="export-card" onclick="exportarPDF('historico')"><div class="export-icon">📋</div><div class="export-name">Histórico (PDF)</div><div class="export-desc">Relatório financeiro</div></div>
         </div>
       </div>
     </div>
