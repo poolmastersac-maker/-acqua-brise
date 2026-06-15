@@ -3973,19 +3973,32 @@ function processarImportacao() {
     }
 
     if (cliente) {
-      const jaExiste = historico.find(h => h.clienteId === cliente.id && h.mes === mesIdx && h.ano === ano && h.status === 'pago');
+      // Aplicar regra de pagamento retroativo:
+      // Se cliente tem tipoPag='retro' e dia da data está entre 1 e 10 → mês anterior
+      let mesRef = mesIdx;
+      let anoRef = ano;
+      if (cliente.tipoPag === 'retro' && dataFormatada) {
+        const diaData = parseInt(dataFormatada.split('-')[2] || '0', 10);
+        if (diaData >= 1 && diaData <= 10) {
+          mesRef = mesIdx - 1;
+          if (mesRef < 0) { mesRef = 11; anoRef = ano - 1; } // dezembro do ano anterior
+        }
+      }
+
+      const jaExiste = historico.find(h => h.clienteId === cliente.id && h.mes === mesRef && h.ano === anoRef && h.status === 'pago');
       _importacaoPendente.push({
         clienteId: cliente.id,
         nomeCliente: cliente.nome,
         nomeDigitado,
-        mes: mesIdx,
-        ano,
+        mes: mesRef,
+        ano: anoRef,
         status: 'pago',
         valor: valorDigitado || cliente.valor,
         data: dataFormatada,
         obs: obsDigitada,
         jaRegistrado: !!jaExiste,
-        encontrado: true
+        encontrado: true,
+        retroativo: cliente.tipoPag === 'retro' && mesRef !== mesIdx
       });
       encontrados.push(cliente.nome);
     } else {
@@ -4010,7 +4023,7 @@ function processarImportacao() {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;margin-bottom:6px;background:${i.jaRegistrado ? 'rgba(217,119,6,0.08)' : 'rgba(5,150,105,0.08)'};border:1px solid ${i.jaRegistrado ? 'rgba(217,119,6,0.2)' : 'rgba(5,150,105,0.2)'};">
         <div>
           <div style="font-weight:700;font-size:0.85rem;">${i.nomeCliente}</div>
-          <div style="font-size:0.75rem;color:var(--muted);"><span style="background:rgba(33,150,243,0.1);color:var(--accent2);padding:1px 6px;border-radius:4px;font-weight:600;">${mesesNome[i.mes]}/${i.ano}</span> · R$ ${Number(i.valor).toFixed(2)}${i.data ? ' · '+i.data.split('-').reverse().join('/') : ''}</div>
+          <div style="font-size:0.75rem;color:var(--muted);"><span style="background:rgba(33,150,243,0.1);color:var(--accent2);padding:1px 6px;border-radius:4px;font-weight:600;">${mesesNome[i.mes]}/${i.ano}</span>${i.retroativo ? ' <span style="background:rgba(217,119,6,0.1);color:#b45309;padding:1px 6px;border-radius:4px;font-size:0.7rem;">↩ retroativo</span>' : ''} · R$ ${Number(i.valor).toFixed(2)}${i.data ? ' · '+i.data.split('-').reverse().join('/') : ''}</div>
         </div>
         <span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;background:${i.jaRegistrado ? 'rgba(217,119,6,0.15)' : 'rgba(5,150,105,0.15)'};color:${i.jaRegistrado ? 'var(--yellow)' : 'var(--green)'};">
           ${i.jaRegistrado ? '⚠ Já registrado' : '✓ Novo'}
