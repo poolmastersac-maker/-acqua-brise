@@ -3767,7 +3767,8 @@ function renderEstoque() {
   }).join('');
 }
 function abrirModalProduto(id) {
-  const p=id?produtos.find(x=>x.id===id):null;
+  const idNum = id ? Number(id) : null;
+  const p=idNum?produtos.find(x=>Number(x.id)===idNum):null;
   document.getElementById('prodEditId').value=p?p.id:'';
   document.getElementById('modalProdTitulo').textContent=p?'Editar Produto':'Novo Produto';
   document.getElementById('prodCodigo').value=p?.codigo||''; document.getElementById('prodNome').value=p?.nome||'';
@@ -3777,12 +3778,15 @@ function abrirModalProduto(id) {
 }
 function salvarProduto() {
   const nome=document.getElementById('prodNome').value.trim(); if(!nome){showToast('⚠ Nome obrigatório','error');return;}
-  const prod={id:document.getElementById('prodEditId').value||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
+  const editIdRaw = document.getElementById('prodEditId').value;
+  // Converter id para number se existir — evita falha no findIndex por tipo (string !== number)
+  const editId = editIdRaw ? (isNaN(Number(editIdRaw)) ? editIdRaw : Number(editIdRaw)) : null;
+  const prod={id:editId||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
   const idx=produtos.findIndex(p=>p.id===prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
   salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success'); fbSync();
 }
 function abrirModalMovimento(id) {
-  const p=produtos.find(x=>x.id===id);
+  const p=produtos.find(x=>Number(x.id)===Number(id));
   document.getElementById('movProdId').value=id;
   document.getElementById('modalMovTitulo').textContent='Movimentar: '+(p?.nome||'');
   document.getElementById('movQtd').value=''; document.getElementById('movObs').value='';
