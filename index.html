@@ -2976,6 +2976,17 @@ João Silva | 300" style="resize:vertical;font-family:monospace;font-size:0.82re
   </div>
 </div>
 
+<div class="modal-overlay" id="modalConfirmProduto" bis_skin_checked="1">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-title"><span>⚠ Confirmar Exclusão</span></div>
+    <p style="margin:12px 0;color:var(--muted);font-size:0.88rem;">Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmProduto')">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarExclusaoProduto()">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalConfirmPedido" bis_skin_checked="1">
   <div class="modal" style="max-width:340px;text-align:center;" bis_skin_checked="1">
     <div style="font-size:2rem;margin-bottom:10px;" bis_skin_checked="1">🗑️</div>
@@ -3761,6 +3772,8 @@ function renderEstoque() {
         <div class="produto-acoes">
           <button class="btn btn-primary btn-sm" onclick="abrirModalMovimento(${p.id})">📦 Movimentar</button>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalProduto(${p.id})">✏ Editar</button>
+          <button class="btn btn-red btn-sm" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
+          <button class="btn btn-red btn-sm" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
         </div>
       </div>
     </div>`;
@@ -3785,6 +3798,26 @@ function salvarProduto() {
   const idx=produtos.findIndex(p=>p.id===prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
   salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success'); fbSync();
 }
+let _produtoParaExcluirId = null;
+
+function excluirProduto(id) {
+  _produtoParaExcluirId = Number(id);
+  document.getElementById('modalConfirmProduto').classList.add('open');
+}
+
+function confirmarExclusaoProduto() {
+  if (!_produtoParaExcluirId) return;
+  const idParaDeletar = _produtoParaExcluirId;
+  produtos = produtos.filter(p => p.id !== idParaDeletar);
+  _produtoParaExcluirId = null;
+  salvarProdutos();
+  fecharModal('modalConfirmProduto');
+  renderEstoque();
+  showToast('✓ Produto excluído!', 'info');
+  if (window.fbDeleteDoc) window.fbDeleteDoc('produtos', idParaDeletar);
+  fbSync();
+}
+
 function abrirModalMovimento(id) {
   const p=produtos.find(x=>Number(x.id)===Number(id));
   document.getElementById('movProdId').value=id;
