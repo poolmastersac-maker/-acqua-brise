@@ -143,8 +143,9 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
 .hist-layout{display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;}
-.hist-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:80px;max-height:calc(100vh - 120px);overflow-y:auto;}
-.hist-lista-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.hist-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:80px;max-height:calc(100vh - 120px);display:flex;flex-direction:column;}
+.hist-lista-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.hist-lista #histListaBody{overflow-y:auto;flex:1;}
 .hist-cliente-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;}
 .hist-cliente-item:last-child{border-bottom:none;}
 .hist-cliente-item:hover{background:rgba(33,150,243,0.05);}
@@ -572,6 +573,11 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <button class="filter-btn active" onclick="setFilter(this,'atrasado')">⚠ Atrasados</button>
       <button class="filter-btn" onclick="setFilter(this,'suspenso')">🚫 Suspensos</button>
     </div>
+    <select style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;" onchange="_ordemDashboard=this.value;renderDashboard();" title="Ordenar clientes">
+      <option value="alfabetica">🔤 Alfabética</option>
+      <option value="vencimento">📅 Vencimento</option>
+      <option value="status">⚠ Status</option>
+    </select>
     <select class="form-input btn-sm" id="mesCobrar" style="width:auto;background:white;" onchange="renderDashboard()">
       <option value="">Mês atual</option>
       <option value="0">Janeiro</option><option value="1">Fevereiro</option><option value="2">Março</option>
@@ -1331,6 +1337,11 @@ tr:hover td{background:rgba(33,150,243,0.04);}
         <div class="lista-header" bis_skin_checked="1">
           <span class="lista-header-title">Clientes Cadastrados</span>
           <div class="search-wrap" style="max-width:170px;" bis_skin_checked="1"><span class="search-icon" style="font-size:0.8rem;">🔍</span><input type="text" id="searchClientes" placeholder="Buscar..." oninput="renderLista()" style="padding:6px 10px 6px 30px;font-size:0.8rem;"></div>
+           <select style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;" onchange="_ordemClientes=this.value;renderLista();" title="Ordenar">
+             <option value="alfabetica">🔤 Alfabética</option>
+             <option value="vencimento">📅 Vencimento</option>
+             <option value="valor">💰 Valor</option>
+           </select>
         </div>
         <div id="listaBody" bis_skin_checked="1"><div class="cliente-item " onclick="selecionarCliente(1700000000000)" ondblclick="selecionarClienteEScroll(1700000000000)" bis_skin_checked="1">
       <div class="ci-info" bis_skin_checked="1"><span class="ci-nome">Abel Monteiro Santa Adelia <span class="tag-retro">↩</span></span><span class="ci-sub">Santa Adelia · Dia 10 · R$ 220.00</span></div>
@@ -1579,6 +1590,12 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <div class="hist-lista-header" bis_skin_checked="1">
         <div class="lista-header-title" bis_skin_checked="1">Clientes</div>
         <div class="search-wrap" style="margin-top:8px;" bis_skin_checked="1"><span class="search-icon" style="font-size:0.8rem;">🔍</span><input type="text" id="searchHistClientes" placeholder="Buscar..." oninput="renderHistLista()" style="padding:6px 10px 6px 30px;font-size:0.8rem;"></div>
+        <select style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;" style="margin-top:6px;width:100%;" onchange="_ordemHistorico=this.value;renderHistLista();" title="Ordenar">
+          <option value="alfabetica">🔤 Alfabética</option>
+          <option value="vencimento">📅 Vencimento</option>
+          <option value="recente">🕐 Pagamento recente</option>
+          <option value="mes_ref">📆 Mês de referência</option>
+        </select>
       </div>
       <div id="histListaBody" bis_skin_checked="1">
     <div class="hist-cliente-item active" onclick="selecionarHistCliente(1700000000000)" bis_skin_checked="1">
@@ -3456,6 +3473,31 @@ function setFilter(btn, filtro) {
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); filtroAtual = filtro; renderDashboard();
 }
+function ordenarClientes(lista, ordem) {
+  const sorted = [...lista];
+  switch(ordem) {
+    case 'alfabetica':  return sorted.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    case 'vencimento':  return sorted.sort((a,b)=>Number(a.dia)-Number(b.dia));
+    case 'valor':       return sorted.sort((a,b)=>Number(b.valor)-Number(a.valor));
+    case 'status':      {
+      const prioridade = {atrasado:0, pendente:1, pago:2, suspenso:3, isento:4};
+      return sorted.sort((a,b)=>(prioridade[a.status]??5)-(prioridade[b.status]??5));
+    }
+    case 'recente':     return sorted.sort((a,b)=>{
+      const ha = historico.filter(h=>h.clienteId===a.id&&h.status==='pago').sort((x,y)=>new Date(y.data||0)-new Date(x.data||0))[0];
+      const hb = historico.filter(h=>h.clienteId===b.id&&h.status==='pago').sort((x,y)=>new Date(y.data||0)-new Date(x.data||0))[0];
+      return new Date(hb?.data||0) - new Date(ha?.data||0);
+    });
+    case 'mes_ref':     return sorted.sort((a,b)=>{
+      const ha = historico.filter(h=>h.clienteId===a.id).sort((x,y)=>y.ano-x.ano||y.mes-x.mes)[0];
+      const hb = historico.filter(h=>h.clienteId===b.id).sort((x,y)=>y.ano-x.ano||y.mes-x.mes)[0];
+      if (!ha && !hb) return 0; if (!ha) return 1; if (!hb) return -1;
+      return hb.ano!==ha.ano ? hb.ano-ha.ano : hb.mes-ha.mes;
+    });
+    default: return sorted;
+  }
+}
+
 function renderDashboard() {
   const busca = document.getElementById('searchInput').value.toLowerCase();
   const mesSel = document.getElementById('mesCobrar').value;
@@ -3479,12 +3521,12 @@ function renderDashboard() {
 
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  let lista = clientes.filter(c => {
+  let lista = ordenarClientes(clientes.filter(c => {
     if (isTecnico) { if (!vinculo || c.tecnico !== vinculo) return false; }
     const match = c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
     if (filtroAtual==='todos') return match;
     return match && getStatusMes(c)===filtroAtual;
-  });
+  }), _ordemDashboard);
   const tbody = document.getElementById('tableBody');
   if (!lista.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">🏊</div><div>Nenhum cliente encontrado</div></div></td></tr>`; }
   else {
@@ -3516,10 +3558,11 @@ function renderLista() {
   const busca = (document.getElementById('searchClientes')?.value||'').toLowerCase();
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  const lista = clientes.filter(c => {
+  const listaFiltrada2 = clientes.filter(c => {
     if (isTecnico) { if (!vinculo || c.tecnico !== vinculo) return false; }
     return c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
   });
+  const lista = ordenarClientes(listaFiltrada2, _ordemClientes);
   const container = document.getElementById('listaBody');
   if (!lista.length) { container.innerHTML=`<div class="empty"><div class="empty-icon">👤</div><div>Nenhum cliente</div></div>`; return; }
   container.innerHTML = lista.map(c=>{
@@ -3671,7 +3714,8 @@ function togglePago(id) {
 // HISTÓRICO
 function renderHistLista() {
   const busca = (document.getElementById('searchHistClientes')?.value||'').toLowerCase();
-  const lista = clientes.filter(c=>c.nome.toLowerCase().includes(busca));
+  const listaFiltradaH = clientes.filter(c=>c.nome.toLowerCase().includes(busca));
+  const lista = ordenarClientes(listaFiltradaH, _ordemHistorico);
   const container = document.getElementById('histListaBody');
   if (!lista.length) { container.innerHTML=`<div class="empty"><div>Nenhum cliente</div></div>`; return; }
   container.innerHTML = lista.map(c=>`
@@ -3772,7 +3816,6 @@ function renderEstoque() {
         <div class="produto-acoes">
           <button class="btn btn-primary btn-sm" onclick="abrirModalMovimento(${p.id})">📦 Movimentar</button>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalProduto(${p.id})">✏ Editar</button>
-          <button class="btn btn-red btn-sm" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
           <button class="btn btn-red btn-sm" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
         </div>
       </div>
@@ -5256,6 +5299,9 @@ function gerarPDFContador() {
 
 // Armazena valores editáveis do pedido em memória
 let _pedidoFornecedor = [];
+let _ordemDashboard = 'alfabetica';
+let _ordemClientes  = 'alfabetica';
+let _ordemHistorico = 'alfabetica';
 
 function salvarPedidoFornecedorLocal() {
   const dados = {
