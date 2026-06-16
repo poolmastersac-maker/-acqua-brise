@@ -2017,7 +2017,8 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   <div class="toolbar" bis_skin_checked="1">
     <button class="btn btn-ghost btn-sm" onclick="navegarPara('estoque')">← Voltar ao Estoque</button>
     <div style="font-size:0.9rem;font-weight:700;color:var(--accent2);" bis_skin_checked="1">🛒 Pedido ao Fornecedor</div>
-    <button class="btn btn-primary btn-sm" onclick="gerarPDFPedidoFornecedor()">📄 Gerar PDF</button>
+    <button class="btn btn-primary btn-sm" onclick="gerarPDFPedidoFornecedor()">📄 PDF Completo</button>
+    <button class="btn btn-ghost btn-sm" onclick="gerarPDFPedidoFornecedor(true)">📋 PDF Simplificado</button>
   </div>
 
   <div style="overflow-x:auto;margin-bottom:16px;" bis_skin_checked="1">
@@ -3813,10 +3814,12 @@ function renderEstoque() {
           <div class="produto-stat"><div class="produto-stat-label">Em Estoque</div><div class="produto-stat-value" style="color:${alerta?'var(--red)':'var(--text)'}">${p.qtd} un</div></div>
           <div class="produto-stat"><div class="produto-stat-label">Valor Unit.</div><div class="produto-stat-value">R$ ${Number(p.valor||0).toFixed(2)}</div></div>
         </div>
-        <div class="produto-acoes">
-          <button class="btn btn-primary btn-sm" onclick="abrirModalMovimento(${p.id})">📦 Movimentar</button>
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalProduto(${p.id})">✏ Editar</button>
-          <button class="btn btn-red btn-sm" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
+        <div class="produto-acoes" style="flex-direction:column;gap:6px;">
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="abrirModalMovimento(${p.id})">📦 Movimentar</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="abrirModalProduto(${p.id})">✏ Editar</button>
+            <button class="btn btn-red btn-sm" style="flex:1;" onclick="excluirProduto(${p.id})">🗑 Excluir</button>
+          </div>
         </div>
       </div>
     </div>`;
@@ -5425,7 +5428,7 @@ function calcularPedidoFornecedor() {
   }
 }
 
-function gerarPDFPedidoFornecedor() {
+function gerarPDFPedidoFornecedor(simplificado = false) {
   const fmt = v => v > 0 ? 'R$ '+v.toFixed(2).replace('.',',') : '—';
   const hoje = new Date().toLocaleDateString('pt-BR');
   let totalLucro = 0, totalCompra = 0;
@@ -5445,42 +5448,61 @@ function gerarPDFPedidoFornecedor() {
   const restante = valorGastar - totalCompra;
 
   try {
-    const doc = new jspdf.jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
-    const W = 297, mg = 14;
+    // Simplificado: retrato A4; Completo: paisagem A4
+    const orientation = simplificado ? 'portrait' : 'landscape';
+    const doc = new jspdf.jsPDF({ orientation, unit:'mm', format:'a4' });
+    const W = simplificado ? 210 : 297, mg = 14;
 
     doc.setFontSize(14); doc.setFont(undefined,'bold');
     doc.text('Acqua Brise Piscinas — Pedido ao Fornecedor', W/2, 16, {align:'center'});
     doc.setFontSize(9); doc.setFont(undefined,'normal');
-    doc.text(`Gerado em: ${hoje}`, W/2, 22, {align:'center'});
+    const subtitulo = simplificado ? 'Lista simplificada' : 'Relatório completo';
+    doc.text(`${subtitulo} · Gerado em: ${hoje}`, W/2, 22, {align:'center'});
 
-    doc.autoTable({
-      startY: 28,
-      margin: { left: mg, right: mg },
-      head: [['Descrição','Est. Atual','Comprar','Val. Unit.','Val. Revenda','Lucro Unit.','Lucro Total','Val. Compra']],
-      body: itens.map(item => {
-        const lucroUnit  = item.valorRevenda - item.valorUnit;
-        const lucroTotal = lucroUnit > 0 ? lucroUnit * item.comprar : 0;
-        const valCompra  = item.valorUnit * item.comprar;
-        return [
-          item.nome, item.estoqueAtual, item.comprar,
-          fmt(item.valorUnit), fmt(item.valorRevenda),
-          item.valorRevenda > 0 ? fmt(lucroUnit) : '—',
-          lucroTotal > 0 ? fmt(lucroTotal) : '—',
-          valCompra > 0 ? fmt(valCompra) : '—'
-        ];
-      }),
-      foot: [
-        ['Total','','','','','', fmt(totalLucro), fmt(totalCompra)],
-        ['Valor para gastar','','','','','','', valorGastar > 0 ? fmt(valorGastar) : '—'],
-        ['Valor restante','','','','','','', valorGastar > 0 ? 'R$ '+restante.toFixed(2).replace('.',',') : '—'],
-      ],
-      headStyles: { fillColor:[33,150,243], textColor:255, fontSize:8, fontStyle:'bold' },
-      bodyStyles: { fontSize:8 },
-      footStyles: { fillColor:[240,240,240], textColor:[50,50,50], fontSize:8, fontStyle:'bold' },
-      alternateRowStyles: { fillColor:[248,250,252] },
-    });
+    if (simplificado) {
+      // PDF simplificado: só Descrição e Comprar
+      doc.autoTable({
+        startY: 28,
+        margin: { left: mg, right: mg },
+        head: [['Descrição', 'Qtd. a Comprar']],
+        body: itens.map(item => [item.nome, item.comprar]),
+        headStyles: { fillColor:[33,150,243], textColor:255, fontSize:10, fontStyle:'bold' },
+        bodyStyles: { fontSize:10 },
+        alternateRowStyles: { fillColor:[248,250,252] },
+        columnStyles: { 0:{cellWidth:'auto'}, 1:{cellWidth:40, halign:'center'} }
+      });
+    } else {
+      // PDF completo: todas as colunas
+      doc.autoTable({
+        startY: 28,
+        margin: { left: mg, right: mg },
+        head: [['Descrição','Est. Atual','Comprar','Val. Unit.','Val. Revenda','Lucro Unit.','Lucro Total','Val. Compra']],
+        body: itens.map(item => {
+          const lucroUnit  = item.valorRevenda - item.valorUnit;
+          const lucroTotal = lucroUnit > 0 ? lucroUnit * item.comprar : 0;
+          const valCompra  = item.valorUnit * item.comprar;
+          return [
+            item.nome, item.estoqueAtual, item.comprar,
+            fmt(item.valorUnit), fmt(item.valorRevenda),
+            item.valorRevenda > 0 ? fmt(lucroUnit) : '—',
+            lucroTotal > 0 ? fmt(lucroTotal) : '—',
+            valCompra > 0 ? fmt(valCompra) : '—'
+          ];
+        }),
+        foot: [
+          ['Total','','','','','', fmt(totalLucro), fmt(totalCompra)],
+          ['Valor para gastar','','','','','','', valorGastar > 0 ? fmt(valorGastar) : '—'],
+          ['Valor restante','','','','','','', valorGastar > 0 ? 'R$ '+restante.toFixed(2).replace('.',',') : '—'],
+        ],
+        headStyles: { fillColor:[33,150,243], textColor:255, fontSize:8, fontStyle:'bold' },
+        bodyStyles: { fontSize:8 },
+        footStyles: { fillColor:[240,240,240], textColor:[50,50,50], fontSize:8, fontStyle:'bold' },
+        alternateRowStyles: { fillColor:[248,250,252] },
+      });
+    }
 
-    doc.save(`pedido_fornecedor_${hoje.replace(/\//g,'-')}.pdf`);
+    const sufixo = simplificado ? 'simplificado' : 'completo';
+    doc.save(`pedido_fornecedor_${sufixo}_${hoje.replace(/\//g,'-')}.pdf`);
     showToast('✓ PDF gerado com sucesso!', 'success');
   } catch(e) {
     showToast('⚠ Erro ao gerar PDF: '+e.message, 'error');
