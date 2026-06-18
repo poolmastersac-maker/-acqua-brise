@@ -4479,14 +4479,14 @@ function enviarPedidoWhatsApp(id) {
   });
   const total = itensComValor.reduce((s, i) => s + (i.valorUnit * i.qtd), 0);
 
-  let msg = `*Acqua Brise — Manutenção e Limpeza de Piscinas*\n`;
+  let msg = `Acqua Brise — Manutenção e Limpeza de Piscinas\n`;
   if (nomeCliente) msg += `Cliente: *${nomeCliente}*\n`;
   msg += `Data: ${data}\n`;
   msg += `─────────────────────\n`;
   itensComValor.forEach(item => {
     const subtotal = item.valorUnit * item.qtd;
     const valorStr = subtotal > 0 ? ` — R$ ${subtotal.toFixed(2)}` : ``;
-    msg += `\n*${item.produto}*\n`;
+    msg += `\n${item.produto}\n`;
     msg += `Qtd: ${item.qtd} un${valorStr}\n`;
     if (item.obs) msg += `Obs: ${item.obs}\n`;
   });
@@ -4494,9 +4494,9 @@ function enviarPedidoWhatsApp(id) {
   if (total > 0) {
     msg += `*TOTAL: R$ ${total.toFixed(2)}*\n`;
   } else {
-    msg += `_Valores a confirmar_\n`;
+    msg += `Valores a confirmar\n`;
   }
-  msg += `\nAtenciosamente,\nAcqua Brise`;
+  msg += `\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise`;
 
   // Marcar como enviado
   const idPedido = id;
