@@ -4467,14 +4467,23 @@ function enviarPedidoWhatsApp(id) {
   const tel = cliente ? (cliente.tel || '').replace(/\D/g, '') : '';
 
   const data = new Date(ped.data).toLocaleDateString('pt-BR');
-  const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
   const nomeCliente = cliente?.nome || ped.itens[0]?.cliente || '';
+
+  // Sempre busca o valor atual do estoque — preço do estoque tem prioridade
+  // Fallback por nome caso o produtoId não bata (produtos editados geram novo id)
+  const itensComValor = ped.itens.map(item => {
+    const prod = produtos.find(x => x.id === Number(item.produtoId))
+               || produtos.find(x => x.nome === item.produto);
+    const valorAtual = Number(prod?.valor || 0);
+    return { ...item, valorUnit: valorAtual };
+  });
+  const total = itensComValor.reduce((s, i) => s + (i.valorUnit * i.qtd), 0);
 
   let msg = `*Acqua Brise — Manutenção e Limpeza de Piscinas*\n`;
   if (nomeCliente) msg += `Cliente: *${nomeCliente}*\n`;
   msg += `Data: ${data}\n`;
   msg += `─────────────────────\n`;
-  ped.itens.forEach(item => {
+  itensComValor.forEach(item => {
     const subtotal = item.valorUnit * item.qtd;
     const valorStr = subtotal > 0 ? ` — R$ ${subtotal.toFixed(2)}` : ``;
     msg += `\n*${item.produto}*\n`;
