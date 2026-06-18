@@ -240,7 +240,14 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .pedido-total{display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border);}
 .pedido-total-label{font-weight:700;font-size:0.95rem;}
 .pedido-total-valor{font-weight:800;font-size:1.1rem;color:var(--green);}
-.pedido-footer{padding:12px 18px;background:var(--surface2);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.pedido-footer{padding:12px 18px;background:var(--surface2);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;}
+.pedido-checks{display:flex;gap:12px;align-items:center;}
+.pedido-check-label{display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;cursor:pointer;padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:white;transition:all 0.2s;user-select:none;}
+.pedido-check-label:hover{border-color:var(--accent);background:rgba(33,150,243,0.05);}
+.pedido-check-label.entregue-ativo{border-color:var(--green);background:rgba(5,150,105,0.08);color:var(--green);}
+.pedido-check-label.pago-ativo{border-color:#7C3AED;background:rgba(124,58,237,0.08);color:#7C3AED;}
+.pedido-check-label input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer;}
+.pedido-check-label.pago-ativo input[type=checkbox]{accent-color:#7C3AED;}
 .pedido-status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;}
 .pedido-status-pendente{background:rgba(217,119,6,0.1);color:var(--yellow);}
 .pedido-status-enviado{background:rgba(5,150,105,0.1);color:var(--green);}
@@ -4370,11 +4377,106 @@ function renderPedidos() {
 
       </div>
       <div class="pedido-footer">
-        <button class="btn btn-ghost btn-sm" onclick="excluirPedido(${ped.id})">🗑 Excluir</button>
-        ${btnWpp}
+        <div class="pedido-checks">
+          <label class="pedido-check-label ${ped.entregue ? 'entregue-ativo' : ''}" id="label-entregue-${ped.id}" title="Marcar como entregue — baixa o estoque automaticamente">
+            <input type="checkbox" ${ped.entregue ? 'checked' : ''} onchange="togglePedidoEntregue(${ped.id}, this)">
+            ✅ Entregue
+          </label>
+          <label class="pedido-check-label ${ped.pago ? 'pago-ativo' : ''}" id="label-pago-${ped.id}">
+            <input type="checkbox" ${ped.pago ? 'checked' : ''} onchange="togglePedidoPago(${ped.id}, this)">
+            💜 Pago
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="excluirPedido(${ped.id})">🗑 Excluir</button>
+          ${btnWpp}
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function togglePedidoEntregue(id, checkbox) {
+  const ped = pedidos.find(x => x.id === id);
+  if (!ped) return;
+
+  const marcando = checkbox.checked;
+
+  if (marcando) {
+    // Confirmar antes de baixar o estoque
+    if (!confirm('Marcar pedido como entregue?\n\nOs produtos serão baixados automaticamente do estoque.')) {
+      checkbox.checked = false;
+      return;
+    }
+
+    // Baixar cada item do estoque
+    const semEstoque = [];
+    ped.itens.forEach(item => {
+      const p = produtos.find(x => x.id === Number(item.produtoId));
+      if (p) {
+        if (p.qtd < item.qtd) {
+          semEstoque.push(`${item.produto} (estoque: ${p.qtd}, pedido: ${item.qtd})`);
+        }
+      }
+    });
+
+    if (semEstoque.length > 0) {
+      const continuar = confirm('⚠ Estoque insuficiente para:\n' + semEstoque.join('\n') + '\n\nDeseja marcar como entregue mesmo assim?');
+      if (!continuar) {
+        checkbox.checked = false;
+        return;
+      }
+    }
+
+    // Aplicar baixa no estoque (mesmo que insuficiente, se confirmado)
+    ped.itens.forEach(item => {
+      const p = produtos.find(x => x.id === Number(item.produtoId));
+      if (p) {
+        p.qtd = Math.max(0, p.qtd - item.qtd);
+      }
+    });
+
+    salvarProdutos();
+    renderEstoque();
+    showToast('✓ Entregue! Estoque atualizado.', 'success');
+
+  } else {
+    // Desmarcar: perguntar se quer devolver ao estoque
+    const devolver = confirm('Desmarcar entrega?\n\nDeseja devolver os produtos ao estoque?');
+    if (devolver) {
+      ped.itens.forEach(item => {
+        const p = produtos.find(x => x.id === Number(item.produtoId));
+        if (p) p.qtd += item.qtd;
+      });
+      salvarProdutos();
+      renderEstoque();
+      showToast('Entrega desmarcada. Estoque restaurado.', 'info');
+    } else {
+      showToast('Entrega desmarcada. Estoque não alterado.', 'info');
+    }
+  }
+
+  ped.entregue = marcando;
+  salvarPedidos();
+  fbSync();
+
+  // Atualizar estilo do label
+  const label = document.getElementById(`label-entregue-${id}`);
+  if (label) label.classList.toggle('entregue-ativo', marcando);
+}
+
+function togglePedidoPago(id, checkbox) {
+  const ped = pedidos.find(x => x.id === id);
+  if (!ped) return;
+
+  ped.pago = checkbox.checked;
+  salvarPedidos();
+  fbSync();
+
+  const label = document.getElementById(`label-pago-${id}`);
+  if (label) label.classList.toggle('pago-ativo', ped.pago);
+
+  showToast(ped.pago ? '💜 Pedido marcado como pago!' : 'Pagamento desmarcado.', ped.pago ? 'success' : 'info');
 }
 
 function enviarPedidoWhatsApp(id) {
