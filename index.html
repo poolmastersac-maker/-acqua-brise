@@ -4479,7 +4479,9 @@ function enviarPedidoWhatsApp(id) {
   });
   const total = itensComValor.reduce((s, i) => s + (i.valorUnit * i.qtd), 0);
 
-  let msg = `Acqua Brise — Manutenção e Limpeza de Piscinas\n`;
+  const nomeClientePrimeiro = nomeCliente ? nomeCliente.split(' ')[0] : '';
+  const nomeTecnico = ped.tecnico || '';
+  let msg = `Olá ${nomeClientePrimeiro}, tudo bem? O ${nomeTecnico} me informou que precisa de alguns produtos pra piscina, vou te enviar um orçamento dos produtos necessários, caso aprovar peço para o ${nomeTecnico} levar:\n\n`;
   if (nomeCliente) msg += `Cliente: *${nomeCliente}*\n`;
   msg += `Data: ${data}\n`;
   msg += `─────────────────────\n`;
