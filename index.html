@@ -4329,6 +4329,19 @@ function renderPedidos() {
     const statusLabel = ped.status === 'enviado' ? '✓ Enviado' : '⏳ Pendente';
     const tecLabel = ped.tecnico ? `<span style="font-size:0.72rem;color:var(--muted);">👤 ${ped.tecnico}</span>` : '';
 
+    // Nome do cliente a partir do clienteId ou do primeiro item
+    const clienteNome = (() => {
+      if (ped.clienteId) {
+        const c = clientes.find(x => x.id === Number(ped.clienteId));
+        if (c) return c.nome;
+      }
+      const primeiroItem = ped.itens.find(i => i.cliente && i.cliente !== '—');
+      return primeiroItem?.cliente || null;
+    })();
+    const clienteLabel = clienteNome
+      ? `<span style="font-size:0.8rem;font-weight:700;color:var(--accent2);background:rgba(33,150,243,0.1);padding:2px 10px;border-radius:20px;margin-left:8px;">🏠 ${clienteNome}</span>`
+      : '';
+
     // Botão WhatsApp só para gestor no consolidado
     const btnWpp = !isTecnico && _subTabAtiva === 'todos'
       ? `<button class="btn btn-green btn-sm" onclick="enviarPedidoWhatsApp(${ped.id})">💬 Enviar WhatsApp</button>`
@@ -4338,7 +4351,7 @@ function renderPedidos() {
     <div class="pedido-card" id="pedido_${ped.id}">
       <div class="pedido-header">
         <div>
-          <div class="pedido-titulo">Pedido #${String(ped.id).slice(-6)} ${tecLabel}</div>
+          <div class="pedido-titulo" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">Pedido #${String(ped.id).slice(-6)} ${tecLabel}${clienteLabel}</div>
           <div class="pedido-data">${dataStr} · ${ped.itens.length} produto(s)</div>
         </div>
         <span class="pedido-status ${statusClass}">${statusLabel}</span>
