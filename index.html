@@ -4399,83 +4399,52 @@ function renderPedidos() {
 function togglePedidoEntregue(id, checkbox) {
   const ped = pedidos.find(x => x.id === id);
   if (!ped) return;
-
   const marcando = checkbox.checked;
-
   if (marcando) {
-    // Confirmar antes de baixar o estoque
     if (!confirm('Marcar pedido como entregue?\n\nOs produtos serão baixados automaticamente do estoque.')) {
-      checkbox.checked = false;
-      return;
+      checkbox.checked = false; return;
     }
-
-    // Baixar cada item do estoque
     const semEstoque = [];
     ped.itens.forEach(item => {
       const p = produtos.find(x => x.id === Number(item.produtoId));
-      if (p) {
-        if (p.qtd < item.qtd) {
-          semEstoque.push(`${item.produto} (estoque: ${p.qtd}, pedido: ${item.qtd})`);
-        }
-      }
+      if (p && p.qtd < item.qtd) semEstoque.push(item.produto + ' (estoque: ' + p.qtd + ', pedido: ' + item.qtd + ')');
     });
-
     if (semEstoque.length > 0) {
       const continuar = confirm('⚠ Estoque insuficiente para:\n' + semEstoque.join('\n') + '\n\nDeseja marcar como entregue mesmo assim?');
-      if (!continuar) {
-        checkbox.checked = false;
-        return;
-      }
+      if (!continuar) { checkbox.checked = false; return; }
     }
-
-    // Aplicar baixa no estoque (mesmo que insuficiente, se confirmado)
     ped.itens.forEach(item => {
       const p = produtos.find(x => x.id === Number(item.produtoId));
-      if (p) {
-        p.qtd = Math.max(0, p.qtd - item.qtd);
-      }
+      if (p) p.qtd = Math.max(0, p.qtd - item.qtd);
     });
-
-    salvarProdutos();
-    renderEstoque();
+    salvarProdutos(); renderEstoque();
     showToast('✓ Entregue! Estoque atualizado.', 'success');
-
   } else {
-    // Desmarcar: perguntar se quer devolver ao estoque
     const devolver = confirm('Desmarcar entrega?\n\nDeseja devolver os produtos ao estoque?');
     if (devolver) {
       ped.itens.forEach(item => {
         const p = produtos.find(x => x.id === Number(item.produtoId));
         if (p) p.qtd += item.qtd;
       });
-      salvarProdutos();
-      renderEstoque();
+      salvarProdutos(); renderEstoque();
       showToast('Entrega desmarcada. Estoque restaurado.', 'info');
     } else {
       showToast('Entrega desmarcada. Estoque não alterado.', 'info');
     }
   }
-
   ped.entregue = marcando;
-  salvarPedidos();
-  fbSync();
-
-  // Atualizar estilo do label
-  const label = document.getElementById(`label-entregue-${id}`);
+  salvarPedidos(); fbSync();
+  const label = document.getElementById('label-entregue-' + id);
   if (label) label.classList.toggle('entregue-ativo', marcando);
 }
 
 function togglePedidoPago(id, checkbox) {
   const ped = pedidos.find(x => x.id === id);
   if (!ped) return;
-
   ped.pago = checkbox.checked;
-  salvarPedidos();
-  fbSync();
-
-  const label = document.getElementById(`label-pago-${id}`);
+  salvarPedidos(); fbSync();
+  const label = document.getElementById('label-pago-' + id);
   if (label) label.classList.toggle('pago-ativo', ped.pago);
-
   showToast(ped.pago ? '💜 Pedido marcado como pago!' : 'Pagamento desmarcado.', ped.pago ? 'success' : 'info');
 }
 
@@ -4501,21 +4470,24 @@ function enviarPedidoWhatsApp(id) {
   const total = ped.itens.reduce((s,i) => s + (i.valorUnit * i.qtd), 0);
   const nomeCliente = cliente?.nome || ped.itens[0]?.cliente || '';
 
-  let msg = `🏊 *Acqua Brise — Orçamento de Produtos*\n`;
-  if (nomeCliente) msg += `👤 Cliente: *${nomeCliente}*\n`;
-  msg += `📅 Data: ${data}\n`;
+  let msg = `*Acqua Brise — Manutenção e Limpeza de Piscinas*\n`;
+  if (nomeCliente) msg += `Cliente: *${nomeCliente}*\n`;
+  msg += `Data: ${data}\n`;
   msg += `─────────────────────\n`;
   ped.itens.forEach(item => {
     const subtotal = item.valorUnit * item.qtd;
-    msg += `\n📦 *${item.produto}*\n`;
-    msg += `   Qtd: ${item.qtd} un\n`;
-    if (item.valorUnit > 0) msg += `   Valor unit.: R$ ${Number(item.valorUnit).toFixed(2)}\n`;
-    if (item.valorUnit > 0) msg += `   Subtotal: R$ ${subtotal.toFixed(2)}\n`;
-    if (item.obs) msg += `   Obs: ${item.obs}\n`;
+    const valorStr = subtotal > 0 ? ` — R$ ${subtotal.toFixed(2)}` : ``;
+    msg += `\n*${item.produto}*\n`;
+    msg += `Qtd: ${item.qtd} un${valorStr}\n`;
+    if (item.obs) msg += `Obs: ${item.obs}\n`;
   });
   msg += `─────────────────────\n`;
-  msg += `💰 *TOTAL: R$ ${total.toFixed(2)}*\n`;
-  msg += `\nAtenciosamente,\nAcqua Brise 🌊`;
+  if (total > 0) {
+    msg += `*TOTAL: R$ ${total.toFixed(2)}*\n`;
+  } else {
+    msg += `_Valores a confirmar_\n`;
+  }
+  msg += `\nAtenciosamente,\nAcqua Brise`;
 
   // Marcar como enviado
   const idPedido = id;
