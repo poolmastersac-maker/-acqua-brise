@@ -1385,6 +1385,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div class="search-wrap" bis_skin_checked="1"><span class="search-icon">🔍</span><input type="text" id="searchEstoque" placeholder="Buscar produto..." oninput="renderEstoque()"></div>
     <button class="btn btn-primary btn-sm" onclick="abrirModalProduto()">➕ Novo Produto</button>
     <button class="btn btn-green btn-sm" onclick="abrirPedidoFornecedor()">🛒 Pedido ao Fornecedor</button>
+    <button class="btn btn-sm" style="background:var(--accent2);color:white;" onclick="abrirModalNotaFiscal()">📦 Entrada por Nota Fiscal</button>
   </div>
   <div class="estoque-grid" id="estoquGrid" bis_skin_checked="1"><div class="produto-card alerta" bis_skin_checked="1">
       <div class="produto-card-header" bis_skin_checked="1"><span style="font-weight:700;">Magic Gel Clarificante</span><span class="produto-codigo">61177</span></div>
@@ -2098,6 +2099,16 @@ tr:hover td{background:rgba(33,150,243,0.04);}
             </div>
           </div>
 
+          <!-- CHAVE API ANTHROPIC -->
+          <div id="anthropicKeyWrap" style="margin-bottom:12px;background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;">
+            <div style="font-size:0.72rem;opacity:0.9;margin-bottom:6px;">🤖 Chave API Anthropic <span style="opacity:0.7;">(para leitura de notas fiscais com IA — salva localmente)</span></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="password" id="anthropicApiKey" placeholder="sk-ant-..." style="flex:1;padding:7px 10px;border-radius:6px;border:none;font-size:0.82rem;outline:none;color:#1A202C;" onchange="salvarAnthropicKey(this.value)">
+              <button onclick="toggleVerAnthropicKey()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;font-size:0.8rem;">👁</button>
+            </div>
+            <div id="anthropicKeyStatus" style="font-size:0.7rem;margin-top:6px;opacity:0.8;"></div>
+          </div>
+
           <div style="display:flex;gap:10px;flex-wrap:wrap;" bis_skin_checked="1">
             <button onclick="fazerBackupCompleto()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">💾 Backup dos Dados (.json)</button>
             <button onclick="baixarSistema()" style="background:white;color:#1565C0;border:none;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📄 Salvar Sistema (.html)</button>
@@ -2186,6 +2197,78 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalConfirmUsuario')">Cancelar</button>
       <button class="btn btn-red btn-sm" onclick="confirmarExclusaoUsuario()">Sim, excluir</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL ENTRADA NOTA FISCAL -->
+<div class="modal-overlay" id="modalNotaFiscal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-title">
+      <span>📦 Entrada de Produtos no Estoque</span>
+      <button class="modal-close" onclick="fecharModal('modalNotaFiscal')">✕</button>
+    </div>
+
+    <!-- ABAS -->
+    <div style="display:flex;gap:0;margin-bottom:18px;border-bottom:2px solid var(--border);">
+      <button id="nfTabIA" onclick="nfMudarAba('ia')" style="padding:8px 18px;border:none;background:none;font-size:0.85rem;font-weight:700;color:var(--accent2);border-bottom:2px solid var(--accent);margin-bottom:-2px;cursor:pointer;">📄 Nota Fiscal (IA)</button>
+      <button id="nfTabManual" onclick="nfMudarAba('manual')" style="padding:8px 18px;border:none;background:none;font-size:0.85rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;">✏️ Inserir Manualmente</button>
+    </div>
+
+    <!-- ABA IA -->
+    <div id="nfAbaIA">
+      <div id="nfStep1">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Envie a foto ou PDF da nota fiscal. A IA vai ler automaticamente os produtos, códigos e quantidades.</p>
+        <div id="nfUploadArea" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="document.getElementById('nfFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleNfDrop(event)">
+          <div style="font-size:2rem;margin-bottom:8px;">📄</div>
+          <div style="font-weight:700;color:var(--accent2);margin-bottom:4px;">Clique ou arraste a nota fiscal aqui</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Formatos aceitos: JPG, PNG, PDF</div>
+          <input type="file" id="nfFileInput" accept="image/*,.pdf" style="display:none;" onchange="handleNfFile(this.files[0])">
+        </div>
+        <div id="nfArquivoSelecionado" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(33,150,243,0.08);border-radius:8px;font-size:0.83rem;color:var(--accent2);font-weight:600;"></div>
+        <div id="nfProcessando" style="display:none;margin-top:16px;text-align:center;">
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">🤖 Lendo nota fiscal com IA...</div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;background:var(--accent);border-radius:2px;width:60%;"></div></div>
+        </div>
+        <div class="modal-footer" style="margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalNotaFiscal')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="btnProcessarNF" onclick="processarNotaFiscal()" disabled style="opacity:0.5;">🤖 Processar com IA</button>
+        </div>
+      </div>
+      <div id="nfStep2" style="display:none;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Confirme os produtos identificados. Produtos novos serão criados automaticamente.</div>
+        <div id="nfResultado" style="max-height:320px;overflow-y:auto;"></div>
+        <div class="modal-footer" style="margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="voltarNfStep1()">← Voltar</button>
+          <button class="btn btn-green btn-sm" onclick="confirmarEntradaNF()">✓ Confirmar Entrada no Estoque</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABA MANUAL -->
+    <div id="nfAbaManual" style="display:none;">
+      <div id="nfManualStep1">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px;">Digite ou cole os produtos no formato abaixo, um por linha:</p>
+        <div style="background:rgba(33,150,243,0.06);border-radius:8px;padding:10px 14px;font-size:0.78rem;color:var(--accent2);margin-bottom:12px;font-family:monospace;">
+          Código | Nome do Produto | Quantidade<br>
+          61177 | Magic Gel Clarificante | 10<br>
+          22325 | Floculante Clarificante | 8
+        </div>
+        <textarea id="nfManualTexto" class="form-input" rows="7" placeholder="61177 | Magic Gel Clarificante | 10&#10;22325 | Floculante Clarificante Liquido | 8&#10;99999 | Novo Produto | 5" style="font-family:monospace;font-size:0.83rem;"></textarea>
+        <div class="modal-footer" style="margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalNotaFiscal')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="processarNfManual()">🔍 Processar</button>
+        </div>
+      </div>
+      <div id="nfManualStep2" style="display:none;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Confirme os produtos antes de atualizar o estoque.</div>
+        <div id="nfManualResultado" style="max-height:320px;overflow-y:auto;"></div>
+        <div class="modal-footer" style="margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="voltarNfManualStep1()">← Voltar</button>
+          <button class="btn btn-green btn-sm" onclick="confirmarEntradaNFManual()">✓ Confirmar Entrada no Estoque</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2986,7 +3069,16 @@ function navegarPara(pagina) {
   if (pagina==='necessidades') renderNecessidades();
   if (pagina==='pedidos') renderPedidos();
   if (pagina==='relatorios') renderRelatoriosPage();
-  if (pagina==='configuracoes') { abrirConfigSecao('usuarios'); renderUsuarios(); }
+  if (pagina==='configuracoes') {
+    abrirConfigSecao('usuarios'); renderUsuarios();
+    setTimeout(() => {
+      const savedKey = localStorage.getItem('drprime_anthropic_key');
+      const inp = document.getElementById('anthropicApiKey');
+      if (inp && savedKey) { inp.value = savedKey; }
+      const status = document.getElementById('anthropicKeyStatus');
+      if (status && savedKey) status.textContent = '✓ Chave configurada';
+    }, 100);
+  }
 }
 
 // STATS
@@ -3367,6 +3459,278 @@ function renderEstoque() {
     </div>`;
   }).join('');
 }
+// ============================================================
+// ENTRADA POR NOTA FISCAL
+// ============================================================
+let _nfArquivo = null;
+let _nfItens = [];
+
+function getAnthropicKey() {
+  return document.getElementById('anthropicApiKey')?.value || localStorage.getItem('drprime_anthropic_key') || '';
+}
+
+function abrirModalNotaFiscal() {
+  // Reset variáveis
+  _nfArquivo = null; _nfItens = []; _nfManualItens = [];
+
+  // Reset aba IA
+  document.getElementById('nfFileInput').value = '';
+  document.getElementById('nfArquivoSelecionado').style.display = 'none';
+  document.getElementById('nfProcessando').style.display = 'none';
+  document.getElementById('nfStep1').style.display = 'block';
+  document.getElementById('nfStep2').style.display = 'none';
+  const btn = document.getElementById('btnProcessarNF');
+  btn.disabled = true; btn.style.opacity = '0.5';
+
+  // Reset aba manual
+  document.getElementById('nfManualTexto').value = '';
+  document.getElementById('nfManualStep1').style.display = 'block';
+  document.getElementById('nfManualStep2').style.display = 'none';
+
+  // Sempre abre na aba IA
+  nfMudarAba('ia');
+
+  document.getElementById('modalNotaFiscal').classList.add('open');
+}
+
+function handleNfDrop(event) {
+  event.preventDefault();
+  document.getElementById('nfUploadArea').style.borderColor = 'var(--border)';
+  const file = event.dataTransfer.files[0];
+  if (file) handleNfFile(file);
+}
+
+function handleNfFile(file) {
+  if (!file) return;
+  const tipos = ['image/jpeg','image/png','image/jpg','application/pdf'];
+  if (!tipos.includes(file.type)) { showToast('⚠ Use JPG, PNG ou PDF.', 'error'); return; }
+  _nfArquivo = file;
+  const div = document.getElementById('nfArquivoSelecionado');
+  div.style.display = 'block';
+  div.textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+  const btn = document.getElementById('btnProcessarNF');
+  btn.disabled = false; btn.style.opacity = '1';
+}
+
+async function processarNotaFiscal() {
+  if (!_nfArquivo) return;
+  const apiKey = getAnthropicKey();
+  if (!apiKey) { showToast('⚠ Configure a Chave API Anthropic em Config → Exportar', 'error'); return; }
+
+  document.getElementById('nfProcessando').style.display = 'block';
+  document.getElementById('btnProcessarNF').disabled = true;
+
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(_nfArquivo);
+    });
+
+    const isPDF = _nfArquivo.type === 'application/pdf';
+    const mediaType = isPDF ? 'application/pdf' : _nfArquivo.type;
+    const promptTexto = `Você é um assistente que lê notas fiscais de produtos químicos para piscinas.
+Analise esta nota fiscal e extraia TODOS os produtos listados.
+Retorne APENAS um JSON válido, sem texto adicional:
+{"produtos":[{"codigo":"12345","nome":"Nome do Produto","quantidade":10}]}
+Se não encontrar código, use string vazia. Quantidade deve ser número inteiro.`;
+
+    const body = {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: [
+        isPDF
+          ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
+          : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: promptTexto }
+      ]}]
+    };
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const texto = data.content?.map(c => c.text || '').join('');
+    const clean = texto.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    _nfItens = parsed.produtos || [];
+    if (!_nfItens.length) throw new Error('Nenhum produto identificado na nota');
+    mostrarPreVisualizacaoNF();
+  } catch(err) {
+    showToast('❌ Erro: ' + err.message, 'error');
+    document.getElementById('btnProcessarNF').disabled = false;
+  } finally {
+    document.getElementById('nfProcessando').style.display = 'none';
+  }
+}
+
+function mostrarPreVisualizacaoNF() {
+  let html = `<div style="font-weight:700;font-size:0.82rem;color:var(--accent2);margin-bottom:10px;">🤖 ${_nfItens.length} produto(s) identificado(s):</div>`;
+  _nfItens.forEach(item => {
+    const prodExistente = produtos.find(p =>
+      (item.codigo && p.codigo === String(item.codigo)) ||
+      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+    );
+    const isNovo = !prodExistente;
+    const estoqueAtual = prodExistente ? prodExistente.qtd : 0;
+    const estoqueApos = estoqueAtual + item.quantidade;
+    html += `
+    <div style="padding:10px 12px;border-radius:8px;margin-bottom:8px;background:${isNovo ? 'rgba(124,58,237,0.06)' : 'rgba(5,150,105,0.06)'};border:1px solid ${isNovo ? 'rgba(124,58,237,0.2)' : 'rgba(5,150,105,0.2)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:0.85rem;">${item.nome}</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">
+            ${item.codigo ? 'Código: <b>' + item.codigo + '</b> · ' : ''}Qtd: <b>+${item.quantidade}</b>
+            ${!isNovo ? ' · Estoque: ' + estoqueAtual + ' → <b style="color:var(--green)">' + estoqueApos + '</b>' : ''}
+          </div>
+          ${isNovo ? '<div style="font-size:0.72rem;color:#7C3AED;margin-top:4px;font-weight:700;">✨ Produto novo — será criado automaticamente</div>' : ''}
+        </div>
+        <span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;background:${isNovo ? 'rgba(124,58,237,0.15)' : 'rgba(5,150,105,0.15)'};color:${isNovo ? '#7C3AED' : 'var(--green)'};">
+          ${isNovo ? '✨ Novo' : '✓ Atualizar'}
+        </span>
+      </div>
+    </div>`;
+  });
+  document.getElementById('nfResultado').innerHTML = html;
+  document.getElementById('nfStep1').style.display = 'none';
+  document.getElementById('nfStep2').style.display = 'block';
+}
+
+function voltarNfStep1() {
+  document.getElementById('nfStep1').style.display = 'block';
+  document.getElementById('nfStep2').style.display = 'none';
+  document.getElementById('btnProcessarNF').disabled = false;
+  document.getElementById('btnProcessarNF').style.opacity = '1';
+}
+
+function nfMudarAba(aba) {
+  const isIA = aba === 'ia';
+  document.getElementById('nfAbaIA').style.display = isIA ? 'block' : 'none';
+  document.getElementById('nfAbaManual').style.display = isIA ? 'none' : 'block';
+  document.getElementById('nfTabIA').style.color = isIA ? 'var(--accent2)' : 'var(--muted)';
+  document.getElementById('nfTabIA').style.borderBottomColor = isIA ? 'var(--accent)' : 'transparent';
+  document.getElementById('nfTabIA').style.fontWeight = isIA ? '700' : '600';
+  document.getElementById('nfTabManual').style.color = !isIA ? 'var(--accent2)' : 'var(--muted)';
+  document.getElementById('nfTabManual').style.borderBottomColor = !isIA ? 'var(--accent)' : 'transparent';
+  document.getElementById('nfTabManual').style.fontWeight = !isIA ? '700' : '600';
+}
+
+let _nfManualItens = [];
+
+function processarNfManual() {
+  const texto = document.getElementById('nfManualTexto').value.trim();
+  if (!texto) { showToast('⚠ Digite os produtos antes de processar', 'error'); return; }
+
+  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  _nfManualItens = [];
+  const invalidas = [];
+
+  linhas.forEach((linha, i) => {
+    const partes = linha.split('|').map(p => p.trim());
+    if (partes.length < 2) { invalidas.push('Linha ' + (i+1) + ': formato inválido'); return; }
+    const codigo = partes[0] || '';
+    const nome = partes[1] || '';
+    const quantidade = parseInt(partes[2] || '1', 10);
+    if (!nome) { invalidas.push('Linha ' + (i+1) + ': nome obrigatório'); return; }
+    if (isNaN(quantidade) || quantidade <= 0) { invalidas.push('Linha ' + (i+1) + ': quantidade inválida'); return; }
+    _nfManualItens.push({ codigo, nome, quantidade });
+  });
+
+  if (!_nfManualItens.length) { showToast('⚠ Nenhum produto válido encontrado', 'error'); return; }
+
+  // Montar pré-visualização
+  let html = `<div style="font-weight:700;font-size:0.82rem;color:var(--accent2);margin-bottom:10px;">✓ ${_nfManualItens.length} produto(s) para entrada:</div>`;
+
+  if (invalidas.length) {
+    html += `<div style="padding:8px 12px;border-radius:8px;margin-bottom:10px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);font-size:0.78rem;color:var(--red);">⚠ ${invalidas.join(' · ')}</div>`;
+  }
+
+  _nfManualItens.forEach(item => {
+    const prodExistente = produtos.find(p =>
+      (item.codigo && p.codigo === String(item.codigo)) ||
+      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+    );
+    const isNovo = !prodExistente;
+    const estoqueAtual = prodExistente ? prodExistente.qtd : 0;
+    const estoqueApos = estoqueAtual + item.quantidade;
+    html += `
+    <div style="padding:10px 12px;border-radius:8px;margin-bottom:8px;background:${isNovo ? 'rgba(124,58,237,0.06)' : 'rgba(5,150,105,0.06)'};border:1px solid ${isNovo ? 'rgba(124,58,237,0.2)' : 'rgba(5,150,105,0.2)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:0.85rem;">${item.nome}</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">
+            ${item.codigo ? 'Código: <b>' + item.codigo + '</b> · ' : ''}Qtd: <b>+${item.quantidade}</b>
+            ${!isNovo ? ' · Estoque: ' + estoqueAtual + ' → <b style="color:var(--green)">' + estoqueApos + '</b>' : ''}
+          </div>
+          ${isNovo ? '<div style="font-size:0.72rem;color:#7C3AED;margin-top:4px;font-weight:700;">✨ Produto novo — será criado automaticamente</div>' : ''}
+        </div>
+        <span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:10px;background:${isNovo ? 'rgba(124,58,237,0.15)' : 'rgba(5,150,105,0.15)'};color:${isNovo ? '#7C3AED' : 'var(--green)'};">
+          ${isNovo ? '✨ Novo' : '✓ Atualizar'}
+        </span>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('nfManualResultado').innerHTML = html;
+  document.getElementById('nfManualStep1').style.display = 'none';
+  document.getElementById('nfManualStep2').style.display = 'block';
+}
+
+function voltarNfManualStep1() {
+  document.getElementById('nfManualStep1').style.display = 'block';
+  document.getElementById('nfManualStep2').style.display = 'none';
+}
+
+function confirmarEntradaNFManual() {
+  if (!_nfManualItens.length) return;
+  _nfManualItens.forEach(item => {
+    const idx = produtos.findIndex(p =>
+      (item.codigo && p.codigo === String(item.codigo)) ||
+      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+    );
+    if (idx >= 0) {
+      produtos[idx].qtd += item.quantidade;
+      if (item.codigo && !produtos[idx].codigo) produtos[idx].codigo = String(item.codigo);
+    } else {
+      produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
+    }
+  });
+  salvarProdutos(); renderEstoque(); fbSync();
+  fecharModal('modalNotaFiscal');
+  showToast('✓ ' + _nfManualItens.length + ' produto(s) atualizados no estoque!', 'success');
+  _nfManualItens = [];
+}
+
+function confirmarEntradaNF() {
+  if (!_nfItens.length) return;
+  _nfItens.forEach(item => {
+    const idx = produtos.findIndex(p =>
+      (item.codigo && p.codigo === String(item.codigo)) ||
+      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+    );
+    if (idx >= 0) {
+      produtos[idx].qtd += item.quantidade;
+      if (item.codigo && !produtos[idx].codigo) produtos[idx].codigo = String(item.codigo);
+    } else {
+      produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
+    }
+  });
+  salvarProdutos(); renderEstoque(); fbSync();
+  fecharModal('modalNotaFiscal');
+  showToast('✓ ' + _nfItens.length + ' produto(s) atualizados no estoque!', 'success');
+  _nfItens = [];
+}
+
 function abrirModalProduto(id) {
   const idNum = id ? Number(id) : null;
   const p=idNum?produtos.find(x=>Number(x.id)===idNum):null;
@@ -4548,6 +4912,25 @@ function fazerBackupCompleto() {
 function toggleVerToken() {
   const inp = document.getElementById('githubToken');
   inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function salvarAnthropicKey(valor) {
+  localStorage.setItem('drprime_anthropic_key', valor);
+  const status = document.getElementById('anthropicKeyStatus');
+  if (status) {
+    status.textContent = valor ? '✓ Chave salva!' : '';
+    status.style.color = 'rgba(255,255,255,0.9)';
+    setTimeout(() => { if (status) status.textContent = valor ? '✓ Chave configurada' : ''; }, 2000);
+  }
+}
+
+function toggleVerAnthropicKey() {
+  const inp = document.getElementById('anthropicApiKey');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function getAnthropicKey() {
+  return document.getElementById('anthropicApiKey')?.value || localStorage.getItem('drprime_anthropic_key') || '';
 }
 
 async function backupParaGitHub() {
