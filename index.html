@@ -3532,8 +3532,23 @@ async function processarNotaFiscal() {
     const mediaType = isPDF ? 'application/pdf' : _nfArquivo.type;
     const promptTexto = `Você é um assistente que lê notas fiscais de produtos químicos para piscinas.
 Analise esta nota fiscal e extraia TODOS os produtos listados.
+
+REGRA IMPORTANTE PARA QUANTIDADE:
+A descrição do produto contém o formato da embalagem, como "8X2KG", "12X1LT", "1X10KG", "12X4X40G".
+O primeiro número representa a quantidade de unidades por caixa.
+Você deve calcular a quantidade unitária real multiplicando:
+  quantidade unitária = qtde da nota × primeiro número do formato da embalagem
+
+Exemplos:
+- Descrição "PH MAIS 8X2KG", Qtde nota: 2 → quantidade = 2 × 8 = 16
+- Descrição "ALGICIDA 12X1LT", Qtde nota: 2 → quantidade = 2 × 12 = 24
+- Descrição "DICLORO 1X10KG", Qtde nota: 27 → quantidade = 27 × 1 = 27
+- Descrição "MAGIC GEL 12X4X40G", Qtde nota: 2 → quantidade = 2 × 12 = 24
+
+Se não encontrar o formato de embalagem na descrição, use a quantidade da nota diretamente.
+
 Retorne APENAS um JSON válido, sem texto adicional:
-{"produtos":[{"codigo":"12345","nome":"Nome do Produto","quantidade":10}]}
+{"produtos":[{"codigo":"12345","nome":"Nome do Produto","quantidade":16}]}
 Se não encontrar código, use string vazia. Quantidade deve ser número inteiro.`;
 
     const body = {
