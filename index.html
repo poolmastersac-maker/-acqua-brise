@@ -1521,9 +1521,12 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   </div>
   <!-- TOOLBAR GESTOR -->
   <div class="toolbar" id="pedidosToolbarGestor" style="display:none;" bis_skin_checked="1">
-    <div style="display:flex;gap:8px;align-items:center;" bis_skin_checked="1">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" bis_skin_checked="1">
       <button class="sub-tab" id="subTabMeus" onclick="trocarSubTabPedidos('meus')">📋 Meus Pedidos</button>
       <button class="sub-tab active" id="subTabTodos" onclick="trocarSubTabPedidos('todos')">🗂 Consolidado</button>
+      <select id="filtroPedidoTecnico" onchange="renderPedidos()" style="padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:0.82rem;color:var(--text);background:white;cursor:pointer;display:none;">
+        <option value="">👤 Todos os técnicos</option>
+      </select>
     </div>
     <button class="btn btn-green btn-sm" id="btnEnviarTodosWpp" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
   </div>
@@ -4529,9 +4532,27 @@ function renderPedidos() {
     }) : [];
   } else {
     // Gestor: sub-aba meus = não consolidados | consolidado = consolidados
-    pedidosFiltrados = _subTabAtiva === 'todos'
-      ? pedidos.filter(ped => ped.consolidado)
-      : pedidos.filter(ped => !ped.consolidado);
+    const seletor = document.getElementById('filtroPedidoTecnico');
+
+    if (_subTabAtiva === 'todos') {
+      // Popular seletor com técnicos disponíveis no consolidado
+      if (seletor) {
+        const tecnicosDisponiveis = [...new Set(
+          pedidos.filter(p => p.consolidado && p.tecnico).map(p => p.tecnico)
+        )].sort();
+        const valorAtual = seletor.value;
+        seletor.innerHTML = '<option value="">👤 Todos os técnicos</option>' +
+          tecnicosDisponiveis.map(t => `<option value="${t}" ${t === valorAtual ? 'selected' : ''}>${t}</option>`).join('');
+        seletor.style.display = tecnicosDisponiveis.length > 1 ? 'block' : 'none';
+      }
+      const filtroTec = seletor?.value || '';
+      pedidosFiltrados = pedidos.filter(ped =>
+        ped.consolidado && (!filtroTec || ped.tecnico === filtroTec)
+      );
+    } else {
+      if (seletor) seletor.style.display = 'none';
+      pedidosFiltrados = pedidos.filter(ped => !ped.consolidado);
+    }
   }
 
   if (!pedidosFiltrados.length) {
