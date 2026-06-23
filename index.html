@@ -2279,6 +2279,14 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <button class="modal-close" onclick="fecharModal('modalImportacao')">✕</button>
     </div>
 
+    <!-- ABAS -->
+    <div style="display:flex;gap:0;margin-bottom:18px;border-bottom:2px solid var(--border);">
+      <button id="pagTabManual" onclick="pagMudarAba('manual')" style="padding:8px 18px;border:none;background:none;font-size:0.85rem;font-weight:700;color:var(--accent2);border-bottom:2px solid var(--accent);margin-bottom:-2px;cursor:pointer;">✏️ Inserir Manualmente</button>
+      <button id="pagTabIA" onclick="pagMudarAba('ia')" style="padding:8px 18px;border:none;background:none;font-size:0.85rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;">🤖 Extrato via IA</button>
+    </div>
+
+    <!-- ABA MANUAL -->
+    <div id="pagAbaManual">
     <!-- PASSO 1 -->
     <div id="importStep1" bis_skin_checked="1" style="display: none;">
       <div style="margin-bottom:14px;" bis_skin_checked="1">
@@ -2592,6 +2600,43 @@ João Silva | 300" style="resize:vertical;font-family:monospace;font-size:0.82re
         <button class="btn btn-green btn-sm" id="btnConfirmarImport" onclick="confirmarImportacao()" style="opacity: 1;">✓ Confirmar Importação</button>
       </div>
     </div>
+    </div> <!-- fim pagAbaManual -->
+
+    <!-- ABA IA -->
+    <div id="pagAbaIA" style="display:none;">
+      <!-- STEP 1: Upload -->
+      <div id="pagIAStep1">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">Envie a foto ou PDF do extrato bancário. A IA vai identificar automaticamente os pagamentos dos clientes.</p>
+        <div id="pagIAUploadArea" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;" onclick="document.getElementById('pagIAFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handlePagIADrop(event)">
+          <div style="font-size:2rem;margin-bottom:8px;">📄</div>
+          <div style="font-weight:700;color:var(--accent2);margin-bottom:4px;">Clique ou arraste o extrato aqui</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Formatos aceitos: JPG, PNG, PDF</div>
+          <input type="file" id="pagIAFileInput" accept="image/*,.pdf" style="display:none;" onchange="handlePagIAFile(this.files[0])">
+        </div>
+        <div id="pagIAArquivoSelecionado" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(33,150,243,0.08);border-radius:8px;font-size:0.83rem;color:var(--accent2);font-weight:600;"></div>
+
+        <div id="pagIAProcessando" style="display:none;margin-top:16px;text-align:center;">
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">🤖 Lendo extrato com IA...</div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;background:var(--accent);border-radius:2px;width:60%;"></div></div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalImportacao')">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="btnProcessarPagIA" onclick="processarExtratoIA()" disabled style="opacity:0.5;">🤖 Processar com IA</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Pré-visualização -->
+      <div id="pagIAStep2" style="display:none;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Confirme os pagamentos identificados pela IA. Você pode revisar antes de importar.</div>
+        <div id="pagIAResultado" style="max-height:320px;overflow-y:auto;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;">
+          <button class="btn btn-ghost btn-sm" onclick="voltarPagIAStep1()">← Voltar</button>
+          <button class="btn btn-green btn-sm" id="btnConfirmarPagIA" onclick="confirmarPagIA()">✓ Confirmar Importação</button>
+        </div>
+      </div>
+    </div> <!-- fim pagAbaIA -->
+
   </div>
 </div>
 
@@ -3895,7 +3940,180 @@ function abrirModalImportacao() {
   document.getElementById('importTexto').value = '';
   document.getElementById('importStep1').style.display = 'block';
   document.getElementById('importStep2').style.display = 'none';
+  // Reset aba IA
+  _pagIAArquivo = null; _pagIAItens = [];
+  const fi = document.getElementById('pagIAFileInput');
+  if (fi) fi.value = '';
+  const arq = document.getElementById('pagIAArquivoSelecionado');
+  if (arq) { arq.style.display = 'none'; arq.textContent = ''; }
+  const proc = document.getElementById('pagIAProcessando');
+  if (proc) proc.style.display = 'none';
+  const btn = document.getElementById('btnProcessarPagIA');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  const s1 = document.getElementById('pagIAStep1');
+  const s2 = document.getElementById('pagIAStep2');
+  if (s1) s1.style.display = 'block';
+  if (s2) s2.style.display = 'none';
+  // Sempre abre na aba manual
+  pagMudarAba('manual');
   document.getElementById('modalImportacao').classList.add('open');
+}
+
+// ============================================================
+// TROCA DE ABAS — IMPORTAÇÃO DE PAGAMENTOS
+// ============================================================
+function pagMudarAba(aba) {
+  const isManual = aba === 'manual';
+  const abaManual = document.getElementById('pagAbaManual');
+  const abaIA = document.getElementById('pagAbaIA');
+  if (abaManual) abaManual.style.display = isManual ? 'block' : 'none';
+  if (abaIA) abaIA.style.display = isManual ? 'none' : 'block';
+  const tabManual = document.getElementById('pagTabManual');
+  const tabIA = document.getElementById('pagTabIA');
+  if (tabManual) {
+    tabManual.style.color = isManual ? 'var(--accent2)' : 'var(--muted)';
+    tabManual.style.borderBottomColor = isManual ? 'var(--accent)' : 'transparent';
+    tabManual.style.fontWeight = isManual ? '700' : '600';
+  }
+  if (tabIA) {
+    tabIA.style.color = !isManual ? 'var(--accent2)' : 'var(--muted)';
+    tabIA.style.borderBottomColor = !isManual ? 'var(--accent)' : 'transparent';
+    tabIA.style.fontWeight = !isManual ? '700' : '600';
+  }
+}
+
+// ============================================================
+// EXTRATO VIA IA
+// ============================================================
+let _pagIAArquivo = null;
+let _pagIAItens = [];
+
+function handlePagIADrop(event) {
+  event.preventDefault();
+  document.getElementById('pagIAUploadArea').style.borderColor = 'var(--border)';
+  const file = event.dataTransfer.files[0];
+  if (file) handlePagIAFile(file);
+}
+
+function handlePagIAFile(file) {
+  if (!file) return;
+  const tipos = ['image/jpeg','image/png','image/jpg','application/pdf'];
+  if (!tipos.includes(file.type)) { showToast('⚠ Use JPG, PNG ou PDF.', 'error'); return; }
+  _pagIAArquivo = file;
+  const div = document.getElementById('pagIAArquivoSelecionado');
+  div.style.display = 'block';
+  div.textContent = '📎 ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+  const btn = document.getElementById('btnProcessarPagIA');
+  btn.disabled = false; btn.style.opacity = '1';
+}
+
+async function processarExtratoIA() {
+  if (!_pagIAArquivo) return;
+  const apiKey = getAnthropicKey();
+  if (!apiKey) { showToast('⚠ Configure a Chave API Anthropic em Config → Exportar', 'error'); return; }
+
+  document.getElementById('pagIAProcessando').style.display = 'block';
+  document.getElementById('btnProcessarPagIA').disabled = true;
+
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(_pagIAArquivo);
+    });
+
+    const isPDF = _pagIAArquivo.type === 'application/pdf';
+    const mediaType = isPDF ? 'application/pdf' : _pagIAArquivo.type;
+
+    const promptTexto = `Você é um assistente especializado em extratos bancários de uma empresa de manutenção de piscinas.
+Analise este extrato bancário e extraia APENAS as entradas (créditos/depósitos recebidos).
+
+IGNORE completamente:
+- Saídas, débitos, pagamentos feitos pela empresa
+- Transferências entre contas próprias
+- Rendimentos de investimentos
+- Tarifas e taxas bancárias
+- Qualquer lançamento que não seja recebimento de clientes
+
+IDENTIFICAÇÃO DA CONTA:
+Identifique automaticamente a conta bancária pelo conteúdo do extrato:
+- Se mencionar "Itaú", "ITAÚ", "ITAU" → conta = "Itaú"
+- Se mencionar "InfinitePay" ou "Infinite Pay" junto com "Diego", "DIEGO" → conta = "InfinitePayDiego"
+- Se mencionar "InfinitePay" ou "Infinite Pay" junto com "Adriane", "ADRIANE" → conta = "InfinitePayAdriane"
+- Se não conseguir identificar → conta = "Não identificado"
+
+Para cada entrada de cliente encontrada, retorne:
+- nome: nome do pagador como aparece no extrato
+- valor: valor recebido (número decimal)
+- data: data no formato DD/MM/AAAA
+- conta: conta identificada automaticamente
+
+Retorne APENAS um JSON válido, sem texto adicional:
+{"conta":"Itaú","pagamentos":[{"nome":"NOME DO PAGADOR","valor":250.00,"data":"15/06/2026"}]}
+
+Se não encontrar nenhum pagamento de cliente, retorne: {"conta":"Não identificado","pagamentos":[]}`;
+
+    const body = {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [
+        isPDF
+          ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
+          : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: promptTexto }
+      ]}]
+    };
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const texto = data.content?.map(c => c.text || '').join('');
+    const clean = texto.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const pagamentosIA = parsed.pagamentos || [];
+    if (!pagamentosIA.length) throw new Error('Nenhum pagamento de cliente identificado no extrato');
+
+    // Converter para o formato de importação em lote e processar
+    const contaDetectada = parsed.conta || 'Não identificado';
+    const linhasGeradas = pagamentosIA.map(p =>
+      `${p.nome} | ${p.valor} | ${p.data} | Pago via PIX - ${p.nome} - ${contaDetectada}`
+    ).join('\n');
+
+    // Injetar no campo de texto e processar via função existente
+    pagMudarAba('manual');
+    document.getElementById('importTexto').value = linhasGeradas;
+    document.getElementById('importStep1').style.display = 'block';
+    document.getElementById('importStep2').style.display = 'none';
+    processarImportacao();
+
+  } catch(err) {
+    showToast('❌ Erro: ' + err.message, 'error');
+    document.getElementById('btnProcessarPagIA').disabled = false;
+  } finally {
+    document.getElementById('pagIAProcessando').style.display = 'none';
+  }
+}
+
+function voltarPagIAStep1() {
+  document.getElementById('pagIAStep1').style.display = 'block';
+  document.getElementById('pagIAStep2').style.display = 'none';
+  document.getElementById('btnProcessarPagIA').disabled = false;
+  document.getElementById('btnProcessarPagIA').style.opacity = '1';
+}
+
+function confirmarPagIA() {
+  confirmarImportacao();
 }
 
 function voltarImportacao() {
