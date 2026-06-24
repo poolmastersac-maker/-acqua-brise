@@ -2854,7 +2854,7 @@ if (!usuarios || usuarios.length === 0) {
   salvarUsuarios();
 }
 // Permissões padrão versionadas
-const _permissoesVersao = '3.0'; // Incrementar aqui sempre que mudar permissões
+const _permissoesVersao = '3.1'; // Incrementar aqui sempre que mudar permissões
 window._permissoesVersao = _permissoesVersao;
 const _permissoesDefault = {
   admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,relatorios:true,excluir:true,exportar:true},
@@ -5014,7 +5014,7 @@ function salvarUsuario() {
   fbSync();
 }
 function renderPermissoes() {
-  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','configuracoes','excluir','exportar'];
+  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','configuracoes','excluir','exportar'];
   const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Configurações','Excluir','Exportar'];
   const perfis=['admin','gerente','tecnico','financeiro'];
   const nomePerfis=['👑 Admin','👔 Gerente','🔧 Técnico','📊 Financeiro'];
