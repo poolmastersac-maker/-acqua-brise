@@ -4453,20 +4453,22 @@ function gerarPedido() {
     tecnico: usuarioLogado?.usuario || '',
     clienteId: clienteIdNum,
     itens: itens.map(n => {
-      const p = produtos.find(x => x.id === n.produtoId);
+      const p = produtos.find(x => x.id === n.produtoId)
+             || produtos.find(x => x.nome === n.produto); // fallback por nome
       const c = clientes.find(x => x.id === n.clienteId);
-      if (!p) return null; // Ignorar produtos não encontrados no estoque
+      // Só ignora se não tiver nome algum
+      if (!p && !n.produto) return null;
       return {
         necessidadeId: n.id,
-        produto: p.nome,
-        produtoId: n.produtoId,
+        produto: p?.nome || n.produto || '—',
+        produtoId: p?.id || n.produtoId,
         clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
-        valorUnit: Number(p.valor || 0),
+        valorUnit: Number(p?.valor || 0),
         obs: n.obs || ''
       };
-    }).filter(Boolean) // Remover itens nulos
+    }).filter(item => item && item.produto && item.produto !== '—') // Remover itens sem produto
   };
 
   pedidos.push(pedido);
@@ -4952,6 +4954,20 @@ function atualizarContadorNec(clienteId) {
   }
 }
 function gerarPedidoDoModal() {
+  // Salvar o item atual do modal antes de gerar o pedido
+  const clienteId = Number(document.getElementById('necClienteSel').value);
+  const produtoId = Number(document.getElementById('necProdutoSel').value);
+  const qtd = parseInt(document.getElementById('necQtd').value, 10) || 1;
+  const data = document.getElementById('necData').value;
+  const obs = document.getElementById('necObs').value.trim();
+
+  if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido', 'error'); return; }
+  if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido', 'error'); return; }
+
+  // Adicionar à lista de necessidades antes de gerar
+  necessidades.push({ id: Date.now(), clienteId, produtoId, qtd, data, obs, entregue: false, pago: false });
+  salvarNecessidades();
+
   fecharModal('modalNecessidadeForm');
   // Limpar contador do modal
   const contador = document.getElementById('necContador');
