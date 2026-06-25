@@ -4475,6 +4475,12 @@ function gerarPedido() {
     }).filter(item => item !== null)
   };
 
+  // Verificar se o pedido tem ao menos 1 item válido
+  if (!pedido.itens.length) {
+    showToast('⚠ Nenhum produto válido encontrado. Verifique o estoque.', 'error');
+    return;
+  }
+
   pedidos.push(pedido);
   salvarPedidos();
 
@@ -4959,23 +4965,16 @@ function atualizarContadorNec(clienteId) {
   }
 }
 function gerarPedidoDoModal() {
+  // Gerar pedido com os itens já acumulados na lista — ignora o campo produto do modal
+  fecharModal('modalNecessidadeForm');
+  const contador = document.getElementById('necContador');
+  if (contador) { contador.textContent = ''; contador.style.display = 'none'; }
+  gerarPedido();
+}
+
+function gerarPedidoDoModal_UNUSED() {
   const clienteId = Number(document.getElementById('necClienteSel').value);
   const produtoId = Number(document.getElementById('necProdutoSel').value);
-  const qtd = parseInt(document.getElementById('necQtd').value, 10) || 1;
-  const data = document.getElementById('necData').value;
-  const obs = document.getElementById('necObs').value.trim();
-
-  if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido', 'error'); return; }
-  if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido', 'error'); return; }
-
-  const p = produtos.find(x => Number(x.id) === Number(produtoId))
-         || produtos.find(x => String(x.codigo) === String(produtoId));
-  const c = clientes.find(x => Number(x.id) === Number(clienteId));
-
-  if (!p) { showToast('⚠ Produto não encontrado no estoque. Verifique o cadastro.', 'error'); return; }
-  if (!c) { showToast('⚠ Cliente não encontrado. Verifique o cadastro.', 'error'); return; }
-
-  // Gerar pedido apenas com este item do modal
   const pedido = {
     id: Date.now() + 1,
     data: new Date().toISOString(),
