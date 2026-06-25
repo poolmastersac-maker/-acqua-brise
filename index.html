@@ -4455,17 +4455,18 @@ function gerarPedido() {
     itens: itens.map(n => {
       const p = produtos.find(x => x.id === n.produtoId);
       const c = clientes.find(x => x.id === n.clienteId);
+      if (!p) return null; // Ignorar produtos não encontrados no estoque
       return {
         necessidadeId: n.id,
-        produto: p?.nome || '—',
+        produto: p.nome,
         produtoId: n.produtoId,
         clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
-        valorUnit: Number(p?.valor || 0),
+        valorUnit: Number(p.valor || 0),
         obs: n.obs || ''
       };
-    })
+    }).filter(Boolean) // Remover itens nulos
   };
 
   pedidos.push(pedido);
@@ -4611,7 +4612,7 @@ function renderPedidos() {
         <span class="pedido-status ${statusClass}">${statusLabel}</span>
       </div>
       <div class="pedido-body">
-        ${ped.itens.map(item => `
+        ${ped.itens.filter(item => item.produto && item.produto !== '—').map(item => `
           <div class="pedido-item">
             <div>
               <span class="pedido-item-nome">${item.produto}</span>
