@@ -4453,19 +4453,19 @@ function gerarPedido() {
     tecnico: usuarioLogado?.usuario || '',
     clienteId: clienteIdNum,
     itens: itens.map(n => {
-      const p = produtos.find(x => x.id === n.produtoId)
-             || produtos.find(x => x.nome === n.produto); // fallback por nome
+      const p = produtos.find(x => Number(x.id) === Number(n.produtoId))
+             || produtos.find(x => x.nome === n.nomeProduto)
+             || produtos.find(x => x.nome === n.produto);
       const c = clientes.find(x => x.id === n.clienteId);
-      // Só ignora se não tiver nome algum
-      if (!p && !n.produto) return null;
+      if (!p) return null; // Ignorar se produto não encontrado
       return {
         necessidadeId: n.id,
-        produto: p?.nome || n.produto || '—',
-        produtoId: p?.id || n.produtoId,
+        produto: p.nome,
+        produtoId: p.id,
         clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
-        valorUnit: Number(p?.valor || 0),
+        valorUnit: Number(p.valor || 0),
         obs: n.obs || ''
       };
     }).filter(item => item && item.produto && item.produto !== '—') // Remover itens sem produto
@@ -4935,7 +4935,8 @@ function salvarNecessidade() {
   if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido','error'); return; }
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido','error'); return; }
   if (qtd < 1) { showToast('⚠ Quantidade deve ser ao menos 1','error'); return; }
-  necessidades.push({id:Date.now(),clienteId,produtoId,qtd,data,obs,entregue:false,pago:false});
+  const produtoSalvo = produtos.find(x => x.id === produtoId);
+  necessidades.push({id:Date.now(),clienteId,produtoId,nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
   salvarNecessidades(); renderNecessidades();
   showToast('✓ Adicionado! Selecione mais produtos ou gere o pedido.','success');
   fbSync();
@@ -4954,7 +4955,6 @@ function atualizarContadorNec(clienteId) {
   }
 }
 function gerarPedidoDoModal() {
-  // Salvar o item atual do modal antes de gerar o pedido
   const clienteId = Number(document.getElementById('necClienteSel').value);
   const produtoId = Number(document.getElementById('necProdutoSel').value);
   const qtd = parseInt(document.getElementById('necQtd').value, 10) || 1;
@@ -4964,15 +4964,42 @@ function gerarPedidoDoModal() {
   if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido', 'error'); return; }
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido', 'error'); return; }
 
-  // Adicionar à lista de necessidades antes de gerar
-  necessidades.push({ id: Date.now(), clienteId, produtoId, qtd, data, obs, entregue: false, pago: false });
-  salvarNecessidades();
+  const p = produtos.find(x => Number(x.id) === Number(produtoId));
+  const c = clientes.find(x => Number(x.id) === Number(clienteId));
+
+  if (!p) { showToast('⚠ Produto não encontrado no estoque. Verifique o cadastro.', 'error'); return; }
+  if (!c) { showToast('⚠ Cliente não encontrado. Verifique o cadastro.', 'error'); return; }
+
+  // Gerar pedido apenas com este item do modal
+  const pedido = {
+    id: Date.now() + 1,
+    data: new Date().toISOString(),
+    status: 'pendente',
+    consolidado: false,
+    tecnico: usuarioLogado?.usuario || '',
+    clienteId,
+    itens: [{
+      necessidadeId: novaNecess.id,
+      produto: p.nome,
+      produtoId: p.id,
+      clienteId,
+      cliente: c?.nome || '—',
+      qtd,
+      valorUnit: Number(p.valor || 0),
+      obs
+    }]
+  };
+
+  pedidos.push(pedido);
+  salvarPedidos();
 
   fecharModal('modalNecessidadeForm');
-  // Limpar contador do modal
   const contador = document.getElementById('necContador');
   if (contador) { contador.textContent = ''; contador.style.display = 'none'; }
-  gerarPedido();
+
+  showToast('✓ Pedido gerado com sucesso!', 'success');
+  navegarPara('pedidos');
+  fbSync();
 }
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
 function excluirNec(id) {
