@@ -4470,12 +4470,18 @@ function gerarPedido() {
   const idsUsados = new Set(itens.map(n => n.id));
   necessidades = necessidades.filter(n => !idsUsados.has(n.id));
   salvarNecessidades();
-  // Deletar do Firebase para não retornar ao recarregar
-  if (window.fbDeleteDoc) idsUsados.forEach(id => window.fbDeleteDoc('necessidades', id));
 
+  // Deletar do Firebase e só depois sincronizar para evitar que as necessidades retornem
   showToast('✓ Pedido gerado! Necessidades limpas.', 'success');
   navegarPara('pedidos');
-  fbSync();
+
+  if (window.fbDeleteDoc) {
+    Promise.all([...idsUsados].map(id => window.fbDeleteDoc('necessidades', id)))
+      .then(() => fbSync())
+      .catch(() => fbSync());
+  } else {
+    fbSync();
+  }
 }
 
 let _subTabAtiva = 'todos'; // gestor começa no consolidado
