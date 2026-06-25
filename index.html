@@ -4530,8 +4530,13 @@ function enviarParaConsolidado() {
     const idx = pedidos.findIndex(x => x.id === ped.id);
     if (idx >= 0) { pedidos[idx].consolidado = true; pedidos[idx].tecnico = usuarioLogado?.usuario || ''; }
   });
-  salvarPedidos(); renderPedidos(); fbSync();
+  salvarPedidos();
   showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+  renderPedidos();
+  // Aguardar sync para garantir que o gestor veja o pedido consolidado
+  fbSync();
+  // Forçar segundo sync após delay para garantir persistência no Firebase
+  setTimeout(() => fbSync(), 1500);
 }
 
 function renderPedidos() {
@@ -6197,6 +6202,23 @@ window.addEventListener('resize', ajustarOffsetHeader);
 
   // Carregar do Firebase ao iniciar
   carregarDoFirebase();
+
+  // Polling a cada 30 segundos para gestor ver pedidos consolidados em tempo real
+  setInterval(async () => {
+    try {
+      const snapPed = await getDocs(collection(db, 'pedidos'));
+      if (!snapPed.empty) {
+        const dados = snapPed.docs.map(d => d.data());
+        localStorage.setItem('aquagest_pedidos', JSON.stringify(dados));
+        if (typeof pedidos !== 'undefined') {
+          pedidos = dados;
+          // Atualizar a tela se estiver na aba pedidos
+          const paginaAtiva = document.querySelector('.nav-tab.active')?.getAttribute('onclick');
+          if (paginaAtiva?.includes('pedidos')) renderPedidos();
+        }
+      }
+    } catch(e) { /* silencioso */ }
+  }, 30000);
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
