@@ -2792,7 +2792,12 @@ João Silva | 300" style="resize:vertical;font-family:monospace;font-size:0.82re
 <div class="modal-overlay" id="modalNecessidadeForm" bis_skin_checked="1">
   <div class="modal" style="max-width:500px;" bis_skin_checked="1">
     <div class="modal-title" bis_skin_checked="1"><span>🧴 Registrar Necessidade</span><button class="modal-close" onclick="fecharModal('modalNecessidadeForm')">✕</button></div>
-    <div class="form-group" bis_skin_checked="1"><label class="form-label">Cliente</label><select class="form-input" id="necClienteSel" onchange="atualizarContadorNec(Number(this.value))"></select></div>
+    <div class="form-group" bis_skin_checked="1">
+      <label class="form-label">Cliente</label>
+      <input type="text" class="form-input" id="necClienteBusca" placeholder="🔍 Buscar cliente..." oninput="filtrarNecClientes()" autocomplete="off" style="margin-bottom:6px;">
+      <div id="necClienteLista" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;background:white;"></div>
+      <input type="hidden" id="necClienteSel">
+    </div>
     <div id="necContador" style="display:none;background:rgba(33,150,243,0.08);border:1px solid rgba(33,150,243,0.3);border-radius:8px;padding:6px 12px;font-size:0.82rem;color:var(--accent2);margin-bottom:8px;" bis_skin_checked="1"></div>
     <div class="form-group" bis_skin_checked="1"><label class="form-label">Produto</label><select class="form-input" id="necProdutoSel"></select></div>
     <div class="form-row" bis_skin_checked="1">
@@ -4841,14 +4846,79 @@ function renderNecessidades() {
     </div>`;
   }).join('');
 }
+let _necClientesFiltrados = [];
+
+function renderNecClienteLista(busca, clienteIdSelecionado) {
+  const lista = document.getElementById('necClienteLista');
+  if (!lista) return;
+  const termo = (busca || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const filtrados = _necClientesFiltrados.filter(c => {
+    const nome = c.nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return nome.includes(termo);
+  });
+
+  if (!filtrados.length) {
+    lista.innerHTML = '<div style="padding:12px;text-align:center;color:var(--muted);font-size:0.83rem;">Nenhum cliente encontrado</div>';
+    return;
+  }
+
+  const idSel = Number(clienteIdSelecionado) || Number(document.getElementById('necClienteSel')?.value);
+  lista.innerHTML = filtrados.map(c => `
+    <div onclick="selecionarNecCliente(${c.id}, '${c.nome.replace(/'/g, "\'")}')"
+      style="padding:10px 14px;cursor:pointer;font-size:0.85rem;font-weight:${c.id === idSel ? '700' : '400'};
+      background:${c.id === idSel ? 'rgba(33,150,243,0.1)' : 'white'};
+      color:${c.id === idSel ? 'var(--accent2)' : 'var(--text)'};
+      border-bottom:1px solid var(--border);transition:background 0.15s;"
+      onmouseover="this.style.background='rgba(33,150,243,0.06)'"
+      onmouseout="this.style.background='${c.id === idSel ? 'rgba(33,150,243,0.1)' : 'white'}'">
+      ${c.nome}${c.id === idSel ? ' ✓' : ''}
+    </div>`).join('');
+}
+
+function selecionarNecCliente(id, nome) {
+  const hidden = document.getElementById('necClienteSel');
+  const busca = document.getElementById('necClienteBusca');
+  if (hidden) hidden.value = id;
+  if (busca) busca.value = nome;
+  renderNecClienteLista(nome, id);
+  atualizarContadorNec(id);
+  // Colapsar lista após seleção
+  const lista = document.getElementById('necClienteLista');
+  if (lista) lista.style.display = 'none';
+}
+
+function filtrarNecClientes() {
+  const busca = document.getElementById('necClienteBusca');
+  const lista = document.getElementById('necClienteLista');
+  if (lista) lista.style.display = 'block';
+  // Limpar seleção ao digitar
+  const hidden = document.getElementById('necClienteSel');
+  if (hidden) hidden.value = '';
+  renderNecClienteLista(busca?.value || '', null);
+}
+
 function abrirModalNecessidade(clienteId) {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  const clientesFiltrados = isTecnico
+  _necClientesFiltrados = isTecnico
     ? (vinculo ? clientes.filter(c => c.tecnico === vinculo && c.status !== 'suspenso') : [])
-    : clientes;
-  document.getElementById('necClienteSel').innerHTML=clientesFiltrados.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
-  if(clienteId) document.getElementById('necClienteSel').value=clienteId;
+    : clientes.filter(c => c.status !== 'suspenso');
+
+  // Limpar busca e seleção
+  const busca = document.getElementById('necClienteBusca');
+  const hidden = document.getElementById('necClienteSel');
+  if (busca) busca.value = '';
+  if (hidden) hidden.value = clienteId || '';
+
+  // Popular lista e garantir que está visível
+  const listDiv = document.getElementById('necClienteLista');
+  if (listDiv) listDiv.style.display = 'block';
+  renderNecClienteLista('', clienteId);
+  // Se cliente já selecionado, mostrar nome no campo de busca
+  if (clienteId) {
+    const c = clientes.find(x => x.id === Number(clienteId));
+    if (c && busca) busca.value = c.nome;
+  }
   document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('necQtd').value=1; document.getElementById('necData').value=new Date().toISOString().slice(0,10);
   document.getElementById('necObs').value=''; document.getElementById('modalNecessidadeForm').classList.add('open');
