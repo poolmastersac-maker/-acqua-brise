@@ -4454,21 +4454,25 @@ function gerarPedido() {
     clienteId: clienteIdNum,
     itens: itens.map(n => {
       const p = produtos.find(x => Number(x.id) === Number(n.produtoId))
-             || produtos.find(x => x.nome === n.nomeProduto)
-             || produtos.find(x => x.nome === n.produto);
+             || (n.codigoProduto && produtos.find(x => String(x.codigo) === String(n.codigoProduto)))
+             || (n.nomeProduto && produtos.find(x => x.nome === n.nomeProduto))
+             || (n.produto && produtos.find(x => x.nome === n.produto))
+             || produtos.find(x => String(x.codigo) === String(n.produtoId));
       const c = clientes.find(x => x.id === n.clienteId);
-      if (!p) return null; // Ignorar se produto não encontrado
+      // Se não achar o produto, usa o nome salvo ou mantém como desconhecido
+      const nomeProd = p?.nome || n.nomeProduto || n.produto || null;
+      if (!nomeProd) return null;
       return {
         necessidadeId: n.id,
-        produto: p.nome,
-        produtoId: p.id,
+        produto: nomeProd,
+        produtoId: p?.id || n.produtoId,
         clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
-        valorUnit: Number(p.valor || 0),
+        valorUnit: Number(p?.valor || 0),
         obs: n.obs || ''
       };
-    }).filter(item => item && item.produto && item.produto !== '—') // Remover itens sem produto
+    }).filter(item => item !== null)
   };
 
   pedidos.push(pedido);
@@ -4935,8 +4939,8 @@ function salvarNecessidade() {
   if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido','error'); return; }
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido','error'); return; }
   if (qtd < 1) { showToast('⚠ Quantidade deve ser ao menos 1','error'); return; }
-  const produtoSalvo = produtos.find(x => x.id === produtoId);
-  necessidades.push({id:Date.now(),clienteId,produtoId,nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
+  const produtoSalvo = produtos.find(x => Number(x.id) === Number(produtoId));
+  necessidades.push({id:Date.now(),clienteId,produtoId:Number(produtoId),codigoProduto:produtoSalvo?.codigo||'',nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
   salvarNecessidades(); renderNecessidades();
   showToast('✓ Adicionado! Selecione mais produtos ou gere o pedido.','success');
   fbSync();
@@ -4964,7 +4968,8 @@ function gerarPedidoDoModal() {
   if (!clienteId || isNaN(clienteId)) { showToast('⚠ Selecione um cliente válido', 'error'); return; }
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido', 'error'); return; }
 
-  const p = produtos.find(x => Number(x.id) === Number(produtoId));
+  const p = produtos.find(x => Number(x.id) === Number(produtoId))
+         || produtos.find(x => String(x.codigo) === String(produtoId));
   const c = clientes.find(x => Number(x.id) === Number(clienteId));
 
   if (!p) { showToast('⚠ Produto não encontrado no estoque. Verifique o cadastro.', 'error'); return; }
