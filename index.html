@@ -7267,12 +7267,16 @@ window.addEventListener('resize', ajustarOffsetHeader);
         if (typeof necessidades !== 'undefined') { necessidades = dados; }
       }
 
-      // PEDIDOS
+      // PEDIDOS — mesclar Firebase com local para não perder pedidos recém criados
       const snapPed = await getDocs(collection(db, 'pedidos'));
       if (!snapPed.empty) {
-        const dados = snapPed.docs.map(d => d.data());
-        localStorage.setItem('aquagest_pedidos', JSON.stringify(dados));
-        if (typeof pedidos !== 'undefined') { pedidos = dados; }
+        const dadosFirebase = snapPed.docs.map(d => d.data());
+        const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+        const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
+        const pedidosApenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+        const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
+        localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
+        if (typeof pedidos !== 'undefined') { pedidos = dadosMesclados; }
       }
 
       // USUÁRIOS — sempre sobrescreve para garantir senhas atualizadas
@@ -7338,10 +7342,18 @@ window.addEventListener('resize', ajustarOffsetHeader);
     try {
       const snapPed = await getDocs(collection(db, 'pedidos'));
       if (!snapPed.empty) {
-        const dados = snapPed.docs.map(d => d.data());
-        localStorage.setItem('aquagest_pedidos', JSON.stringify(dados));
+        const dadosFirebase = snapPed.docs.map(d => d.data());
+        const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+
+        // Mesclar: nunca descartar pedidos locais que ainda não chegaram ao Firebase
+        // Usar Firebase como base, mas manter pedidos locais que não estão no Firebase ainda
+        const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
+        const pedidosApenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+        const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
+
+        localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
         if (typeof pedidos !== 'undefined') {
-          pedidos = dados;
+          pedidos = dadosMesclados;
           // Atualizar a tela se a página de pedidos estiver visível
           const paginaPedidos = document.getElementById('page-pedidos');
           if (paginaPedidos && paginaPedidos.classList.contains('active')) {
