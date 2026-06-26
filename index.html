@@ -2217,6 +2217,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <select id="filtroPedidoTecnico" onchange="renderPedidos()" style="padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.82rem; color: var(--text); background: white; cursor: pointer; display: block;"><option value="">👤 Todos os técnicos</option><option value="Arthur Jesus">Arthur Jesus</option><option value="Diego Rodrigues">Diego Rodrigues</option><option value="Marcio Sportari">Marcio Sportari</option></select>
     </div>
     <button class="btn btn-green btn-sm" id="btnEnviarTodosWpp" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
+    <button class="btn btn-sm" style="background:var(--surface2);border:1px solid var(--border);color:var(--accent2);" onclick="atualizarPedidosFirebase()" title="Buscar pedidos atualizados">🔄 Atualizar</button>
   </div>
   <div id="pedidosBody" bis_skin_checked="1">
     <div class="pedido-card" id="pedido_1782402952412" bis_skin_checked="1">
@@ -4214,24 +4215,25 @@ function navegarPara(pagina) {
   if (pagina==='visaogeral') renderVisaoGeral();
   if (pagina==='necessidades') renderNecessidades();
   if (pagina==='pedidos') {
-    // Gestor busca pedidos frescos do Firebase antes de renderizar
-    const isGestor = typeof usuarioLogado !== 'undefined' && usuarioLogado?.perfil !== 'tecnico';
-    if (isGestor && typeof getDocs !== 'undefined') {
-      // Tenta buscar do Firebase, mas renderiza imediatamente com dados locais também
-      renderPedidos();
+    renderPedidos();
+    // Sempre busca dados frescos do Firebase ao abrir aba pedidos
+    if (typeof getDocs !== 'undefined') {
       (async () => {
         try {
           const snapPed = await getDocs(collection(db, 'pedidos'));
           if (!snapPed.empty) {
-            const dados = snapPed.docs.map(d => d.data());
-            localStorage.setItem('aquagest_pedidos', JSON.stringify(dados));
-            pedidos = dados;
+            const dadosFirebase = snapPed.docs.map(d => d.data());
+            // Mesclar: preservar pedidos locais ainda não sincronizados
+            const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+            const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
+            const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+            const mesclados = [...dadosFirebase, ...apenasLocais];
+            localStorage.setItem('aquagest_pedidos', JSON.stringify(mesclados));
+            pedidos = mesclados;
             renderPedidos();
           }
         } catch(e) { /* silencioso */ }
       })();
-    } else {
-      renderPedidos();
     }
   }
   if (pagina==='relatorios') renderRelatoriosPage();
@@ -5638,6 +5640,26 @@ function trocarSubTabPedidos(aba) {
   const btnWpp = document.getElementById('btnEnviarTodosWpp');
   if (btnWpp) btnWpp.style.display = aba === 'todos' ? '' : 'none';
   renderPedidos();
+}
+
+async function atualizarPedidosFirebase() {
+  try {
+    showToast('🔄 Buscando pedidos...', 'info');
+    const snapPed = await getDocs(collection(db, 'pedidos'));
+    if (!snapPed.empty) {
+      const dadosFirebase = snapPed.docs.map(d => d.data());
+      const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+      const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
+      const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+      const mesclados = [...dadosFirebase, ...apenasLocais];
+      localStorage.setItem('aquagest_pedidos', JSON.stringify(mesclados));
+      pedidos = mesclados;
+      renderPedidos();
+      showToast('✓ Pedidos atualizados!', 'success');
+    }
+  } catch(e) {
+    showToast('⚠ Erro ao buscar pedidos', 'error');
+  }
 }
 
 function enviarParaConsolidado() {
@@ -7362,7 +7384,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
         }
       }
     } catch(e) { /* silencioso */ }
-  }, 30000);
+  }, 15000);
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
