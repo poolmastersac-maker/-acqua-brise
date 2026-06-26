@@ -4929,7 +4929,13 @@ function salvarProduto() {
   const editId = editIdRaw ? (isNaN(Number(editIdRaw)) ? editIdRaw : Number(editIdRaw)) : null;
   const prod={id:editId||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
   const idx=produtos.findIndex(p=>p.id===prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
-  salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success'); fbSync();
+  salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success');
+  // Atualizar seletor de produtos no modal de necessidades se estiver aberto
+  const selProd = document.getElementById('necProdutoSel');
+  if (selProd) {
+    selProd.innerHTML = produtos.slice().sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  }
+  fbSync();
 }
 let _produtoParaExcluirId = null;
 
@@ -4943,6 +4949,11 @@ function confirmarExclusaoProduto() {
   const idParaDeletar = _produtoParaExcluirId;
   produtos = produtos.filter(p => p.id !== idParaDeletar);
   _produtoParaExcluirId = null;
+  // Atualizar seletor de produtos no modal de necessidades
+  const selProd = document.getElementById('necProdutoSel');
+  if (selProd) {
+    selProd.innerHTML = produtos.slice().sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  }
   salvarProdutos();
   fecharModal('modalConfirmProduto');
   renderEstoque();
@@ -6050,7 +6061,13 @@ function abrirModalNecessidade(clienteId) {
     const c = clientes.find(x => x.id === Number(clienteId));
     if (c && busca) busca.value = c.nome;
   }
-  document.getElementById('necProdutoSel').innerHTML=produtos.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  // Buscar produtos frescos do localStorage para garantir que novos produtos apareçam
+  const produtosAtuais = JSON.parse(localStorage.getItem('aquagest_produtos') || '[]');
+  if (produtosAtuais.length > 0 && produtosAtuais.length >= produtos.length) { produtos = produtosAtuais; }
+  document.getElementById('necProdutoSel').innerHTML=produtos
+    .slice()
+    .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   document.getElementById('necQtd').value=1; document.getElementById('necData').value=new Date().toISOString().slice(0,10);
   document.getElementById('necObs').value=''; document.getElementById('modalNecessidadeForm').classList.add('open');
 }
