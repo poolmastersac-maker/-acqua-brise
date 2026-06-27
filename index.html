@@ -5666,14 +5666,21 @@ async function atualizarPedidosFirebase() {
 }
 
 async function enviarParaConsolidado() {
+  console.log('[DIAG] 1. enviarParaConsolidado chamada');
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
+  console.log('[DIAG] 2. isTecnico:', isTecnico, '| usuario:', usuarioLogado?.usuario, '| total pedidos:', pedidos.length);
   const meusPendentes = pedidos.filter(ped => {
     if (ped.consolidado) return false;
     if (isTecnico && vinculo) return ped.tecnico === usuarioLogado?.usuario;
     return true;
   });
-  if (!meusPendentes.length) { showToast('⚠ Nenhum pedido pendente para enviar', 'error'); return; }
+  console.log('[DIAG] 3. meusPendentes encontrados:', meusPendentes.length, meusPendentes.map(p => ({id:p.id, tecnico:p.tecnico, consolidado:p.consolidado})));
+  if (!meusPendentes.length) {
+    showToast('⚠ Nenhum pedido pendente para enviar', 'error');
+    console.log('[DIAG] PAROU: nenhum pedido pendente. Verifique se pedido.tecnico ("' + (pedidos[0]?.tecnico) + '") bate com usuario ("' + usuarioLogado?.usuario + '")');
+    return;
+  }
 
   // Marcar como consolidado
   meusPendentes.forEach(ped => {
@@ -5682,6 +5689,7 @@ async function enviarParaConsolidado() {
   });
   salvarPedidos();
   renderPedidos();
+  console.log('[DIAG] 4. Pedidos marcados consolidado e salvos no localStorage');
 
   // Salvar diretamente no Firebase e aguardar confirmação
   showToast('⏳ Enviando para consolidado...', 'info');
@@ -5689,6 +5697,7 @@ async function enviarParaConsolidado() {
     const idx = pedidos.findIndex(x => x.id === ped.id);
     return idx >= 0 ? pedidos[idx] : ped;
   });
+  console.log('[DIAG] 5. window.fbSetDoc disponível?', !!window.fbSetDoc);
 
   // Helper: corrida entre o salvamento e um timeout de 8s para nunca pendurar
   const comTimeout = (promise, ms) => Promise.race([
@@ -5698,21 +5707,24 @@ async function enviarParaConsolidado() {
 
   if (window.fbSetDoc) {
     try {
+      console.log('[DIAG] 6. Iniciando fbSetDoc...');
       await comTimeout(
         Promise.all(pedidosParaSalvar.map(ped =>
           window.fbSetDoc('pedidos', String(ped.id), ped)
         )),
         8000
       );
+      console.log('[DIAG] 7. fbSetDoc concluído com sucesso');
       showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
     } catch(e) {
       // Timeout ou erro: os dados já estão no localStorage e marcados consolidado.
       // Dispara fbSync como fallback e confirma para o usuário.
-      console.error('Falha/timeout ao salvar no Firebase:', e);
+      console.error('[DIAG] 7b. Falha/timeout ao salvar no Firebase:', e);
       fbSync();
       showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s)! (sincronização em segundo plano)`, 'success');
     }
   } else {
+    console.log('[DIAG] 6b. fbSetDoc NÃO disponível, usando fbSync');
     fbSync();
     showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
   }
