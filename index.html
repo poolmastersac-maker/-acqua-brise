@@ -5690,16 +5690,27 @@ async function enviarParaConsolidado() {
     return idx >= 0 ? pedidos[idx] : ped;
   });
 
+  // Helper: corrida entre o salvamento e um timeout de 8s para nunca pendurar
+  const comTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+  ]);
+
   if (window.fbSetDoc) {
     try {
-      await Promise.all(pedidosParaSalvar.map(ped =>
-        window.fbSetDoc('pedidos', String(ped.id), ped)
-      ));
+      await comTimeout(
+        Promise.all(pedidosParaSalvar.map(ped =>
+          window.fbSetDoc('pedidos', String(ped.id), ped)
+        )),
+        8000
+      );
       showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
     } catch(e) {
-      console.error('Erro ao salvar no Firebase:', e);
-      fbSync(); // fallback
-      showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+      // Timeout ou erro: os dados já estão no localStorage e marcados consolidado.
+      // Dispara fbSync como fallback e confirma para o usuário.
+      console.error('Falha/timeout ao salvar no Firebase:', e);
+      fbSync();
+      showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s)! (sincronização em segundo plano)`, 'success');
     }
   } else {
     fbSync();
@@ -7200,13 +7211,16 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const usuarios   = JSON.parse(localStorage.getItem('aquagest_usuarios')     || '[]');
       const permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes')   || '{}');
 
-      for (const c of clientes)    await setDoc(doc(db,'clientes',String(c.id)), c);
-      for (const h of historico)   await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), h);
-      for (const p of produtos)    await setDoc(doc(db,'produtos',String(p.id)), p);
-      for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), n);
-      for (const p2 of pedidos)    await setDoc(doc(db,'pedidos',String(p2.id)), p2);
-      for (const u of usuarios)    await setDoc(doc(db,'usuarios',String(u.id)), u);
-      await setDoc(doc(db,'config','permissoes'), {...permissoes, _versao: window._permissoesVersao || '3.0'});
+      // Remove undefined recursivamente — Firestore os rejeita e pendura a escrita
+      const limpar = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v));
+
+      for (const c of clientes)    await setDoc(doc(db,'clientes',String(c.id)), limpar(c));
+      for (const h of historico)   await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), limpar(h));
+      for (const p of produtos)    await setDoc(doc(db,'produtos',String(p.id)), limpar(p));
+      for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), limpar(n));
+      for (const p2 of pedidos)    await setDoc(doc(db,'pedidos',String(p2.id)), limpar(p2));
+      for (const u of usuarios)    await setDoc(doc(db,'usuarios',String(u.id)), limpar(u));
+      await setDoc(doc(db,'config','permissoes'), limpar({...permissoes, _versao: window._permissoesVersao || '3.0'}));
 
       setBadge(true);
     } catch(e) {
@@ -7231,7 +7245,10 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // Expor função de set para uso direto no JS principal
   window.fbSetDoc = async function(colecao, id, dados) {
     try {
-      await setDoc(doc(db, colecao, String(id)), dados);
+      // Sanitizar: Firestore rejeita valores undefined e pendura a promise.
+      // Remove recursivamente qualquer undefined antes de salvar.
+      const limpo = JSON.parse(JSON.stringify(dados, (k, v) => v === undefined ? null : v));
+      await setDoc(doc(db, colecao, String(id)), limpo);
       return true;
     } catch(e) {
       console.error('Erro fbSetDoc:', e);
