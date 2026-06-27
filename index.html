@@ -4217,13 +4217,11 @@ function navegarPara(pagina) {
   if (pagina==='pedidos') {
     renderPedidos();
     // Sempre busca dados frescos do Firebase ao abrir aba pedidos
-    if (typeof getDocs !== 'undefined') {
+    if (window.fbGetPedidos) {
       (async () => {
         try {
-          const snapPed = await getDocs(collection(db, 'pedidos'));
-          if (!snapPed.empty) {
-            const dadosFirebase = snapPed.docs.map(d => d.data());
-            // Mesclar: preservar pedidos locais ainda não sincronizados
+          const dadosFirebase = await window.fbGetPedidos();
+          if (dadosFirebase && dadosFirebase.length >= 0) {
             const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
             const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
             const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
@@ -5549,7 +5547,7 @@ function confirmarEnvioWhatsApp() {
 let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
 
-function gerarPedido() {
+async function gerarPedido() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   // Pegar necessidades não entregues (filtradas por técnico se necessário)
@@ -5615,14 +5613,19 @@ function gerarPedido() {
   necessidades = necessidades.filter(n => !idsUsados.has(n.id));
   salvarNecessidades();
 
-  // Deletar do Firebase e só depois sincronizar para evitar que as necessidades retornem
   showToast('✓ Pedido gerado! Necessidades limpas.', 'success');
   navegarPara('pedidos');
 
-  if (window.fbDeleteDoc) {
-    Promise.all([...idsUsados].map(id => window.fbDeleteDoc('necessidades', id)))
-      .then(() => fbSync())
-      .catch(() => fbSync());
+  // Salvar pedido diretamente no Firebase e depois deletar necessidades
+  if (window.fbSetDoc && window.fbDeleteDoc) {
+    try {
+      await window.fbSetDoc('pedidos', String(pedido.id), pedido);
+      await Promise.all([...idsUsados].map(id => window.fbDeleteDoc('necessidades', id)));
+      fbSync();
+    } catch(e) {
+      console.error('Erro ao salvar pedido no Firebase:', e);
+      fbSync();
+    }
   } else {
     fbSync();
   }
@@ -5643,11 +5646,11 @@ function trocarSubTabPedidos(aba) {
 }
 
 async function atualizarPedidosFirebase() {
+  if (!window.fbGetPedidos) { showToast('⚠ Firebase não disponível', 'error'); return; }
   try {
     showToast('🔄 Buscando pedidos...', 'info');
-    const snapPed = await getDocs(collection(db, 'pedidos'));
-    if (!snapPed.empty) {
-      const dadosFirebase = snapPed.docs.map(d => d.data());
+    const dadosFirebase = await window.fbGetPedidos();
+    if (dadosFirebase && dadosFirebase.length >= 0) {
       const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
       const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
       const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
@@ -5662,27 +5665,46 @@ async function atualizarPedidosFirebase() {
   }
 }
 
-function enviarParaConsolidado() {
+async function enviarParaConsolidado() {
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   const meusPendentes = pedidos.filter(ped => {
     if (ped.consolidado) return false;
-    // Verificar pelo campo tecnico do pedido (registrado ao gerar)
     if (isTecnico && vinculo) return ped.tecnico === usuarioLogado?.usuario;
     return true;
   });
   if (!meusPendentes.length) { showToast('⚠ Nenhum pedido pendente para enviar', 'error'); return; }
+
+  // Marcar como consolidado
   meusPendentes.forEach(ped => {
     const idx = pedidos.findIndex(x => x.id === ped.id);
     if (idx >= 0) { pedidos[idx].consolidado = true; pedidos[idx].tecnico = usuarioLogado?.usuario || ''; }
   });
   salvarPedidos();
-  showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
   renderPedidos();
-  // Aguardar sync para garantir que o gestor veja o pedido consolidado
-  fbSync();
-  // Forçar segundo sync após delay para garantir persistência no Firebase
-  setTimeout(() => fbSync(), 1500);
+
+  // Salvar diretamente no Firebase e aguardar confirmação
+  showToast('⏳ Enviando para consolidado...', 'info');
+  const pedidosParaSalvar = meusPendentes.map(ped => {
+    const idx = pedidos.findIndex(x => x.id === ped.id);
+    return idx >= 0 ? pedidos[idx] : ped;
+  });
+
+  if (window.fbSetDoc) {
+    try {
+      await Promise.all(pedidosParaSalvar.map(ped =>
+        window.fbSetDoc('pedidos', String(ped.id), ped)
+      ));
+      showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+    } catch(e) {
+      console.error('Erro ao salvar no Firebase:', e);
+      fbSync(); // fallback
+      showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+    }
+  } else {
+    fbSync();
+    showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
+  }
 }
 
 function renderPedidos() {
@@ -5817,7 +5839,8 @@ function togglePedidoEntregue(id, checkbox) {
     }
     const semEstoque = [];
     ped.itens.forEach(item => {
-      const p = produtos.find(x => x.id === Number(item.produtoId));
+      const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
+             || (item.produto && produtos.find(x => x.nome === item.produto));
       if (p && p.qtd < item.qtd) semEstoque.push(item.produto + ' (estoque: ' + p.qtd + ', pedido: ' + item.qtd + ')');
     });
     if (semEstoque.length > 0) {
@@ -5825,7 +5848,8 @@ function togglePedidoEntregue(id, checkbox) {
       if (!continuar) { checkbox.checked = false; return; }
     }
     ped.itens.forEach(item => {
-      const p = produtos.find(x => x.id === Number(item.produtoId));
+      const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
+             || (item.produto && produtos.find(x => x.nome === item.produto));
       if (p) p.qtd = Math.max(0, p.qtd - item.qtd);
     });
     salvarProdutos(); renderEstoque();
@@ -5834,7 +5858,8 @@ function togglePedidoEntregue(id, checkbox) {
     const devolver = confirm('Desmarcar entrega?\n\nDeseja devolver os produtos ao estoque?');
     if (devolver) {
       ped.itens.forEach(item => {
-        const p = produtos.find(x => x.id === Number(item.produtoId));
+        const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
+               || (item.produto && produtos.find(x => x.nome === item.produto));
         if (p) p.qtd += item.qtd;
       });
       salvarProdutos(); renderEstoque();
@@ -5844,7 +5869,9 @@ function togglePedidoEntregue(id, checkbox) {
     }
   }
   ped.entregue = marcando;
-  salvarPedidos(); fbSync();
+  salvarPedidos();
+  if (window.fbSetDoc) window.fbSetDoc('pedidos', String(ped.id), ped);
+  else fbSync();
   const label = document.getElementById('label-entregue-' + id);
   if (label) label.classList.toggle('entregue-ativo', marcando);
 }
@@ -5853,7 +5880,9 @@ function togglePedidoPago(id, checkbox) {
   const ped = pedidos.find(x => x.id === id);
   if (!ped) return;
   ped.pago = checkbox.checked;
-  salvarPedidos(); fbSync();
+  salvarPedidos();
+  if (window.fbSetDoc) window.fbSetDoc('pedidos', String(ped.id), ped);
+  else fbSync();
   const label = document.getElementById('label-pago-' + id);
   if (label) label.classList.toggle('pago-ativo', ped.pago);
   showToast(ped.pago ? '💜 Pedido marcado como pago!' : 'Pagamento desmarcado.', ped.pago ? 'success' : 'info');
@@ -5929,8 +5958,9 @@ function enviarPedidoWhatsApp(id) {
 }
 
 function enviarTodosPedidos() {
-  const pendentes = pedidos.filter(p => p.status === 'pendente');
-  if (!pendentes.length) { showToast('Nenhum pedido pendente para enviar', 'info'); return; }
+  // Só pedidos consolidados e ainda pendentes (o botão aparece apenas no Consolidado do gestor)
+  const pendentes = pedidos.filter(p => p.consolidado && p.status === 'pendente');
+  if (!pendentes.length) { showToast('Nenhum pedido consolidado pendente para enviar', 'info'); return; }
 
   const data = new Date().toLocaleDateString('pt-BR');
   const total = pendentes.reduce((s, ped) => s + ped.itens.reduce((si,i) => si + (i.valorUnit * i.qtd), 0), 0);
@@ -5978,9 +6008,10 @@ function confirmarExclusaoPedido() {
   fecharModal('modalConfirmPedido');
   renderPedidos();
   showToast('Pedido removido', 'info');
-  // Deletar do Firebase para não retornar ao recarregar
-  if (window.fbDeleteDoc) window.fbDeleteDoc('pedidos', idParaDeletar);
-  fbSync();
+  // Deletar do Firebase — não chamar fbSync depois para evitar recriar o documento
+  if (window.fbDeleteDoc) {
+    window.fbDeleteDoc('pedidos', idParaDeletar);
+  }
 }
 
 // NECESSIDADES
@@ -6129,48 +6160,17 @@ function gerarPedidoDoModal() {
   gerarPedido();
 }
 
-function gerarPedidoDoModal_UNUSED() {
-  const clienteId = Number(document.getElementById('necClienteSel').value);
-  const produtoId = Number(document.getElementById('necProdutoSel').value);
-  const pedido = {
-    id: Date.now() + 1,
-    data: new Date().toISOString(),
-    status: 'pendente',
-    consolidado: false,
-    tecnico: usuarioLogado?.usuario || '',
-    clienteId,
-    itens: [{
-      necessidadeId: novaNecess.id,
-      produto: p.nome,
-      produtoId: p.id,
-      clienteId,
-      cliente: c?.nome || '—',
-      qtd,
-      valorUnit: Number(p.valor || 0),
-      obs
-    }]
-  };
 
-  pedidos.push(pedido);
-  salvarPedidos();
-
-  fecharModal('modalNecessidadeForm');
-  const contador = document.getElementById('necContador');
-  if (contador) { contador.textContent = ''; contador.style.display = 'none'; }
-
-  showToast('✓ Pedido gerado com sucesso!', 'success');
-  navegarPara('pedidos');
-  fbSync();
-}
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
 function excluirNec(id) {
   necessidades = necessidades.filter(x => x.id !== id);
   salvarNecessidades();
   renderNecessidades();
   showToast('Removida', 'info');
-  // Deletar do Firebase para não retornar ao recarregar
-  if (window.fbDeleteDoc) window.fbDeleteDoc('necessidades', id);
-  fbSync();
+  // Deletar do Firebase — não chamar fbSync depois para evitar recriar a necessidade
+  if (window.fbDeleteDoc) {
+    window.fbDeleteDoc('necessidades', id);
+  }
 }
 
 // CONFIGURAÇÕES
@@ -7217,6 +7217,28 @@ window.addEventListener('resize', ajustarOffsetHeader);
 
   window.addEventListener('fbSyncRequest', syncToFirebase);
 
+  // Expor função de busca de pedidos para uso global
+  window.fbGetPedidos = async function() {
+    try {
+      const snap = await getDocs(collection(db, 'pedidos'));
+      return snap.empty ? [] : snap.docs.map(d => d.data());
+    } catch(e) {
+      console.error('Erro fbGetPedidos:', e);
+      return null;
+    }
+  };
+
+  // Expor função de set para uso direto no JS principal
+  window.fbSetDoc = async function(colecao, id, dados) {
+    try {
+      await setDoc(doc(db, colecao, String(id)), dados);
+      return true;
+    } catch(e) {
+      console.error('Erro fbSetDoc:', e);
+      return false;
+    }
+  };
+
   // Expor função de delete para uso no JS principal
   window.fbDeleteDoc = async function(colecao, id) {
     try {
@@ -7359,7 +7381,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // Carregar do Firebase ao iniciar
   carregarDoFirebase();
 
-  // Polling a cada 30 segundos para gestor ver pedidos consolidados em tempo real
+  // Polling a cada 15 segundos para gestor ver pedidos consolidados em tempo real
   setInterval(async () => {
     try {
       const snapPed = await getDocs(collection(db, 'pedidos'));
