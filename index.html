@@ -3997,7 +3997,7 @@ function salvarUsuarios() {
 }
 function salvarPermissoes() { 
   localStorage.setItem('aquagest_permissoes', JSON.stringify(permissoes)); 
-  fbSync();
+  fbSave('permissoes');
 }
 
 // PRIVACIDADE — ocultar cards
@@ -4430,7 +4430,7 @@ function pagarClienteSelecionado() {
   selecionarCliente(c.id);
   renderDashboard();
   showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success');
-  fbSync();
+  fbSave('clientes'); fbSave('historico');
 }
 function cobrarClienteSelecionado() { if (clienteSelecionadoId) gerarCobranca(clienteSelecionadoId); }
 function abrirHistoricoCliente() { if (!clienteSelecionadoId) return; histClienteId=clienteSelecionadoId; navegarPara('historico'); }
@@ -4449,7 +4449,6 @@ function confirmarExclusao() {
   showToast('Cliente removido','info');
   // Deletar do Firebase para não retornar ao recarregar
   if (window.fbDeleteDoc) window.fbDeleteDoc('clientes', idParaDeletar);
-  fbSync();
 }
 function saveClient() {
   const nome = document.getElementById('fNome').value.trim();
@@ -4466,7 +4465,7 @@ function saveClient() {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
     if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico}; showToast('✓ Cliente atualizado!','success'); }
   } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico}); showToast('✓ Cliente cadastrado!','success'); }
-  salvar(); limparForm(); renderLista(); renderDashboard(); fbSync();
+  salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
 }
 function limparForm() {
   ['editId','fNome','fTel','fDia','fValor','fEndereco'].forEach(id=>document.getElementById(id).value='');
@@ -4509,7 +4508,7 @@ function togglePago(id) {
   renderDashboard();
   atualizarStats();
   showToast(novoStatus === 'pago' ? '✓ Pago!' : 'Pagamento desfeito', 'success');
-  fbSync();
+  fbSave('clientes'); fbSave('historico');
 }
 
 // HISTÓRICO
@@ -4590,7 +4589,7 @@ function salvarPagamento() {
   const hoje=new Date();
   if(mesIdx===hoje.getMonth()&&ano===hoje.getFullYear()) { const c=clientes.find(x=>x.id===clienteId); if(c){c.status=status;salvar();} }
   salvarHistorico(); fecharModal('modalPagamento'); renderHistorico(); renderDashboard();
-  showToast('✓ Pagamento registrado!','success'); fbSync();
+  showToast('✓ Pagamento registrado!','success'); fbSave('historico'); fbSave('clientes');
 }
 
 // ESTOQUE
@@ -4886,7 +4885,7 @@ function confirmarEntradaNFManual() {
       produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
     }
   });
-  salvarProdutos(); renderEstoque(); fbSync();
+  salvarProdutos(); renderEstoque(); fbSave('produtos');
   fecharModal('modalNotaFiscal');
   showToast('✓ ' + _nfManualItens.length + ' produto(s) atualizados no estoque!', 'success');
   _nfManualItens = [];
@@ -4906,7 +4905,7 @@ function confirmarEntradaNF() {
       produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
     }
   });
-  salvarProdutos(); renderEstoque(); fbSync();
+  salvarProdutos(); renderEstoque(); fbSave('produtos');
   fecharModal('modalNotaFiscal');
   showToast('✓ ' + _nfItens.length + ' produto(s) atualizados no estoque!', 'success');
   _nfItens = [];
@@ -4935,7 +4934,7 @@ function salvarProduto() {
   if (selProd) {
     selProd.innerHTML = produtos.slice().sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   }
-  fbSync();
+  fbSave('produtos');
 }
 let _produtoParaExcluirId = null;
 
@@ -4959,7 +4958,6 @@ function confirmarExclusaoProduto() {
   renderEstoque();
   showToast('✓ Produto excluído!', 'info');
   if (window.fbDeleteDoc) window.fbDeleteDoc('produtos', idParaDeletar);
-  fbSync();
 }
 
 function abrirModalMovimento(id) {
@@ -4978,7 +4976,7 @@ function salvarMovimento() {
   if(tipo==='entrada') p.qtd+=qtd;
   else if(tipo==='saida'){if(p.qtd<qtd){showToast('⚠ Estoque insuficiente','error');return;}p.qtd-=qtd;}
   else p.qtd=qtd;
-  salvarProdutos(); fecharModal('modalMovimento'); renderEstoque(); showToast('✓ Estoque atualizado!','success'); fbSync();
+  salvarProdutos(); fecharModal('modalMovimento'); renderEstoque(); showToast('✓ Estoque atualizado!','success'); fbSave('produtos');
 }
 
 // SERVIÇOS
@@ -5519,7 +5517,7 @@ function confirmarImportacao() {
       status: 'pago', valor: item.valor, data: item.data, obs: item.obs
     })));
   } else {
-    fbSync();
+    fbSave('historico');
   }
   _importacaoPendente = [];
 }
@@ -5621,13 +5619,14 @@ async function gerarPedido() {
     try {
       await window.fbSetDoc('pedidos', String(pedido.id), pedido);
       await Promise.all([...idsUsados].map(id => window.fbDeleteDoc('necessidades', id)));
-      fbSync();
+      // Não chamar fbSync aqui: o pedido já foi salvo e as necessidades já
+      // foram deletadas. Um fbSync recriaria as necessidades deletadas.
     } catch(e) {
       console.error('Erro ao salvar pedido no Firebase:', e);
-      fbSync();
+      fbSave('pedidos');
     }
   } else {
-    fbSync();
+    fbSave('pedidos');
   }
 }
 
@@ -5666,19 +5665,15 @@ async function atualizarPedidosFirebase() {
 }
 
 async function enviarParaConsolidado() {
-  console.log('[DIAG] 1. enviarParaConsolidado chamada');
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
-  console.log('[DIAG] 2. isTecnico:', isTecnico, '| usuario:', usuarioLogado?.usuario, '| total pedidos:', pedidos.length);
   const meusPendentes = pedidos.filter(ped => {
     if (ped.consolidado) return false;
     if (isTecnico && vinculo) return ped.tecnico === usuarioLogado?.usuario;
     return true;
   });
-  console.log('[DIAG] 3. meusPendentes encontrados:', meusPendentes.length, meusPendentes.map(p => ({id:p.id, tecnico:p.tecnico, consolidado:p.consolidado})));
   if (!meusPendentes.length) {
     showToast('⚠ Nenhum pedido pendente para enviar', 'error');
-    console.log('[DIAG] PAROU: nenhum pedido pendente. Verifique se pedido.tecnico ("' + (pedidos[0]?.tecnico) + '") bate com usuario ("' + usuarioLogado?.usuario + '")');
     return;
   }
 
@@ -5689,7 +5684,6 @@ async function enviarParaConsolidado() {
   });
   salvarPedidos();
   renderPedidos();
-  console.log('[DIAG] 4. Pedidos marcados consolidado e salvos no localStorage');
 
   // Salvar diretamente no Firebase e aguardar confirmação
   showToast('⏳ Enviando para consolidado...', 'info');
@@ -5697,7 +5691,6 @@ async function enviarParaConsolidado() {
     const idx = pedidos.findIndex(x => x.id === ped.id);
     return idx >= 0 ? pedidos[idx] : ped;
   });
-  console.log('[DIAG] 5. window.fbSetDoc disponível?', !!window.fbSetDoc);
 
   // Helper: corrida entre o salvamento e um timeout de 8s para nunca pendurar
   const comTimeout = (promise, ms) => Promise.race([
@@ -5707,25 +5700,22 @@ async function enviarParaConsolidado() {
 
   if (window.fbSetDoc) {
     try {
-      console.log('[DIAG] 6. Iniciando fbSetDoc...');
       await comTimeout(
         Promise.all(pedidosParaSalvar.map(ped =>
           window.fbSetDoc('pedidos', String(ped.id), ped)
         )),
         8000
       );
-      console.log('[DIAG] 7. fbSetDoc concluído com sucesso');
       showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
     } catch(e) {
       // Timeout ou erro: os dados já estão no localStorage e marcados consolidado.
-      // Dispara fbSync como fallback e confirma para o usuário.
-      console.error('[DIAG] 7b. Falha/timeout ao salvar no Firebase:', e);
-      fbSync();
+      // Dispara salvamento da coleção de pedidos como fallback e confirma.
+      console.error('Falha/timeout ao salvar no Firebase:', e);
+      fbSave('pedidos');
       showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s)! (sincronização em segundo plano)`, 'success');
     }
   } else {
-    console.log('[DIAG] 6b. fbSetDoc NÃO disponível, usando fbSync');
-    fbSync();
+    fbSave('pedidos');
     showToast(`✓ ${meusPendentes.length} pedido(s) enviado(s) para o Consolidado!`, 'success');
   }
 }
@@ -5969,7 +5959,7 @@ function enviarPedidoWhatsApp(id) {
   const idx = pedidos.findIndex(x => x.id === idPedido);
   if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
   showToast('✓ Pedido enviado!', 'success');
-  fbSync();
+  fbSave('pedidos');
 
   // Abrir WhatsApp direto se tiver telefone, senão abrir modal
   if (tel && tel.length >= 10) {
@@ -6012,7 +6002,7 @@ function enviarTodosPedidos() {
     salvarPedidos();
     renderPedidos();
     showToast('✓ Todos os pedidos enviados!', 'success');
-    fbSync();
+    fbSave('pedidos');
   };
   abrirModalWhatsApp(msg);
 }
@@ -6160,7 +6150,7 @@ function salvarNecessidade() {
   necessidades.push({id:Date.now(),clienteId,produtoId:Number(produtoId),codigoProduto:produtoSalvo?.codigo||'',nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
   salvarNecessidades(); renderNecessidades();
   showToast('✓ Adicionado! Selecione mais produtos ou gere o pedido.','success');
-  fbSync();
+  fbSave('necessidades');
   // Manter modal aberto com mesmo cliente — limpar só produto/qtd/obs
   document.getElementById('necProdutoSel').selectedIndex=0;
   document.getElementById('necQtd').value=1;
@@ -6184,7 +6174,7 @@ function gerarPedidoDoModal() {
 }
 
 
-function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSync();} }
+function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSave('necessidades');} }
 function excluirNec(id) {
   necessidades = necessidades.filter(x => x.id !== id);
   salvarNecessidades();
@@ -6251,7 +6241,6 @@ function confirmarExclusaoUsuario() {
   showToast('Usuário excluído!', 'info');
   // Deletar do Firebase para não retornar ao recarregar
   if (window.fbDeleteDoc) window.fbDeleteDoc('usuarios', idParaDeletar);
-  fbSync();
 }
 function toggleSenhaCfg() {
   const inp = document.getElementById('cfgSenha');
@@ -6315,7 +6304,7 @@ function salvarUsuario() {
   fecharModal('modalUsuario');
   renderUsuarios();
   preencherSelectTecnicos();
-  fbSync();
+  fbSave('usuarios');
 }
 function renderPermissoes() {
   const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','configuracoes','excluir','exportar'];
@@ -7169,6 +7158,14 @@ function gerarPDFPedidoFornecedor(simplificado = false) {
 
 function fbSync() { window.dispatchEvent(new Event('fbSyncRequest')); }
 
+// Salva apenas UMA coleção (anti-cota). Se a função granular não estiver
+// disponível por algum motivo, cai no fbSync antigo como fallback seguro.
+function fbSave(colecao) {
+  if (colecao === 'permissoes' && window.fbSavePermissoes) return window.fbSavePermissoes();
+  if (window.fbSaveCollection) return window.fbSaveCollection(colecao);
+  return fbSync(); // fallback
+}
+
 // Ajustar offset do header fixo dinamicamente
 function ajustarOffsetHeader() {
   const header = document.getElementById('mainHeader');
@@ -7274,6 +7271,52 @@ window.addEventListener('resize', ajustarOffsetHeader);
       await deleteDoc(doc(db, colecao, String(id)));
     } catch(e) {
       console.error('Erro ao deletar do Firebase:', e);
+    }
+  };
+
+  // ============================================================
+  // REFATORAÇÃO ANTI-COTA: salvar apenas UMA coleção por vez
+  // em vez de reescrever o banco inteiro (que estourava a quota).
+  // Cada ação chama fbSaveCollection('pedidos') etc., salvando só
+  // os documentos daquela coleção.
+  // ============================================================
+  window.fbSaveCollection = async function(colecao) {
+    try {
+      const limpar = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v));
+      const mapaChaves = {
+        clientes:     { ls: 'aquagest_clientes',     id: c => String(c.id) },
+        produtos:     { ls: 'aquagest_produtos',     id: p => String(p.id) },
+        necessidades: { ls: 'aquagest_necessidades', id: n => String(n.id) },
+        pedidos:      { ls: 'aquagest_pedidos',      id: p => String(p.id) },
+        usuarios:     { ls: 'aquagest_usuarios',     id: u => String(u.id) },
+        historico:    { ls: 'aquagest_historico',    id: h => `${h.clienteId}_${h.ano}_${h.mes}` },
+      };
+      const cfg = mapaChaves[colecao];
+      if (!cfg) { console.warn('fbSaveCollection: coleção desconhecida', colecao); return false; }
+      const lista = JSON.parse(localStorage.getItem(cfg.ls) || '[]');
+      for (const item of lista) {
+        await setDoc(doc(db, colecao, cfg.id(item)), limpar(item));
+      }
+      setBadge(true);
+      return true;
+    } catch(e) {
+      console.error('Erro fbSaveCollection (' + colecao + '):', e);
+      setBadge(false);
+      return false;
+    }
+  };
+
+  // Salvar permissões isoladamente
+  window.fbSavePermissoes = async function() {
+    try {
+      const limpar = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v));
+      const permissoes = JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}');
+      await setDoc(doc(db,'config','permissoes'), limpar({...permissoes, _versao: window._permissoesVersao || '3.0'}));
+      setBadge(true);
+      return true;
+    } catch(e) {
+      console.error('Erro fbSavePermissoes:', e);
+      return false;
     }
   };
 
