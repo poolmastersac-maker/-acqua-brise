@@ -6142,7 +6142,20 @@ function desfazerVenda(id) {
     showToast('🔒 Prazo de 15 dias expirado. Não é possível desfazer.', 'error');
     return;
   }
-  if (!confirm('Desfazer esta venda?\n\nO pedido voltará ao Consolidado com Entregue e Pago desmarcados.')) return;
+  if (!confirm('Desfazer esta venda?\n\nO pedido voltará ao Consolidado com Entregue e Pago desmarcados, e os produtos serão devolvidos ao estoque.')) return;
+
+  // Opção A: devolver os produtos ao estoque (a venda deixou de existir).
+  // Como o pedido volta com "Entregue" desmarcado, o estoque precisa refletir
+  // que os produtos "voltaram". Se de fato já foram entregues, o gestor
+  // remarca "Entregue" manualmente e o sistema baixa de novo.
+  (v.itens || []).forEach(item => {
+    const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
+           || (item.produto && produtos.find(x => x.nome === item.produto));
+    if (p) p.qtd += Number(item.qtd || 0);
+  });
+  salvarProdutos();
+  fbSave('produtos');
+  if (typeof renderEstoque === 'function') renderEstoque();
 
   // Recriar o pedido no Consolidado, desmarcado
   const pedido = {
