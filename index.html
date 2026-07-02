@@ -2214,6 +2214,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" bis_skin_checked="1">
       <button class="sub-tab" id="subTabMeus" onclick="trocarSubTabPedidos('meus')">📋 Meus Pedidos</button>
       <button class="sub-tab active" id="subTabTodos" onclick="trocarSubTabPedidos('todos')">🗂 Consolidado</button>
+      <button class="sub-tab" id="subTabVendas" onclick="trocarSubTabPedidos('vendas')" style="display:none;">✅ Vendas Concluídas</button>
       <select id="filtroPedidoTecnico" onchange="renderPedidos()" style="padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 0.82rem; color: var(--text); background: white; cursor: pointer; display: block;"><option value="">👤 Todos os técnicos</option><option value="Arthur Jesus">Arthur Jesus</option><option value="Diego Rodrigues">Diego Rodrigues</option><option value="Marcio Sportari">Marcio Sportari</option></select>
     </div>
     <button class="btn btn-green btn-sm" id="btnEnviarTodosWpp" onclick="enviarTodosPedidos()">📲 Enviar Todos por WhatsApp</button>
@@ -3984,13 +3985,13 @@ if (!usuarios || usuarios.length === 0) {
   salvarUsuarios();
 }
 // Permissões padrão versionadas
-const _permissoesVersao = '3.1'; // Incrementar aqui sempre que mudar permissões
+const _permissoesVersao = '3.2'; // Incrementar aqui sempre que mudar permissões
 window._permissoesVersao = _permissoesVersao;
 const _permissoesDefault = {
-  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,relatorios:true,excluir:true,exportar:true},
-  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,excluir:true,exportar:true},
-  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,excluir:false,exportar:false},
-  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,pedidos:false,configuracoes:false,relatorios:false,excluir:false,exportar:true}
+  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,relatorios:true,vendas:true,excluir:true,exportar:true},
+  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,vendas:true,excluir:true,exportar:true},
+  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:false},
+  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,pedidos:false,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:true}
 };
 
 let permissoes;
@@ -5574,6 +5575,7 @@ function confirmarEnvioWhatsApp() {
   fecharModal('modalWhatsApp');
 }
 let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+let vendasConcluidas = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
 function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
 
 async function gerarPedido() {
@@ -5667,11 +5669,16 @@ function trocarSubTabPedidos(aba) {
   _subTabAtiva = aba;
   const btnMeus = document.getElementById('subTabMeus');
   const btnTodos = document.getElementById('subTabTodos');
+  const btnVendas = document.getElementById('subTabVendas');
   if (btnMeus) { if(aba==='meus') btnMeus.classList.add('active'); else btnMeus.classList.remove('active'); }
   if (btnTodos) { if(aba==='todos') btnTodos.classList.add('active'); else btnTodos.classList.remove('active'); }
+  if (btnVendas) { if(aba==='vendas') btnVendas.classList.add('active'); else btnVendas.classList.remove('active'); }
   // mostrar/ocultar botão enviar todos só no consolidado
   const btnWpp = document.getElementById('btnEnviarTodosWpp');
   if (btnWpp) btnWpp.style.display = aba === 'todos' ? '' : 'none';
+  // filtro de técnico não aparece na aba vendas (tem filtros próprios)
+  const filtroTec = document.getElementById('filtroPedidoTecnico');
+  if (filtroTec && aba === 'vendas') filtroTec.style.display = 'none';
   renderPedidos();
 }
 
@@ -5761,6 +5768,19 @@ function renderPedidos() {
   const toolbarGes = document.getElementById('pedidosToolbarGestor');
   if (toolbarTec) toolbarTec.style.display = isTecnico ? 'flex' : 'none';
   if (toolbarGes) toolbarGes.style.display = !isTecnico ? 'flex' : 'none';
+
+  // Sub-aba Vendas Concluídas: só aparece se tiver permissão 'vendas'
+  const btnVendas = document.getElementById('subTabVendas');
+  const podeVerVendas = !isTecnico && temPermissao('vendas');
+  if (btnVendas) btnVendas.style.display = podeVerVendas ? '' : 'none';
+  // Se estava na aba vendas mas perdeu acesso, volta para consolidado
+  if (_subTabAtiva === 'vendas' && !podeVerVendas) _subTabAtiva = 'todos';
+
+  // Renderização da sub-aba Vendas Concluídas
+  if (!isTecnico && _subTabAtiva === 'vendas') {
+    renderVendasConcluidas();
+    return;
+  }
 
   // Definir lista conforme perfil e sub-aba
   let pedidosFiltrados;
@@ -5918,6 +5938,8 @@ function togglePedidoEntregue(id, checkbox) {
   else fbSync();
   const label = document.getElementById('label-entregue-' + id);
   if (label) label.classList.toggle('entregue-ativo', marcando);
+  // Se entregue E pago, converter em venda concluída
+  verificarVendaConcluida(ped);
 }
 
 function togglePedidoPago(id, checkbox) {
@@ -5936,9 +5958,216 @@ function togglePedidoPago(id, checkbox) {
   const label = document.getElementById('label-pago-' + id);
   if (label) label.classList.toggle('pago-ativo', ped.pago);
   showToast(ped.pago ? '💜 Pedido marcado como pago!' : 'Pagamento desmarcado.', ped.pago ? 'success' : 'info');
-  // Atualizar relatório de produtos se estiver aberto
-  const relProd = document.getElementById('relPag5');
-  if (relProd && relProd.style.display !== 'none') renderRelProdutos();
+  // Se entregue E pago, converter em venda concluída
+  verificarVendaConcluida(ped);
+}
+
+// ============================================================
+// VENDAS CONCLUÍDAS
+// ============================================================
+// Quando um pedido está ENTREGUE e PAGO, é convertido em venda
+// concluída: sai da lista de pedidos e vai para vendasConcluidas.
+function verificarVendaConcluida(ped) {
+  if (!ped || !ped.entregue || !ped.pago) return; // precisa dos DOIS
+
+  const agora = new Date().toISOString();
+  const cliente = (() => {
+    if (ped.clienteId) {
+      const c = clientes.find(x => x.id === Number(ped.clienteId));
+      if (c) return c.nome;
+    }
+    const item = ped.itens?.find(i => i.cliente && i.cliente !== '—');
+    return item?.cliente || '—';
+  })();
+
+  const venda = {
+    id: ped.id,
+    pedidoId: ped.id,
+    data: ped.data,                    // data de geração do pedido
+    dataConclusao: agora,              // quando virou venda concluída
+    dataEntrega: ped.dataEntrega || agora,
+    dataPagamento: ped.dataPagamento || agora,
+    cliente: cliente,
+    clienteId: ped.clienteId || null,
+    tecnico: ped.tecnico || '',
+    itens: ped.itens || [],
+    valorTotal: (ped.itens || []).reduce((s,i) => s + Number(i.valorUnit||0) * Number(i.qtd||0), 0)
+  };
+
+  // Adicionar às vendas concluídas
+  if (!Array.isArray(vendasConcluidas)) vendasConcluidas = [];
+  // Evitar duplicata
+  if (!vendasConcluidas.find(v => String(v.id) === String(venda.id))) {
+    vendasConcluidas.push(venda);
+    salvarVendasConcluidas();
+    if (window.fbSetDoc) window.fbSetDoc('vendasConcluidas', String(venda.id), venda);
+  }
+
+  // Remover o pedido da lista de pedidos (sai do Consolidado)
+  pedidos = pedidos.filter(p => String(p.id) !== String(ped.id));
+  salvarPedidos();
+  if (window.fbDeleteDoc) window.fbDeleteDoc('pedidos', String(ped.id));
+
+  showToast('✅ Venda concluída! Movida para "Vendas Concluídas".', 'success');
+  renderPedidos();
+}
+
+function salvarVendasConcluidas() {
+  localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(vendasConcluidas));
+}
+
+// Verifica se o perfil logado tem permissão para uma aba/recurso.
+// Ausência do campo = tratado como SEM permissão para recursos novos como 'vendas'.
+function temPermissao(recurso) {
+  if (!usuarioLogado) return false;
+  const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico || {};
+  return p[recurso] === true;
+}
+
+// Renderiza a sub-aba Vendas Concluídas (com filtros mês/ano/cliente/técnico)
+function renderVendasConcluidas() {
+  const container = document.getElementById('pedidosBody');
+  if (!Array.isArray(vendasConcluidas)) vendasConcluidas = [];
+
+  // Ler filtros (os selects são injetados no próprio container)
+  const fMes = document.getElementById('vcFiltroMes')?.value ?? '';
+  const fAno = document.getElementById('vcFiltroAno')?.value ?? '';
+  const fCliente = (document.getElementById('vcFiltroCliente')?.value || '').toLowerCase();
+  const fTecnico = document.getElementById('vcFiltroTecnico')?.value || '';
+
+  // Aplicar filtros
+  let lista = vendasConcluidas.filter(v => {
+    const d = new Date(v.dataConclusao || v.dataPagamento || v.data);
+    if (fMes !== '' && d.getMonth() !== Number(fMes)) return false;
+    if (fAno !== '' && d.getFullYear() !== Number(fAno)) return false;
+    if (fCliente && !(v.cliente||'').toLowerCase().includes(fCliente)) return false;
+    if (fTecnico && v.tecnico !== fTecnico) return false;
+    return true;
+  }).sort((a,b) => new Date(b.dataConclusao) - new Date(a.dataConclusao));
+
+  // Opções de ano e técnico disponíveis
+  const anos = [...new Set(vendasConcluidas.map(v => new Date(v.dataConclusao||v.data).getFullYear()))].sort((a,b)=>b-a);
+  const tecnicos = [...new Set(vendasConcluidas.map(v => v.tecnico).filter(Boolean))].sort();
+  const fmt = v => 'R$ ' + Number(v).toFixed(2).replace('.',',');
+  const totalGeral = lista.reduce((s,v) => s + Number(v.valorTotal||0), 0);
+
+  const mesesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const filtrosHtml = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+      <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">🔍 Filtrar:</span>
+      <select class="form-input" id="vcFiltroMes" style="width:auto;min-width:120px;" onchange="renderVendasConcluidas()">
+        <option value="">Todos os meses</option>
+        ${mesesNomes.map((m,i)=>`<option value="${i}" ${String(fMes)===String(i)?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <select class="form-input" id="vcFiltroAno" style="width:auto;min-width:90px;" onchange="renderVendasConcluidas()">
+        <option value="">Todos os anos</option>
+        ${anos.map(a=>`<option value="${a}" ${String(fAno)===String(a)?'selected':''}>${a}</option>`).join('')}
+      </select>
+      <select class="form-input" id="vcFiltroTecnico" style="width:auto;min-width:130px;" onchange="renderVendasConcluidas()">
+        <option value="">Todos os técnicos</option>
+        ${tecnicos.map(t=>`<option value="${t}" ${fTecnico===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input type="text" class="form-input" id="vcFiltroCliente" placeholder="🔍 Cliente..." value="${fCliente}" oninput="renderVendasConcluidas()" style="width:auto;min-width:140px;">
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:16px;border-left:3px solid #059669;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">Total em vendas concluídas</div>
+      <div style="font-size:1.5rem;font-weight:700;color:#059669;">${fmt(totalGeral)}</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${lista.length} venda(s)</div>
+    </div>`;
+
+  if (!lista.length) {
+    container.innerHTML = filtrosHtml + '<div class="empty"><div class="empty-icon">✅</div><div>Nenhuma venda concluída no período</div></div>';
+    // re-vincular valores dos filtros após innerHTML
+    restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente);
+    return;
+  }
+
+  const agora = Date.now();
+  const cards = lista.map(v => {
+    const dataFmt = new Date(v.dataConclusao).toLocaleDateString('pt-BR');
+    const produtos = (v.itens||[]).filter(i=>i.produto&&i.produto!=='—').map(i => `
+      <div class="pedido-item">
+        <div><span class="pedido-item-nome">${i.produto}</span><span class="pedido-item-qtd">x${i.qtd}</span></div>
+        <span class="pedido-item-valor">${i.valorUnit>0?'R$ '+Number(i.valorUnit*i.qtd).toFixed(2):'—'}</span>
+      </div>`).join('');
+
+    // Desfazer só até 15 dias após a conclusão
+    const diasPassados = (agora - new Date(v.dataConclusao).getTime()) / (1000*60*60*24);
+    const podeDesfazer = diasPassados <= 15;
+    const btnDesfazer = podeDesfazer
+      ? `<button class="btn btn-ghost btn-sm" onclick="desfazerVenda('${v.id}')" title="Devolve o pedido ao Consolidado (até 15 dias)">↩ Desfazer</button>`
+      : `<span style="font-size:0.72rem;color:var(--muted);" title="Prazo de 15 dias expirado">🔒 Concluída</span>`;
+
+    return `
+    <div class="pedido-card">
+      <div class="pedido-header">
+        <div>
+          <div class="pedido-titulo" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+            Venda #${String(v.id).slice(-6)}
+            <span style="font-size:0.72rem;color:var(--muted);">👤 ${v.tecnico||'—'}</span>
+            <span style="font-size:0.8rem;font-weight:700;color:var(--accent2);background:rgba(33,150,243,0.1);padding:2px 10px;border-radius:20px;margin-left:8px;">🏠 ${v.cliente||'—'}</span>
+          </div>
+          <div class="pedido-data">Concluída em ${dataFmt} · ${(v.itens||[]).length} produto(s)</div>
+        </div>
+        <span class="pedido-status" style="background:#059669;color:#fff;">✅ Concluída</span>
+      </div>
+      <div class="pedido-body">${produtos}</div>
+      <div class="pedido-footer">
+        <div style="font-weight:700;color:#059669;">Total: ${fmt(v.valorTotal)}</div>
+        <div style="display:flex;gap:8px;">${btnDesfazer}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = filtrosHtml + cards;
+  restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente);
+}
+
+// Restaura os valores dos filtros após re-render (innerHTML recria os selects)
+function restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente) {
+  const m = document.getElementById('vcFiltroMes'); if (m) m.value = fMes;
+  const a = document.getElementById('vcFiltroAno'); if (a) a.value = fAno;
+  const t = document.getElementById('vcFiltroTecnico'); if (t) t.value = fTecnico;
+  const c = document.getElementById('vcFiltroCliente');
+  if (c && document.activeElement !== c) c.value = fCliente;
+}
+
+// Desfazer venda concluída (até 15 dias) → volta ao Consolidado desmarcado
+function desfazerVenda(id) {
+  const v = vendasConcluidas.find(x => String(x.id) === String(id));
+  if (!v) return;
+  const diasPassados = (Date.now() - new Date(v.dataConclusao).getTime()) / (1000*60*60*24);
+  if (diasPassados > 15) {
+    showToast('🔒 Prazo de 15 dias expirado. Não é possível desfazer.', 'error');
+    return;
+  }
+  if (!confirm('Desfazer esta venda?\n\nO pedido voltará ao Consolidado com Entregue e Pago desmarcados.')) return;
+
+  // Recriar o pedido no Consolidado, desmarcado
+  const pedido = {
+    id: v.pedidoId || v.id,
+    data: v.data,
+    status: 'pendente',
+    consolidado: true,
+    tecnico: v.tecnico || '',
+    clienteId: v.clienteId || null,
+    itens: v.itens || [],
+    entregue: false,
+    pago: false
+  };
+  pedidos.push(pedido);
+  salvarPedidos();
+  if (window.fbSetDoc) window.fbSetDoc('pedidos', String(pedido.id), pedido);
+
+  // Remover das vendas concluídas
+  vendasConcluidas = vendasConcluidas.filter(x => String(x.id) !== String(id));
+  salvarVendasConcluidas();
+  if (window.fbDeleteDoc) window.fbDeleteDoc('vendasConcluidas', String(id));
+
+  showToast('↩ Venda desfeita. Pedido devolvido ao Consolidado.', 'success');
+  _subTabAtiva = 'todos';
+  trocarSubTabPedidos('todos');
 }
 
 function enviarPedidoWhatsApp(id) {
@@ -6347,8 +6576,8 @@ function salvarUsuario() {
   fbSave('usuarios');
 }
 function renderPermissoes() {
-  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','configuracoes','excluir','exportar'];
-  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Relatórios','Configurações','Excluir','Exportar'];
+  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','vendas','configuracoes','excluir','exportar'];
+  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Relatórios','Vendas Concluídas','Configurações','Excluir','Exportar'];
   const perfis=['admin','gerente','tecnico','financeiro'];
   const nomePerfis=['👑 Admin','👔 Gerente','🔧 Técnico','📊 Financeiro'];
   document.getElementById('permissoesContainer').innerHTML=`<div class="table-wrap"><table class="perm-table">
@@ -6741,8 +6970,9 @@ function preencherRelProdAno() {
   const sel = document.getElementById('relProdAno');
   if (!sel || sel.options.length) return;
   const anos = new Set([new Date().getFullYear()]);
-  pedidos.filter(p => p.pago && p.dataPagamento).forEach(p => {
-    anos.add(new Date(p.dataPagamento).getFullYear());
+  (Array.isArray(vendasConcluidas)?vendasConcluidas:[]).forEach(v => {
+    const dataRef = v.dataConclusao || v.dataPagamento || v.data;
+    if (dataRef) anos.add(new Date(dataRef).getFullYear());
   });
   const lista = [...anos].sort((a,b)=>b-a);
   sel.innerHTML = '<option value="">Todos os anos</option>' +
@@ -6752,10 +6982,10 @@ function preencherRelProdAno() {
 function getPedidosPagos() {
   const mes = document.getElementById('relProdMes')?.value;
   const ano = document.getElementById('relProdAno')?.value;
-  return pedidos.filter(p => {
-    if (!p.pago) return false;
-    // Data de referência: dataPagamento; se não tiver (pedidos antigos), usa data do pedido
-    const dataRef = p.dataPagamento || p.data;
+  // O relatório de produtos lê das VENDAS CONCLUÍDAS (pedido entregue + pago)
+  const fonte = Array.isArray(vendasConcluidas) ? vendasConcluidas : [];
+  return fonte.filter(v => {
+    const dataRef = v.dataConclusao || v.dataPagamento || v.data;
     if (!dataRef) return false;
     const d = new Date(dataRef);
     if (mes !== '' && mes != null && d.getMonth() !== Number(mes)) return false;
@@ -6765,6 +6995,7 @@ function getPedidosPagos() {
 }
 
 function totalPedido(ped) {
+  if (ped && typeof ped.valorTotal === 'number') return ped.valorTotal;
   return (ped.itens||[]).reduce((s,i) => s + Number(i.valorUnit||0) * Number(i.qtd||0), 0);
 }
 
@@ -6789,10 +7020,10 @@ function renderRelProdutos() {
       <div style="display:grid;grid-template-columns:1.2fr 1.5fr 1fr 2.5fr 1fr;gap:8px;padding:8px 12px;background:var(--surface2);font-size:0.75rem;font-weight:600;color:var(--muted);">
         <span>Data</span><span>Cliente</span><span>Técnico</span><span>Produtos</span><span style="text-align:right;">Valor</span>
       </div>` +
-      pagos.sort((a,b) => new Date(b.dataPagamento||b.data) - new Date(a.dataPagamento||a.data)).map(p => {
-        const dataRef = p.dataPagamento || p.data;
+      pagos.sort((a,b) => new Date(b.dataConclusao||b.dataPagamento||b.data) - new Date(a.dataConclusao||a.dataPagamento||a.data)).map(p => {
+        const dataRef = p.dataConclusao || p.dataPagamento || p.data;
         const dataFmt = dataRef ? new Date(dataRef).toLocaleDateString('pt-BR') : '—';
-        const cliente = p.itens?.[0]?.cliente || '—';
+        const cliente = p.cliente || p.itens?.[0]?.cliente || '—';
         const tecnico = p.tecnico || '—';
         const produtos = (p.itens||[]).map(i => `${i.produto} x${i.qtd}`).join(', ');
         return `<div style="display:grid;grid-template-columns:1.2fr 1.5fr 1fr 2.5fr 1fr;gap:8px;padding:10px 12px;border-top:1px solid var(--border);font-size:0.82rem;align-items:center;">
@@ -6814,8 +7045,8 @@ function renderRelProdutos() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 12px;background:var(--surface2);font-size:0.75rem;font-weight:600;color:var(--muted);">
         <span>Data</span><span style="text-align:right;">Valor</span>
       </div>` +
-      pagos.sort((a,b) => new Date(b.dataPagamento||b.data) - new Date(a.dataPagamento||a.data)).map(p => {
-        const dataRef = p.dataPagamento || p.data;
+      pagos.sort((a,b) => new Date(b.dataConclusao||b.dataPagamento||b.data) - new Date(a.dataConclusao||a.dataPagamento||a.data)).map(p => {
+        const dataRef = p.dataConclusao || p.dataPagamento || p.data;
         const dataFmt = dataRef ? new Date(dataRef).toLocaleDateString('pt-BR') : '—';
         return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px;border-top:1px solid var(--border);font-size:0.85rem;align-items:center;">
           <span style="color:var(--muted);">${dataFmt}</span>
@@ -7438,6 +7669,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
         pedidos:      { ls: 'aquagest_pedidos',      id: p => String(p.id) },
         usuarios:     { ls: 'aquagest_usuarios',     id: u => String(u.id) },
         historico:    { ls: 'aquagest_historico',    id: h => `${h.clienteId}_${h.ano}_${h.mes}` },
+        vendasConcluidas: { ls: 'aquagest_vendas_concluidas', id: v => String(v.id) },
       };
       const cfg = mapaChaves[colecao];
       if (!cfg) { console.warn('fbSaveCollection: coleção desconhecida', colecao); return false; }
@@ -7541,6 +7773,18 @@ window.addEventListener('resize', ajustarOffsetHeader);
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
         if (typeof pedidos !== 'undefined') { pedidos = dadosMesclados; }
+      }
+
+      // VENDAS CONCLUÍDAS — mesclar Firebase com local
+      const snapVC = await getDocs(collection(db, 'vendasConcluidas'));
+      if (!snapVC.empty) {
+        const dadosFirebase = snapVC.docs.map(d => d.data());
+        const dadosLocais = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
+        const idsFirebase = new Set(dadosFirebase.map(v => String(v.id)));
+        const apenasLocais = dadosLocais.filter(v => !idsFirebase.has(String(v.id)));
+        const mesclados = [...dadosFirebase, ...apenasLocais];
+        localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(mesclados));
+        if (typeof vendasConcluidas !== 'undefined') { vendasConcluidas = mesclados; }
       }
 
       // USUÁRIOS — sempre sobrescreve para garantir senhas atualizadas
