@@ -138,6 +138,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .painel-btn.danger:hover{border-color:var(--red);background:rgba(220,38,38,0.05);color:var(--red);}
 .painel-btn-icon{font-size:1rem;width:22px;text-align:center;}
 .tag-retro{background:rgba(217,119,6,0.1);color:var(--yellow);font-size:0.65rem;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px;}
+.tag-sem-conta{background:rgba(220,38,38,0.08);color:var(--red);font-size:0.62rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:2px;}
 .form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;}
 .form-card-title{font-size:1rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
 .form-group{margin-bottom:14px;}
@@ -1590,6 +1591,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
         <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Status</span><span id="painelStatus"><span class="badge badge-yellow">Pendente</span></span></div>
         <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Técnico</span><span class="painel-info-value" id="painelTecnico">Diego_tecnico</span></div>
         <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">Localização</span><span class="painel-info-value" id="painelEnd" style="font-size:0.76rem;text-align:right;max-width:150px;">SANTA ADELIA</span></div>
+        <div class="painel-info-row" bis_skin_checked="1"><span class="painel-info-label">💰 Conta PIX</span><span class="painel-info-value" id="painelContaPix" style="font-size:0.76rem;text-align:right;">—</span></div>
         <div class="painel-acoes" bis_skin_checked="1">
           <button class="painel-btn" onclick="editarClienteSelecionado()"><span class="painel-btn-icon">✏️</span>Alterar cadastro</button>
           <button class="painel-btn" onclick="pagarClienteSelecionado()"><span class="painel-btn-icon">✅</span><span id="btnPagarLabel">Marcar como pago</span></button>
@@ -4464,8 +4466,9 @@ function renderLista() {
   container.innerHTML = lista.map(c=>{
     const sel = c.id===clienteSelecionadoId;
     const retro = c.tipoPag==='retro'?'<span class="tag-retro">↩</span>':'';
+    const semConta = !c.contaPix ? '<span class="tag-sem-conta" title="Conta de recebimento não definida">💰?</span>' : '';
     return `<div class="cliente-item ${sel?'selected':''}" onclick="selecionarCliente(${c.id})" ondblclick="selecionarClienteEScroll(${c.id})">
-      <div class="ci-info"><span class="ci-nome">${c.nome} ${retro}</span><span class="ci-sub">${c.endereco||''} · Dia ${c.dia} · R$ ${Number(c.valor).toFixed(2)}</span></div>
+      <div class="ci-info"><span class="ci-nome">${c.nome} ${retro}${semConta}</span><span class="ci-sub">${c.endereco||''} · Dia ${c.dia} · R$ ${Number(c.valor).toFixed(2)}</span></div>
       <div class="ci-right">${badgeHTML(calcularStatus(c))}<span class="chevron">›</span></div>
     </div>`;
   }).join('');
@@ -4488,6 +4491,17 @@ function selecionarCliente(id) {
   document.getElementById('painelStatus').innerHTML = badgeHTML(status);
   document.getElementById('painelTecnico').textContent = c.tecnico||'—';
   document.getElementById('painelEnd').textContent = c.endereco||'—';
+  const contaLabelPainel = { infinite_diego:'InfinitePayDiego', infinite_adriane:'InfinitePayAdriane', itau:'Itaú' };
+  const elContaPix = document.getElementById('painelContaPix');
+  if (elContaPix) {
+    if (c.contaPix && contaLabelPainel[c.contaPix]) {
+      elContaPix.textContent = contaLabelPainel[c.contaPix];
+      elContaPix.style.color = '';
+    } else {
+      elContaPix.textContent = '⚠ Não definida';
+      elContaPix.style.color = 'var(--red)';
+    }
+  }
   document.getElementById('btnPagarLabel').textContent = status==='pago'?'Desfazer pagamento':'Marcar como pago';
   document.getElementById('painelCliente').classList.add('visible');
   renderLista();
@@ -6690,7 +6704,8 @@ function exportarExcel(tipo) {
   if(typeof XLSX==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
   let data, filename;
   if(tipo==='clientes'){
-    data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||''}));
+    const contaLabel = { infinite_diego:'InfinitePayDiego', infinite_adriane:'InfinitePayAdriane', itau:'Itaú' };
+    data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||'','Conta de Recebimento':contaLabel[c.contaPix]||'— Não definida —'}));
     filename='clientes.xlsx';
   } else {
     const histFiltrado = getHistoricoFiltrado();
