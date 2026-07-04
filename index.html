@@ -117,7 +117,11 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .ci-right{display:flex;align-items:center;gap:10px;}
 .chevron{color:var(--muted);font-size:0.85rem;transition:transform 0.2s;}
 .cliente-item.selected .chevron{transform:rotate(90deg);color:var(--accent);}
-.painel-cliente{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;position:sticky;top:80px;opacity:0;transform:translateX(10px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;box-shadow:0 4px 16px rgba(33,150,243,0.08);}
+.painel-cliente{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-y:auto;overflow-x:hidden;position:sticky;top:80px;max-height:calc(100vh - 100px);opacity:0;transform:translateX(10px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;box-shadow:0 4px 16px rgba(33,150,243,0.08);}
+.painel-cliente::-webkit-scrollbar{width:8px;}
+.painel-cliente::-webkit-scrollbar-track{background:var(--surface2);border-radius:8px;}
+.painel-cliente::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+.painel-cliente::-webkit-scrollbar-thumb:hover{background:var(--accent);}
 .painel-cliente.visible{opacity:1;transform:translateX(0);pointer-events:all;}
 .painel-header{padding:18px;background:var(--surface2);border-bottom:1px solid var(--border);}
 .painel-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;color:white;margin-bottom:10px;}
@@ -306,7 +310,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 
   /* CLIENTES */
   .clientes-layout{grid-template-columns:1fr;}
-  .painel-cliente{position:static;transform:none;opacity:1;pointer-events:all;}
+  .painel-cliente{position:static;transform:none;opacity:1;pointer-events:all;max-height:none;overflow:visible;}
 
   /* HISTÓRICO */
   .hist-layout{grid-template-columns:1fr;}
@@ -4063,23 +4067,17 @@ function salvarPermissoes() {
 // ============================================================
 // CHAVES PIX / CONTAS DE RECEBIMENTO
 // ============================================================
-// Chaves ficam em config/chavesPix (localStorage + Firebase).
-// O cliente guarda só a conta (contaPix); a chave é resolvida aqui.
 let chavesPix = JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}');
-
-// Mapa de exibição das contas (label + emoji)
 const CONTAS_PIX_LABEL = {
   infinite_diego:   { label: 'InfinitePayDiego',   emoji: '🔵' },
   infinite_adriane: { label: 'InfinitePayAdriane', emoji: '🟣' },
   itau:             { label: 'Itaú',               emoji: '🟠' },
 };
-
 function carregarChavesPix() {
   document.getElementById('pixInfiniteDiego').value = chavesPix.infinite_diego || '';
   document.getElementById('pixInfiniteAdriane').value = chavesPix.infinite_adriane || '';
   document.getElementById('pixItau').value = chavesPix.itau || '';
 }
-
 function salvarChavesPix() {
   chavesPix = {
     infinite_diego:   document.getElementById('pixInfiniteDiego').value.trim(),
@@ -4090,8 +4088,6 @@ function salvarChavesPix() {
   if (window.fbSalvarChavesPix) window.fbSalvarChavesPix(chavesPix);
   showToast('✓ Chaves PIX salvas!', 'success');
 }
-
-// Retorna a chave PIX de um cliente conforme a conta vinculada (ou null)
 function getChavePixCliente(cliente) {
   if (!cliente || !cliente.contaPix) return null;
   const chave = chavesPix[cliente.contaPix];
@@ -6796,8 +6792,7 @@ function fazerBackupCompleto() {
     pedidos: JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]'),
     usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
     permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}'),
-    chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}'),
-    vendasConcluidas: JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')
+    chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}')
   };
   
   const json = JSON.stringify(backup, null, 2);
@@ -6944,7 +6939,6 @@ function lerArquivoBackup(event) {
       if (backup.usuarios?.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(backup.usuarios));
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
       if (backup.chavesPix) localStorage.setItem('aquagest_chaves_pix', JSON.stringify(backup.chavesPix));
-      if (backup.vendasConcluidas) localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(backup.vendasConcluidas));
       
       // Recarregar dados na memória
       clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
@@ -6954,7 +6948,6 @@ function lerArquivoBackup(event) {
       pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
       usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
       chavesPix = JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}');
-      vendasConcluidas = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
       
       showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
       renderDashboard();
