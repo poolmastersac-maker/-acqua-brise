@@ -1335,6 +1335,14 @@ tr:hover td{background:rgba(33,150,243,0.04);}
           <div class="form-group" bis_skin_checked="1"><label class="form-label">Técnico Responsável</label><select class="form-input" id="fTecnico"><option value="">— Selecione —</option><option value="Diego_tecnico">Diego_tecnico</option><option value="Arthur_tecnico">Arthur_tecnico</option><option value="Marcio_tecnico">Marcio_tecnico</option></select></div>
         </div>
         <div class="form-group" bis_skin_checked="1"><label class="form-label">Localização</label><input type="text" class="form-input" id="fEndereco" placeholder="Ex: Santa Adelia"></div>
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">💰 Conta de Recebimento <span style="color:var(--muted);font-size:0.75rem;">(chave PIX na cobrança)</span></label>
+          <select class="form-input" id="fContaPix">
+            <option value="">— Não definida —</option>
+            <option value="infinite_diego">InfinitePayDiego</option>
+            <option value="infinite_adriane">InfinitePayAdriane</option>
+            <option value="itau">Itaú</option>
+          </select>
+        </div>
         <div class="form-actions" bis_skin_checked="1">
           <button class="btn btn-ghost btn-sm" onclick="limparForm()">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="saveClient()">💾 Salvar</button>
@@ -3127,6 +3135,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div class="config-menu" bis_skin_checked="1">
       <div class="config-menu-item" onclick="abrirConfigSecao('usuarios')" bis_skin_checked="1">👤 Usuários e Senhas</div>
       <div class="config-menu-item" onclick="abrirConfigSecao('permissoes')" bis_skin_checked="1">🔑 Permissões</div>
+      <div class="config-menu-item" onclick="abrirConfigSecao('chavespix')" bis_skin_checked="1">💰 Chaves PIX</div>
       <div class="config-menu-item active" onclick="abrirConfigSecao('exportar')" bis_skin_checked="1">📤 Exportar Dados</div>
     </div>
     <div id="configContent" bis_skin_checked="1">
@@ -3190,6 +3199,25 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <div class="config-section" id="secPermissoes" style="display:none;" bis_skin_checked="1">
         <div class="config-section-title" bis_skin_checked="1">🔑 Permissões por Perfil</div>
         <div id="permissoesContainer" bis_skin_checked="1"></div>
+      </div>
+      <div class="config-section" id="secChavesPix" style="display:none;" bis_skin_checked="1">
+        <div class="config-section-title" bis_skin_checked="1">💰 Chaves PIX / Contas de Recebimento</div>
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:20px;">Cadastre a chave PIX de cada conta. Na cobrança de mensalidade, o sistema envia automaticamente a chave da conta vinculada a cada cliente.</p>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">🔵 InfinitePayDiego</label>
+          <input type="text" class="form-input" id="pixInfiniteDiego" placeholder="Chave PIX (CPF, e-mail, telefone ou aleatória)">
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">🟣 InfinitePayAdriane</label>
+          <input type="text" class="form-input" id="pixInfiniteAdriane" placeholder="Chave PIX (CPF, e-mail, telefone ou aleatória)">
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label class="form-label">🟠 Itaú</label>
+          <input type="text" class="form-input" id="pixItau" placeholder="Chave PIX (CPF, e-mail, telefone ou aleatória)">
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary btn-sm" onclick="salvarChavesPix()">💾 Salvar Chaves</button>
+        </div>
       </div>
       <div class="config-section" id="secExportar" style="display: block;" bis_skin_checked="1">
         <div class="config-section-title" bis_skin_checked="1">📤 Exportar / Importar Dados</div>
@@ -4032,6 +4060,45 @@ function salvarPermissoes() {
   fbSave('permissoes');
 }
 
+// ============================================================
+// CHAVES PIX / CONTAS DE RECEBIMENTO
+// ============================================================
+// Chaves ficam em config/chavesPix (localStorage + Firebase).
+// O cliente guarda só a conta (contaPix); a chave é resolvida aqui.
+let chavesPix = JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}');
+
+// Mapa de exibição das contas (label + emoji)
+const CONTAS_PIX_LABEL = {
+  infinite_diego:   { label: 'InfinitePayDiego',   emoji: '🔵' },
+  infinite_adriane: { label: 'InfinitePayAdriane', emoji: '🟣' },
+  itau:             { label: 'Itaú',               emoji: '🟠' },
+};
+
+function carregarChavesPix() {
+  document.getElementById('pixInfiniteDiego').value = chavesPix.infinite_diego || '';
+  document.getElementById('pixInfiniteAdriane').value = chavesPix.infinite_adriane || '';
+  document.getElementById('pixItau').value = chavesPix.itau || '';
+}
+
+function salvarChavesPix() {
+  chavesPix = {
+    infinite_diego:   document.getElementById('pixInfiniteDiego').value.trim(),
+    infinite_adriane: document.getElementById('pixInfiniteAdriane').value.trim(),
+    itau:             document.getElementById('pixItau').value.trim(),
+  };
+  localStorage.setItem('aquagest_chaves_pix', JSON.stringify(chavesPix));
+  if (window.fbSalvarChavesPix) window.fbSalvarChavesPix(chavesPix);
+  showToast('✓ Chaves PIX salvas!', 'success');
+}
+
+// Retorna a chave PIX de um cliente conforme a conta vinculada (ou null)
+function getChavePixCliente(cliente) {
+  if (!cliente || !cliente.contaPix) return null;
+  const chave = chavesPix[cliente.contaPix];
+  if (!chave) return null;
+  return { conta: cliente.contaPix, label: CONTAS_PIX_LABEL[cliente.contaPix]?.label || cliente.contaPix, chave };
+}
+
 // PRIVACIDADE — ocultar cards
 let _dadosOcultos = localStorage.getItem('drprime_privacidade') === '1';
 function togglePrivacidade() {
@@ -4440,6 +4507,7 @@ function editarClienteSelecionado() {
   document.getElementById('fValor').value=c.valor; document.getElementById('fStatus').value=c.status;
   document.getElementById('fEndereco').value=c.endereco||''; document.getElementById('fTipoPag').value=c.tipoPag||'atual';
   document.getElementById('fTecnico').value=c.tecnico||'';
+  document.getElementById('fContaPix').value=c.contaPix||'';
   document.getElementById('formTitulo').textContent='Editar Cliente'; document.getElementById('formIcon').textContent='✏️';
   document.querySelector('.form-card').scrollIntoView({behavior:'smooth'}); navegarPara('clientes');
 }
@@ -4491,18 +4559,20 @@ function saveClient() {
   const endereco = document.getElementById('fEndereco').value.trim();
   const tipoPag = document.getElementById('fTipoPag').value;
   const tecnico = document.getElementById('fTecnico').value;
+  const contaPix = document.getElementById('fContaPix').value;
   if (!nome||!dia||!valor) { showToast('⚠ Preencha os campos obrigatórios','error'); return; }
   const editId = document.getElementById('editId').value;
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
-    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico}; showToast('✓ Cliente atualizado!','success'); }
-  } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico}); showToast('✓ Cliente cadastrado!','success'); }
+    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}; showToast('✓ Cliente atualizado!','success'); }
+  } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}); showToast('✓ Cliente cadastrado!','success'); }
   salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
 }
 function limparForm() {
   ['editId','fNome','fTel','fDia','fValor','fEndereco'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fStatus').value='pendente'; document.getElementById('fTipoPag').value='atual';
   document.getElementById('fTecnico').value='';
+  document.getElementById('fContaPix').value='';
   document.getElementById('formTitulo').textContent='Novo Cliente'; document.getElementById('formIcon').textContent='➕';
 }
 function togglePago(id) {
@@ -6472,12 +6542,13 @@ function excluirNec(id) {
 function abrirConfigSecao(secao) {
   document.querySelectorAll('.config-section').forEach(s=>s.style.display='none');
   document.querySelectorAll('.config-menu-item').forEach(i=>i.classList.remove('active'));
-  const map={usuarios:'secUsuarios',permissoes:'secPermissoes',exportar:'secExportar'};
+  const map={usuarios:'secUsuarios',permissoes:'secPermissoes',chavespix:'secChavesPix',exportar:'secExportar'};
   document.getElementById(map[secao]).style.display='block';
-  const idx=['usuarios','permissoes','exportar'].indexOf(secao);
+  const idx=['usuarios','permissoes','chavespix','exportar'].indexOf(secao);
   document.querySelectorAll('.config-menu-item')[idx]?.classList.add('active');
   if(secao==='usuarios') renderUsuarios();
   if(secao==='permissoes') renderPermissoes();
+  if(secao==='chavespix') carregarChavesPix();
   if(secao==='exportar') {
     atualizarInfoBackup();
     const token = localStorage.getItem('drprime_gh_token');
@@ -6683,9 +6754,14 @@ function gerarCobranca(id) {
   const c=clientes.find(x=>x.id===id); if(!c) return;
   cobrancaAtual=c;
   const status=calcularStatus(c); const nome=c.nome.split(' ')[0];
+  // Bloco de PIX conforme a conta vinculada ao cliente (se houver chave cadastrada)
+  const dadosPix = getChavePixCliente(c);
+  const blocoPix = dadosPix
+    ? `\n\n💰 Pagamento via PIX:\n🏦 Conta: ${dadosPix.label}\n🔑 Chave: ${dadosPix.chave}`
+    : '';
   const msg=status==='atrasado'
-    ?`Olá, ${nome}! 🏊\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nPode me pagar via PIX! Qualquer dúvida, estou à disposição. 😊\n\nAtenciosamente,\nAcqua Brise 🌊`
-    :`Olá, ${nome}! 🏊\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.\n\nO pagamento pode ser feito via PIX.\n\nObrigado pela preferência! 😊\n\nAtenciosamente,\nAcqua Brise 🌊`;
+    ?`Olá, ${nome}! 🏊\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nPode me pagar via PIX! Qualquer dúvida, estou à disposição. 😊${blocoPix}\n\nAtenciosamente,\nAcqua Brise 🌊`
+    :`Olá, ${nome}! 🏊\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.\n\nO pagamento pode ser feito via PIX.${blocoPix}\n\nObrigado pela preferência! 😊\n\nAtenciosamente,\nAcqua Brise 🌊`;
   document.getElementById('cobrancaNome').textContent=c.nome;
   document.getElementById('cobrancaTexto').textContent=msg;
   document.getElementById('modalCobranca').classList.add('open');
@@ -6719,7 +6795,9 @@ function fazerBackupCompleto() {
     necessidades: JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]'),
     pedidos: JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]'),
     usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
-    permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}')
+    permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}'),
+    chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}'),
+    vendasConcluidas: JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')
   };
   
   const json = JSON.stringify(backup, null, 2);
@@ -6865,6 +6943,8 @@ function lerArquivoBackup(event) {
       localStorage.setItem('aquagest_pedidos', JSON.stringify(backup.pedidos || []));
       if (backup.usuarios?.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(backup.usuarios));
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
+      if (backup.chavesPix) localStorage.setItem('aquagest_chaves_pix', JSON.stringify(backup.chavesPix));
+      if (backup.vendasConcluidas) localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(backup.vendasConcluidas));
       
       // Recarregar dados na memória
       clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
@@ -6873,6 +6953,8 @@ function lerArquivoBackup(event) {
       necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
       pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
       usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
+      chavesPix = JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}');
+      vendasConcluidas = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
       
       showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
       renderDashboard();
@@ -7723,6 +7805,17 @@ window.addEventListener('resize', ajustarOffsetHeader);
     }
   };
 
+  // Expor salvamento das chaves PIX no Firebase
+  window.fbSalvarChavesPix = async function(chaves) {
+    try {
+      const limpo = JSON.parse(JSON.stringify(chaves, (k,v) => v === undefined ? null : v));
+      await setDoc(doc(db, 'config', 'chavesPix'), limpo);
+      setBadge(true);
+    } catch(e) {
+      console.error('Erro ao salvar chaves PIX:', e);
+    }
+  };
+
   // Expor escrita direta de registros de histórico no Firebase
   // Usado pela importação em lote para garantir persistência imediata
   window.fbSalvarHistorico = async function(registros) {
@@ -7828,6 +7921,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
               }
             }
           }
+        }
+        // CHAVES PIX — do mesmo snapshot de config
+        const pixDoc = snapPerm.docs.find(d => d.id === 'chavesPix');
+        if (pixDoc) {
+          const dadosPix = {...pixDoc.data()};
+          localStorage.setItem('aquagest_chaves_pix', JSON.stringify(dadosPix));
+          if (typeof chavesPix !== 'undefined') { chavesPix = dadosPix; }
         }
       }
 
