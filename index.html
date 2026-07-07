@@ -3318,10 +3318,19 @@ tr:hover td{background:rgba(33,150,243,0.04);}
             </div>
           </div>
           <!-- Linha: Histórico -->
-          <div style="display:grid;grid-template-columns:1fr 2fr 140px 180px;padding:12px 16px;gap:12px;align-items:center;" bis_skin_checked="1">
+          <div style="display:grid;grid-template-columns:1fr 1.4fr 120px 120px 180px;padding:12px 16px;gap:10px;align-items:center;" bis_skin_checked="1">
             <span style="font-size:0.85rem;font-weight:600;color:var(--text);">💰 Histórico</span>
             <span style="font-size:0.82rem;color:var(--muted);">Pagamentos registrados por período</span>
             <select class="form-input" id="exportAnoHistorico" style="width:100%;font-size:0.82rem;padding:5px 8px;"><option value="todos">Todos os anos</option><option value="2026" selected="">2026</option></select>
+            <select class="form-input" id="exportMesHistorico" style="width:100%;font-size:0.82rem;padding:5px 8px;">
+              <option value="todos">Todos os meses</option>
+              <option value="0">Janeiro</option><option value="1">Fevereiro</option>
+              <option value="2">Março</option><option value="3">Abril</option>
+              <option value="4">Maio</option><option value="5">Junho</option>
+              <option value="6">Julho</option><option value="7">Agosto</option>
+              <option value="8">Setembro</option><option value="9">Outubro</option>
+              <option value="10">Novembro</option><option value="11">Dezembro</option>
+            </select>
             <div style="display:flex;gap:8px;justify-content:center;" bis_skin_checked="1">
               <button class="btn btn-primary btn-sm" onclick="exportarExcel('historico')" title="Exportar histórico em Excel">📊 Excel</button>
               <button class="btn btn-ghost btn-sm" onclick="exportarPDF('historico')" title="Exportar histórico em PDF">📄 PDF</button>
@@ -6694,10 +6703,14 @@ function popularAnosHistorico() {
 }
 
 function getHistoricoFiltrado() {
-  const sel = document.getElementById('exportAnoHistorico');
-  const anoSel = sel ? sel.value : 'todos';
-  if (anoSel === 'todos') return historico;
-  return historico.filter(h => String(h.ano) === String(anoSel));
+  const selAno = document.getElementById('exportAnoHistorico');
+  const selMes = document.getElementById('exportMesHistorico');
+  const anoSel = selAno ? selAno.value : 'todos';
+  const mesSel = selMes ? selMes.value : 'todos';
+  let resultado = historico;
+  if (anoSel !== 'todos') resultado = resultado.filter(h => String(h.ano) === String(anoSel));
+  if (mesSel !== 'todos') resultado = resultado.filter(h => String(h.mes) === String(mesSel));
+  return resultado;
 }
 
 function exportarExcel(tipo) {
@@ -6736,7 +6749,12 @@ function exportarExcel(tipo) {
           Obs: h.obs || ''
         };
       });
-    filename = anoSel === 'todos' ? 'historico_completo.xlsx' : `historico_${anoSel}.xlsx`;
+    const mesSel = document.getElementById('exportMesHistorico')?.value || 'todos';
+    const MESES_ARQ = ['01-janeiro','02-fevereiro','03-marco','04-abril','05-maio','06-junho','07-julho','08-agosto','09-setembro','10-outubro','11-novembro','12-dezembro'];
+    let sufixo = '';
+    if (anoSel !== 'todos') sufixo += '_' + anoSel;
+    if (mesSel !== 'todos') sufixo += '_' + MESES_ARQ[Number(mesSel)];
+    filename = sufixo ? `historico${sufixo}.xlsx` : 'historico_completo.xlsx';
   }
   const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo);XLSX.writeFile(wb,filename);
   showToast('✓ Excel exportado!','success');
@@ -6746,7 +6764,12 @@ function exportarPDF(tipo) {
   if(typeof jspdf==='undefined'){showToast('⚠ Aguarde as bibliotecas carregarem','error');return;}
   const{jsPDF}=jspdf;const doc=new jsPDF();
   const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
-  const titulo = tipo==='clientes' ? 'Clientes' : (anoSel === 'todos' ? 'Histórico Completo' : `Histórico ${anoSel}`);
+  const mesSel = document.getElementById('exportMesHistorico')?.value || 'todos';
+  let periodoTxt = '';
+  if (mesSel !== 'todos') periodoTxt += MESES[Number(mesSel)] + ' ';
+  if (anoSel !== 'todos') periodoTxt += anoSel;
+  if (!periodoTxt) periodoTxt = 'Completo';
+  const titulo = tipo==='clientes' ? 'Clientes' : `Histórico ${periodoTxt.trim()}`;
   doc.setFontSize(16);doc.text('Acqua Brise — '+titulo,14,20);
   doc.setFontSize(10);doc.text('Gerado em: '+new Date().toLocaleDateString('pt-BR'),14,28);
   if(tipo==='clientes'){
