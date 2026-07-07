@@ -5710,6 +5710,7 @@ async function gerarPedido() {
         necessidadeId: n.id,
         produto: nomeProd,
         produtoId: p?.id || n.produtoId,
+        codigoProduto: p?.codigo || n.codigoProduto || '',
         clienteId: Number(n.clienteId),
         cliente: c?.nome || '—',
         qtd: n.qtd,
@@ -5982,6 +5983,16 @@ function renderPedidos() {
   }).join('');
 }
 
+// Busca robusta de produto a partir de um item de pedido/venda.
+// Tenta em cascata: id → código → nome. Cobre produtos recadastrados
+// (que ganham novo id) e nomes com pequenas variações.
+function acharProdutoDoItem(item) {
+  return produtos.find(x => Number(x.id) === Number(item.produtoId))
+      || (item.codigoProduto && produtos.find(x => String(x.codigo) === String(item.codigoProduto)))
+      || (item.produto && produtos.find(x => x.nome === item.produto))
+      || produtos.find(x => String(x.codigo) === String(item.produtoId));
+}
+
 function togglePedidoEntregue(id, checkbox) {
   const ped = pedidos.find(x => x.id === id);
   if (!ped) return;
@@ -5991,31 +6002,37 @@ function togglePedidoEntregue(id, checkbox) {
       checkbox.checked = false; return;
     }
     const semEstoque = [];
+    const naoEncontrados = [];
     ped.itens.forEach(item => {
-      const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
-             || (item.produto && produtos.find(x => x.nome === item.produto));
-      if (p && p.qtd < item.qtd) semEstoque.push(item.produto + ' (estoque: ' + p.qtd + ', pedido: ' + item.qtd + ')');
+      const p = acharProdutoDoItem(item);
+      if (!p) { naoEncontrados.push(item.produto || '(produto sem nome)'); return; }
+      if (p.qtd < item.qtd) semEstoque.push(item.produto + ' (estoque: ' + p.qtd + ', pedido: ' + item.qtd + ')');
     });
+    // Avisar se algum produto não foi localizado no estoque (não baixaria)
+    if (naoEncontrados.length > 0) {
+      const continuar = confirm('⚠ Estes produtos do pedido NÃO foram encontrados no estoque e não serão baixados:\n\n' + naoEncontrados.join('\n') + '\n\nIsso costuma acontecer quando o produto foi recadastrado. Deseja continuar mesmo assim?');
+      if (!continuar) { checkbox.checked = false; return; }
+    }
     if (semEstoque.length > 0) {
       const continuar = confirm('⚠ Estoque insuficiente para:\n' + semEstoque.join('\n') + '\n\nDeseja marcar como entregue mesmo assim?');
       if (!continuar) { checkbox.checked = false; return; }
     }
     ped.itens.forEach(item => {
-      const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
-             || (item.produto && produtos.find(x => x.nome === item.produto));
+      const p = acharProdutoDoItem(item);
       if (p) p.qtd = Math.max(0, p.qtd - item.qtd);
     });
     salvarProdutos(); renderEstoque();
+    fbSave('produtos');
     showToast('✓ Entregue! Estoque atualizado.', 'success');
   } else {
     const devolver = confirm('Desmarcar entrega?\n\nDeseja devolver os produtos ao estoque?');
     if (devolver) {
       ped.itens.forEach(item => {
-        const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
-               || (item.produto && produtos.find(x => x.nome === item.produto));
+        const p = acharProdutoDoItem(item);
         if (p) p.qtd += item.qtd;
       });
       salvarProdutos(); renderEstoque();
+      fbSave('produtos');
       showToast('Entrega desmarcada. Estoque restaurado.', 'info');
     } else {
       showToast('Entrega desmarcada. Estoque não alterado.', 'info');
@@ -6238,8 +6255,7 @@ function desfazerVenda(id) {
   // que os produtos "voltaram". Se de fato já foram entregues, o gestor
   // remarca "Entregue" manualmente e o sistema baixa de novo.
   (v.itens || []).forEach(item => {
-    const p = produtos.find(x => Number(x.id) === Number(item.produtoId))
-           || (item.produto && produtos.find(x => x.nome === item.produto));
+    const p = acharProdutoDoItem(item);
     if (p) p.qtd += Number(item.qtd || 0);
   });
   salvarProdutos();
