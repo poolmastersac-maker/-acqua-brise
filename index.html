@@ -5985,10 +5985,12 @@ function renderLembretesAvisos() {
   const querResolvidos = _subLembretes === 'resolvidos';
   const lista = lembretes
     .filter(l => !!l.resolvido === querResolvidos)
-    .sort((a,b) => {
-      const da = querResolvidos ? new Date(b.dataResolucao||b.data) : new Date(b.data);
-      const db = querResolvidos ? new Date(a.dataResolucao||a.data) : new Date(a.data);
-      return da - db;
+    .sort((a, b) => {
+      // Mais recente primeiro. Resolvidos ordenam pela data de resolução;
+      // ativos, pela data de criação.
+      const tA = querResolvidos ? new Date(a.dataResolucao || a.data) : new Date(a.data);
+      const tB = querResolvidos ? new Date(b.dataResolucao || b.data) : new Date(b.data);
+      return tB - tA;
     });
   if (!lista.length) {
     const msg = querResolvidos ? 'Nenhum lembrete resolvido.' : 'Nenhum lembrete ativo. Tudo em dia! 🎉';
