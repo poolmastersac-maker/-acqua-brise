@@ -117,6 +117,32 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .ci-right{display:flex;align-items:center;gap:10px;}
 .chevron{color:var(--muted);font-size:0.85rem;transition:transform 0.2s;}
 .cliente-item.selected .chevron{transform:rotate(90deg);color:var(--accent);}
+.card-feriados{background:linear-gradient(135deg,#F0F8FF,#EAF4FB);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
+.card-feriados.hidden{display:none;}
+.cf-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.cf-header .cf-titulo{font-size:0.92rem;font-weight:700;color:var(--accent2);}
+.cf-header .cf-sub{font-size:0.72rem;color:var(--muted);margin-left:auto;}
+.cf-lista{display:flex;gap:10px;flex-wrap:wrap;}
+.cf-item{display:flex;align-items:center;gap:10px;background:white;border:1px solid var(--border);border-radius:10px;padding:9px 13px;min-width:180px;flex:1;transition:transform 0.15s;}
+.cf-item:hover{transform:translateY(-2px);}
+.cf-item.proximo{border-color:var(--yellow);background:#FFFBEB;box-shadow:0 2px 8px rgba(217,119,6,0.12);}
+.cf-item.hoje{border-color:var(--green);background:#ECFDF5;box-shadow:0 2px 8px rgba(5,150,105,0.15);}
+.cf-data{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface2);border-radius:8px;padding:4px 10px;min-width:48px;}
+.cf-data .cf-dia{font-size:1.1rem;font-weight:800;color:var(--accent2);line-height:1;}
+.cf-data .cf-mes{font-size:0.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.cf-item.proximo .cf-data{background:#FEF3C7;}
+.cf-item.proximo .cf-dia{color:var(--yellow);}
+.cf-item.hoje .cf-data{background:#D1FAE5;}
+.cf-item.hoje .cf-dia{color:var(--green);}
+.cf-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cf-nome{font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cf-meta{display:flex;align-items:center;gap:6px;}
+.cf-faltam{font-size:0.7rem;color:var(--muted);}
+.cf-tipo{font-size:0.6rem;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.3px;}
+.cf-tipo.nacional{background:rgba(33,150,243,0.1);color:var(--accent2);}
+.cf-tipo.estadual{background:rgba(139,92,246,0.12);color:#7C3AED;}
+.cf-tipo.municipal{background:rgba(5,150,105,0.1);color:var(--green);}
+@media(max-width:768px){.cf-item{min-width:100%;}}
 .painel-cliente{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow-y:auto;overflow-x:hidden;position:sticky;top:80px;max-height:calc(100vh - 100px);opacity:0;transform:translateX(10px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;box-shadow:0 4px 16px rgba(33,150,243,0.08);}
 .painel-cliente::-webkit-scrollbar{width:8px;}
 .painel-cliente::-webkit-scrollbar-track{background:var(--surface2);border-radius:8px;}
@@ -599,6 +625,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     </select>
     <button class="btn btn-ghost btn-sm" onclick="cobrarTodos()">📲 Cobrar Atrasados</button>
   </div>
+  <div id="cardFeriados" class="card-feriados" bis_skin_checked="1"></div>
   <div class="table-wrap" bis_skin_checked="1">
     <table><thead><tr><th>Cliente</th><th>Localização</th><th>Técnico</th><th>Vencimento</th><th>Mensalidade</th><th>Status</th><th>Ações</th></tr></thead>
     <tbody id="tableBody"><tr>
@@ -4405,6 +4432,115 @@ function ordenarClientes(lista, ordem) {
   }
 }
 
+// ============================================================
+// FERIADOS — card no dashboard
+// ============================================================
+// Calcula o Domingo de Páscoa (algoritmo de Meeus/Butcher) para
+// derivar os feriados móveis. Tudo embutido, funciona offline.
+function calcularPascoa(ano) {
+  const a = ano % 19;
+  const b = Math.floor(ano / 100);
+  const c = ano % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31);
+  const dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(ano, mes - 1, dia);
+}
+
+// Monta a lista de feriados de um ano (fixos + móveis + estadual SP + municipais)
+function getFeriadosDoAno(ano) {
+  const pascoa = calcularPascoa(ano);
+  const addDias = (base, dias) => { const d = new Date(base); d.setDate(d.getDate() + dias); return d; };
+
+  const feriados = [
+    // Nacionais fixos
+    { data: new Date(ano, 0, 1),   nome: 'Confraternização Universal', tipo: 'nacional' },
+    { data: new Date(ano, 3, 21),  nome: 'Tiradentes',                 tipo: 'nacional' },
+    { data: new Date(ano, 4, 1),   nome: 'Dia do Trabalho',            tipo: 'nacional' },
+    { data: new Date(ano, 8, 7),   nome: 'Independência do Brasil',    tipo: 'nacional' },
+    { data: new Date(ano, 9, 12),  nome: 'N. Sra. Aparecida',          tipo: 'nacional' },
+    { data: new Date(ano, 10, 2),  nome: 'Finados',                    tipo: 'nacional' },
+    { data: new Date(ano, 10, 15), nome: 'Proclamação da República',   tipo: 'nacional' },
+    { data: new Date(ano, 11, 25), nome: 'Natal',                      tipo: 'nacional' },
+    // Nacionais móveis (a partir da Páscoa)
+    { data: addDias(pascoa, -47),  nome: 'Carnaval',                   tipo: 'nacional' },
+    { data: addDias(pascoa, -2),   nome: 'Sexta-feira Santa',          tipo: 'nacional' },
+    { data: addDias(pascoa, 60),   nome: 'Corpus Christi',             tipo: 'nacional' },
+    // Estadual SP
+    { data: new Date(ano, 6, 9),   nome: 'Revolução Constitucionalista', tipo: 'estadual' },
+    // Municipais
+    { data: new Date(ano, 3, 2),   nome: 'Aniversário de Cotia',       tipo: 'municipal' },
+    { data: new Date(ano, 10, 27), nome: 'Aniversário de Vargem Grande Paulista', tipo: 'municipal' },
+  ];
+  return feriados;
+}
+
+// Retorna os próximos N feriados a partir de hoje
+function getProximosFeriados(qtd) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const anoAtual = hoje.getFullYear();
+  // Pega feriados deste ano e do próximo (pra cobrir a virada de ano)
+  const todos = [...getFeriadosDoAno(anoAtual), ...getFeriadosDoAno(anoAtual + 1)];
+  return todos
+    .filter(f => f.data >= hoje)
+    .sort((a, b) => a.data - b.data)
+    .slice(0, qtd);
+}
+
+function renderCardFeriados() {
+  const card = document.getElementById('cardFeriados');
+  if (!card) return;
+  const MESES_ABREV = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const proximos = getProximosFeriados(5);
+
+  if (!proximos.length) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  const itens = proximos.map(f => {
+    const dias = Math.round((f.data - hoje) / (1000 * 60 * 60 * 24));
+    const ehHoje = dias === 0;
+    const ehProximo = dias > 0 && dias <= 7;
+    const classe = ehHoje ? 'hoje' : (ehProximo ? 'proximo' : '');
+    let faltamTxt;
+    if (ehHoje) faltamTxt = '🎉 É hoje!';
+    else if (dias === 1) faltamTxt = 'amanhã';
+    else faltamTxt = `em ${dias} dias`;
+    const tipoLabel = { nacional: 'Nacional', estadual: 'Estadual', municipal: 'Municipal' }[f.tipo];
+    return `
+      <div class="cf-item ${classe}">
+        <div class="cf-data">
+          <span class="cf-dia">${f.data.getDate()}</span>
+          <span class="cf-mes">${MESES_ABREV[f.data.getMonth()]}</span>
+        </div>
+        <div class="cf-info">
+          <span class="cf-nome" title="${f.nome}">${f.nome}</span>
+          <div class="cf-meta">
+            <span class="cf-tipo ${f.tipo}">${tipoLabel}</span>
+            <span class="cf-faltam">${faltamTxt}</span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="cf-header">
+      <span style="font-size:1rem;">📅</span>
+      <span class="cf-titulo">Próximos Feriados</span>
+      <span class="cf-sub">Nacionais · Estaduais (SP) · Municipais</span>
+    </div>
+    <div class="cf-lista">${itens}</div>`;
+}
+
 function renderDashboard() {
   const busca = document.getElementById('searchInput').value.toLowerCase();
   const mesSel = document.getElementById('mesCobrar').value;
@@ -4454,6 +4590,7 @@ function renderDashboard() {
     }).join('');
   }
   atualizarStats();
+  renderCardFeriados();
 }
 
 // LISTA CLIENTES
