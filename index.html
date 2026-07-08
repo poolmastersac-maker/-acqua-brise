@@ -5897,11 +5897,18 @@ function enviarLembrete() {
     autorUsuario: usuarioLogado?.usuario || '',
     data: new Date().toISOString(),
     resolvido: false,
-    dataResolucao: null
+    dataResolucao: null,
+    _pendente: true
   };
   lembretes.push(novo);
   salvarLembretes();
-  if (window.fbSetDoc) window.fbSetDoc('lembretes', String(novo.id), novo);
+  if (window.fbSetDoc) {
+    window.fbSetDoc('lembretes', String(novo.id), novo).then(() => {
+      // Confirmado no Firebase: remove a marca de pendente
+      const ref = lembretes.find(l => l.id === novo.id);
+      if (ref) { delete ref._pendente; salvarLembretes(); }
+    });
+  }
   document.getElementById('lembreteTexto').value = '';
   document.getElementById('lembreteCliente').value = '';
   showToast('📨 Lembrete enviado ao gestor!','success');
@@ -5909,13 +5916,37 @@ function enviarLembrete() {
   atualizarBadgeLembretes();
 }
 
+// Busca lembretes frescos do Firebase (fonte de verdade) e re-renderiza.
+// Importante: substitui a lista local, para que exclusões feitas em outro
+// dispositivo/perfil sejam refletidas (some o que foi apagado).
+async function sincronizarLembretes(aposRender) {
+  if (!window.fbGetLembretes) { if (aposRender) aposRender(); return; }
+  try {
+    const dadosFirebase = await window.fbGetLembretes();
+    if (dadosFirebase !== null) {
+      // Preserva apenas lembretes locais ainda não sincronizados (criados offline agora)
+      const idsFirebase = new Set(dadosFirebase.map(l => String(l.id)));
+      const locaisPendentes = lembretes.filter(l => l._pendente && !idsFirebase.has(String(l.id)));
+      lembretes = [...dadosFirebase, ...locaisPendentes];
+      localStorage.setItem('aquagest_lembretes', JSON.stringify(lembretes));
+    }
+  } catch(e) { /* silencioso: usa dados locais */ }
+  if (aposRender) aposRender();
+  atualizarBadgeLembretes();
+}
+
 // Lista dos lembretes que o próprio técnico enviou
 function renderLembretesTecnico() {
   popularClientesLembrete();
+  desenharMeusLembretes();
+  // Busca dados frescos do Firebase (pode ter sido apagado/resolvido pelo gestor)
+  sincronizarLembretes(desenharMeusLembretes);
+}
+
+function desenharMeusLembretes() {
   const body = document.getElementById('meusLembretesBody');
   if (!body) return;
   const meuUsuario = usuarioLogado?.usuario || '';
-  // Técnico vê os próprios; gestor/admin veem os que eles mesmos criaram aqui também
   const meus = lembretes
     .filter(l => l.autorUsuario === meuUsuario && !l.resolvido)
     .sort((a,b) => new Date(b.data) - new Date(a.data));
@@ -5979,6 +6010,12 @@ function trocarSubLembretes(sub) {
 
 // Visão do gestor: todos os lembretes, separados por ativos/resolvidos
 function renderLembretesAvisos() {
+  desenharLembretesAvisos();
+  // Busca dados frescos do Firebase (sincroniza entre dispositivos)
+  sincronizarLembretes(desenharLembretesAvisos);
+}
+
+function desenharLembretesAvisos() {
   limparLembretesAntigos();
   const body = document.getElementById('lembretesAvisosBody');
   if (!body) return;
@@ -6008,7 +6045,7 @@ function resolverLembrete(id) {
   salvarLembretes();
   if (window.fbSetDoc) window.fbSetDoc('lembretes', String(l.id), l);
   showToast('✓ Lembrete marcado como resolvido.','success');
-  renderLembretesAvisos();
+  desenharLembretesAvisos();
   atualizarBadgeLembretes();
 }
 
@@ -6018,7 +6055,7 @@ function apagarLembrete(id) {
   salvarLembretes();
   if (window.fbDeleteDoc) window.fbDeleteDoc('lembretes', String(id));
   showToast('🗑 Lembrete apagado.','info');
-  renderLembretesAvisos();
+  desenharLembretesAvisos();
   atualizarBadgeLembretes();
 }
 
@@ -8139,6 +8176,16 @@ window.addEventListener('resize', ajustarOffsetHeader);
       return snap.empty ? [] : snap.docs.map(d => d.data());
     } catch(e) {
       console.error('Erro fbGetPedidos:', e);
+      return null;
+    }
+  };
+
+  window.fbGetLembretes = async function() {
+    try {
+      const snap = await getDocs(collection(db, 'lembretes'));
+      return snap.empty ? [] : snap.docs.map(d => d.data());
+    } catch(e) {
+      console.error('Erro fbGetLembretes:', e);
       return null;
     }
   };
