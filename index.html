@@ -119,6 +119,26 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .cliente-item.selected .chevron{transform:rotate(90deg);color:var(--accent);}
 .card-feriados{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#F0F8FF,#EAF4FB);border:1px solid var(--border);border-radius:10px;padding:7px 14px;margin-bottom:10px;flex-wrap:wrap;}
 .card-feriados.hidden{display:none;}
+.nav-badge{background:var(--red);color:#fff;font-size:0.62rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;margin-left:2px;}
+.lembrete-form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
+.lembrete-form-titulo{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:4px;}
+.lembrete-form-sub{font-size:0.8rem;color:var(--muted);margin-bottom:16px;}
+.lembrete-secao-titulo{font-size:0.9rem;font-weight:700;color:var(--text);margin:8px 0 12px;}
+.lembrete-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+.lembrete-card.nao-resolvido{border-left:3px solid var(--accent);}
+.lembrete-card.resolvido-card{border-left:3px solid var(--green);opacity:0.85;}
+.lembrete-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.lembrete-meta{font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.lembrete-tec{font-weight:700;color:var(--accent2);}
+.lembrete-cliente-tag{background:rgba(33,150,243,0.1);color:var(--accent2);font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px;}
+.lembrete-cliente-tag.geral{background:var(--surface2);color:var(--muted);}
+.lembrete-texto{font-size:0.88rem;color:var(--text);line-height:1.4;white-space:pre-wrap;}
+.lembrete-acoes{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.lembrete-chk{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--muted);cursor:pointer;}
+.lembrete-chk input{width:16px;height:16px;accent-color:var(--green);cursor:pointer;}
+.lembrete-status-badge{font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:10px;}
+.lembrete-status-badge.pendente{background:rgba(217,119,6,0.12);color:var(--yellow);}
+.lembrete-status-badge.ok{background:rgba(5,150,105,0.12);color:var(--green);}
 .card-feriados .cf-titulo{font-size:0.8rem;font-weight:700;color:var(--accent2);white-space:nowrap;}
 .cf-lista{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
 .cf-item{display:flex;align-items:center;gap:7px;background:white;border:1px solid var(--border);border-radius:8px;padding:4px 10px;}
@@ -564,16 +584,18 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     </div>
   </div>
   <div class="nav-tabs" bis_skin_checked="1">
-    <button class="nav-tab" onclick="navegarPara('dashboard')"><span>📊</span><span>Dashboard</span></button>
-    <button class="nav-tab" onclick="navegarPara('clientes')"><span>👥</span><span>Clientes</span></button>
-    <button class="nav-tab" onclick="navegarPara('historico')"><span>📁</span><span>Histórico</span></button>
-    <button class="nav-tab" onclick="navegarPara('estoque')"><span>📦</span><span>Estoque</span></button>
-    <button class="nav-tab" onclick="navegarPara('servicos')"><span>🔧</span><span>Serviços</span></button>
-    <button class="nav-tab" onclick="navegarPara('visaogeral')"><span>📅</span><span>Visão Geral</span></button>
-    <button class="nav-tab" onclick="navegarPara('necessidades')"><span>🧴</span><span>Necessidades</span></button>
-    <button class="nav-tab" onclick="navegarPara('pedidos')"><span>📋</span><span>Pedidos</span></button>
-    <button class="nav-tab" onclick="navegarPara('relatorios')"><span>📊</span><span>Relatórios</span></button>
-  <button class="nav-tab active" onclick="navegarPara('configuracoes')"><span>⚙️</span><span>Config</span></button>
+    <button class="nav-tab" data-aba="dashboard" onclick="navegarPara('dashboard')"><span>📊</span><span>Dashboard</span></button>
+    <button class="nav-tab" data-aba="clientes" onclick="navegarPara('clientes')"><span>👥</span><span>Clientes</span></button>
+    <button class="nav-tab" data-aba="historico" onclick="navegarPara('historico')"><span>📁</span><span>Histórico</span></button>
+    <button class="nav-tab" data-aba="estoque" onclick="navegarPara('estoque')"><span>📦</span><span>Estoque</span></button>
+    <button class="nav-tab" data-aba="visaogeral" onclick="navegarPara('visaogeral')"><span>📅</span><span>Visão Geral</span></button>
+    <button class="nav-tab" data-aba="necessidades" onclick="navegarPara('necessidades')"><span>🧴</span><span>Necessidades</span></button>
+    <button class="nav-tab" data-aba="pedidos" onclick="navegarPara('pedidos')"><span>📋</span><span>Pedidos</span></button>
+    <button class="nav-tab" data-aba="lembretes" onclick="navegarPara('lembretes')"><span>📝</span><span>Lembretes</span></button>
+    <button class="nav-tab" data-aba="lembretesavisos" onclick="navegarPara('lembretesavisos')"><span>📨</span><span>Lembretes e Avisos</span><span id="badgeLembretes" class="nav-badge" style="display:none;"></span></button>
+    <button class="nav-tab" data-aba="servicos" onclick="navegarPara('servicos')"><span>🔧</span><span>Serviços</span></button>
+    <button class="nav-tab" data-aba="relatorios" onclick="navegarPara('relatorios')"><span>📊</span><span>Relatórios</span></button>
+  <button class="nav-tab active" data-aba="configuracoes" onclick="navegarPara('configuracoes')"><span>⚙️</span><span>Config</span></button>
   </div>
 </header>
 
@@ -2711,6 +2733,36 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   <button class="nec-enviar-btn" onclick="gerarPedido()">📋 Gerar Pedido com Itens Listados</button>
 </div>
 
+<!-- LEMBRETES (técnico envia) -->
+<div class="page" id="page-lembretes" bis_skin_checked="1">
+  <div class="lembrete-form-card" bis_skin_checked="1">
+    <div class="lembrete-form-titulo">📝 Enviar lembrete ou aviso</div>
+    <div class="lembrete-form-sub">Registre uma observação sobre um cliente ou um aviso geral. O gestor receberá na aba "Lembretes e Avisos".</div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Cliente (opcional)</label>
+      <select class="form-input" id="lembreteCliente"><option value="">— Aviso geral (sem cliente) —</option></select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Lembrete / Aviso</label>
+      <textarea class="form-input" id="lembreteTexto" rows="4" placeholder="Ex: A bomba da piscina está fazendo barulho estranho, avisar o cliente sobre troca."></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="enviarLembrete()">📨 Enviar</button>
+    </div>
+  </div>
+  <div class="lembrete-secao-titulo">Meus lembretes enviados</div>
+  <div id="meusLembretesBody" bis_skin_checked="1"></div>
+</div>
+
+<!-- LEMBRETES E AVISOS (gestor recebe) -->
+<div class="page" id="page-lembretesavisos" bis_skin_checked="1">
+  <div class="sub-tabs" style="margin-bottom:16px;" bis_skin_checked="1">
+    <button class="sub-tab active" id="laSubAtivos" onclick="trocarSubLembretes('ativos')">📥 Ativos</button>
+    <button class="sub-tab" id="laSubResolvidos" onclick="trocarSubLembretes('resolvidos')">✓ Resolvidos</button>
+  </div>
+  <div id="lembretesAvisosBody" bis_skin_checked="1"></div>
+</div>
+
 <!-- RELATÓRIOS -->
 <div class="page" id="page-relatorios" bis_skin_checked="1">
   <div class="toolbar" bis_skin_checked="1">
@@ -4045,13 +4097,13 @@ if (!usuarios || usuarios.length === 0) {
   salvarUsuarios();
 }
 // Permissões padrão versionadas
-const _permissoesVersao = '3.2'; // Incrementar aqui sempre que mudar permissões
+const _permissoesVersao = '3.3'; // Incrementar aqui sempre que mudar permissões
 window._permissoesVersao = _permissoesVersao;
 const _permissoesDefault = {
-  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:true,relatorios:true,vendas:true,excluir:true,exportar:true},
-  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,vendas:true,excluir:true,exportar:true},
-  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,pedidos:true,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:false},
-  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,pedidos:false,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:true}
+  admin:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,lembretes:true,lembretesavisos:true,configuracoes:true,relatorios:true,vendas:true,excluir:true,exportar:true},
+  gerente:{dashboard:true,clientes:true,historico:true,estoque:true,servicos:true,visaogeral:true,necessidades:true,pedidos:true,lembretes:true,lembretesavisos:true,configuracoes:false,relatorios:false,vendas:true,excluir:true,exportar:true},
+  tecnico:{dashboard:false,clientes:false,historico:false,estoque:false,servicos:true,visaogeral:false,necessidades:true,pedidos:true,lembretes:true,lembretesavisos:false,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:false},
+  financeiro:{dashboard:true,clientes:false,historico:true,estoque:false,servicos:false,visaogeral:true,necessidades:false,pedidos:false,lembretes:false,lembretesavisos:false,configuracoes:false,relatorios:false,vendas:false,excluir:false,exportar:true}
 };
 
 let permissoes;
@@ -4248,6 +4300,8 @@ function entrar() {
   preencherSelectTecnicos();
   renderDashboard();
   atualizarStats();
+  limparLembretesAntigos();
+  atualizarBadgeLembretes();
   setTimeout(ajustarOffsetHeader, 100);
 }
 function fazerLogout() {
@@ -4302,8 +4356,12 @@ function salvarNovaSenha() {
 function aplicarPermissoes(forcarRedirecionamento) {
   if (!usuarioLogado) return;
   const p = permissoes[usuarioLogado.perfil] || permissoes.tecnico;
-  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','configuracoes','pedido-fornecedor'];
-  document.querySelectorAll('.nav-tab').forEach((tab,i) => { tab.style.display = (p[tabs[i]]!==false)?'':'none'; });
+  // Mapeia cada aba pelo seu data-aba (robusto: não depende da ordem no HTML)
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    const aba = tab.getAttribute('data-aba');
+    if (!aba) return;
+    tab.style.display = (p[aba] !== false) ? '' : 'none';
+  });
 
   // Ocultar stats bar se não tem acesso ao dashboard
   const statsBar = document.getElementById('statsBar');
@@ -4314,9 +4372,10 @@ function aplicarPermissoes(forcarRedirecionamento) {
   const abaAtivaId = abaAtiva ? abaAtiva.id.replace('page-','') : null;
   const abaPermitida = abaAtivaId && p[abaAtivaId] !== false;
 
-  // Só redirecionar se forçado (login) ou se a aba atual não é permitida
+  // Ordem de fallback para primeira aba permitida
+  const ordemAbas = ['dashboard','clientes','historico','estoque','visaogeral','necessidades','pedidos','lembretes','lembretesavisos','servicos','relatorios','configuracoes'];
   if (forcarRedirecionamento || !abaPermitida) {
-    const primeiraAba = tabs.find(t => p[t] !== false);
+    const primeiraAba = ordemAbas.find(t => p[t] !== false);
     if (primeiraAba) navegarPara(primeiraAba);
   }
 }
@@ -4326,9 +4385,9 @@ function navegarPara(pagina) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+pagina).classList.add('active');
-  const tabs = ['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','configuracoes','pedido-fornecedor'];
-  const idx = tabs.indexOf(pagina);
-  if (idx >= 0) document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+  // Marcar aba ativa pelo data-aba (robusto, não depende de ordem)
+  const tabAtiva = document.querySelector('.nav-tab[data-aba="'+pagina+'"]');
+  if (tabAtiva) tabAtiva.classList.add('active');
   if (pagina==='clientes') renderLista();
   if (pagina==='dashboard') renderDashboard();
   if (pagina==='historico') { renderHistLista(); if (histClienteId) renderHistorico(); }
@@ -4337,6 +4396,8 @@ function navegarPara(pagina) {
   if (pagina==='servicos') renderServicos();
   if (pagina==='visaogeral') renderVisaoGeral();
   if (pagina==='necessidades') renderNecessidades();
+  if (pagina==='lembretes') renderLembretesTecnico();
+  if (pagina==='lembretesavisos') renderLembretesAvisos();
   if (pagina==='pedidos') {
     renderPedidos();
     // Sempre busca dados frescos do Firebase ao abrir aba pedidos
@@ -5779,6 +5840,198 @@ function confirmarEnvioWhatsApp() {
 }
 let pedidos = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 let vendasConcluidas = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
+
+// ============================================================
+// LEMBRETES E AVISOS (técnico → gestor)
+// ============================================================
+let lembretes = JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]');
+let _subLembretes = 'ativos';
+
+function salvarLembretes() {
+  localStorage.setItem('aquagest_lembretes', JSON.stringify(lembretes));
+}
+
+// Remove lembretes resolvidos há mais de 90 dias (limpeza oportunista)
+function limparLembretesAntigos() {
+  const agora = Date.now();
+  const LIMITE = 90 * 24 * 60 * 60 * 1000; // 90 dias
+  const antes = lembretes.length;
+  lembretes = lembretes.filter(l => {
+    if (!l.resolvido) return true;
+    const dataRes = l.dataResolucao ? new Date(l.dataResolucao).getTime() : agora;
+    return (agora - dataRes) <= LIMITE;
+  });
+  if (lembretes.length !== antes) {
+    salvarLembretes();
+    // Refletir remoções no Firebase
+    if (window.fbSaveCollection) window.fbSaveCollection('lembretes');
+  }
+}
+
+// Popular o seletor de cliente na aba do técnico (só clientes dele)
+function popularClientesLembrete() {
+  const sel = document.getElementById('lembreteCliente');
+  if (!sel) return;
+  const vinculo = usuarioLogado?.tecnicoVinculo || usuarioLogado?.usuario || '';
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  // Técnico vê só os clientes dele; gestor/admin veem todos
+  const lista = isTecnico
+    ? clientes.filter(c => c.tecnico === vinculo)
+    : clientes.slice();
+  lista.sort((a,b) => a.nome.localeCompare(b.nome));
+  sel.innerHTML = '<option value="">— Aviso geral (sem cliente) —</option>' +
+    lista.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
+function enviarLembrete() {
+  const texto = document.getElementById('lembreteTexto').value.trim();
+  const clienteId = document.getElementById('lembreteCliente').value;
+  if (!texto) { showToast('⚠ Escreva o lembrete antes de enviar','error'); return; }
+  const cliente = clienteId ? clientes.find(c => c.id === Number(clienteId)) : null;
+  const novo = {
+    id: Date.now(),
+    texto,
+    clienteId: clienteId ? Number(clienteId) : null,
+    clienteNome: cliente ? cliente.nome : '',
+    autor: usuarioLogado?.nome || usuarioLogado?.usuario || 'Técnico',
+    autorUsuario: usuarioLogado?.usuario || '',
+    data: new Date().toISOString(),
+    resolvido: false,
+    dataResolucao: null
+  };
+  lembretes.push(novo);
+  salvarLembretes();
+  if (window.fbSetDoc) window.fbSetDoc('lembretes', String(novo.id), novo);
+  document.getElementById('lembreteTexto').value = '';
+  document.getElementById('lembreteCliente').value = '';
+  showToast('📨 Lembrete enviado ao gestor!','success');
+  renderLembretesTecnico();
+  atualizarBadgeLembretes();
+}
+
+// Lista dos lembretes que o próprio técnico enviou
+function renderLembretesTecnico() {
+  popularClientesLembrete();
+  const body = document.getElementById('meusLembretesBody');
+  if (!body) return;
+  const meuUsuario = usuarioLogado?.usuario || '';
+  // Técnico vê os próprios; gestor/admin veem os que eles mesmos criaram aqui também
+  const meus = lembretes
+    .filter(l => l.autorUsuario === meuUsuario && !l.resolvido)
+    .sort((a,b) => new Date(b.data) - new Date(a.data));
+  if (!meus.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><div>Você ainda não enviou lembretes (ou foram resolvidos).</div></div>';
+    return;
+  }
+  body.innerHTML = meus.map(l => cardLembrete(l, false)).join('');
+}
+
+// Monta o HTML de um card de lembrete. gestor=true mostra ações (resolver/apagar)
+function cardLembrete(l, gestor) {
+  const dt = new Date(l.data);
+  const dataFmt = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const clienteTag = l.clienteNome
+    ? `<span class="lembrete-cliente-tag">🏠 ${l.clienteNome}</span>`
+    : `<span class="lembrete-cliente-tag geral">Aviso geral</span>`;
+  const statusBadge = l.resolvido
+    ? `<span class="lembrete-status-badge ok">✓ Resolvido</span>`
+    : `<span class="lembrete-status-badge pendente">⏳ Pendente</span>`;
+  let acoes = '';
+  if (gestor && !l.resolvido) {
+    acoes = `
+      <div class="lembrete-acoes">
+        <label class="lembrete-chk"><input type="checkbox" onchange="resolverLembrete(${l.id})"> Marcar como resolvido</label>
+        <button class="btn btn-red btn-sm" style="margin-left:auto;" onclick="apagarLembrete(${l.id})">🗑 Apagar</button>
+      </div>`;
+  } else if (gestor && l.resolvido) {
+    const dtRes = l.dataResolucao ? new Date(l.dataResolucao).toLocaleDateString('pt-BR') : '';
+    acoes = `
+      <div class="lembrete-acoes">
+        <span style="font-size:0.72rem;color:var(--muted);">Resolvido em ${dtRes}</span>
+        <button class="btn btn-red btn-sm" style="margin-left:auto;" onclick="apagarLembrete(${l.id})">🗑 Apagar</button>
+      </div>`;
+  }
+  return `
+    <div class="lembrete-card ${l.resolvido ? 'resolvido-card' : 'nao-resolvido'}">
+      <div class="lembrete-card-top">
+        <div class="lembrete-meta">
+          <span class="lembrete-tec">👤 ${l.autor}</span>
+          ${clienteTag}
+          <span>🕐 ${dataFmt}</span>
+        </div>
+        ${statusBadge}
+      </div>
+      <div class="lembrete-texto">${escapeHtml(l.texto)}</div>
+      ${acoes}
+    </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function trocarSubLembretes(sub) {
+  _subLembretes = sub;
+  document.getElementById('laSubAtivos').classList.toggle('active', sub==='ativos');
+  document.getElementById('laSubResolvidos').classList.toggle('active', sub==='resolvidos');
+  renderLembretesAvisos();
+}
+
+// Visão do gestor: todos os lembretes, separados por ativos/resolvidos
+function renderLembretesAvisos() {
+  limparLembretesAntigos();
+  const body = document.getElementById('lembretesAvisosBody');
+  if (!body) return;
+  const querResolvidos = _subLembretes === 'resolvidos';
+  const lista = lembretes
+    .filter(l => !!l.resolvido === querResolvidos)
+    .sort((a,b) => {
+      const da = querResolvidos ? new Date(b.dataResolucao||b.data) : new Date(b.data);
+      const db = querResolvidos ? new Date(a.dataResolucao||a.data) : new Date(a.data);
+      return da - db;
+    });
+  if (!lista.length) {
+    const msg = querResolvidos ? 'Nenhum lembrete resolvido.' : 'Nenhum lembrete ativo. Tudo em dia! 🎉';
+    body.innerHTML = `<div class="empty"><div class="empty-icon">📨</div><div>${msg}</div></div>`;
+    return;
+  }
+  body.innerHTML = lista.map(l => cardLembrete(l, true)).join('');
+}
+
+function resolverLembrete(id) {
+  const l = lembretes.find(x => x.id === id);
+  if (!l) return;
+  l.resolvido = true;
+  l.dataResolucao = new Date().toISOString();
+  salvarLembretes();
+  if (window.fbSetDoc) window.fbSetDoc('lembretes', String(l.id), l);
+  showToast('✓ Lembrete marcado como resolvido.','success');
+  renderLembretesAvisos();
+  atualizarBadgeLembretes();
+}
+
+function apagarLembrete(id) {
+  if (!confirm('Apagar este lembrete permanentemente?')) return;
+  lembretes = lembretes.filter(x => x.id !== id);
+  salvarLembretes();
+  if (window.fbDeleteDoc) window.fbDeleteDoc('lembretes', String(id));
+  showToast('🗑 Lembrete apagado.','info');
+  renderLembretesAvisos();
+  atualizarBadgeLembretes();
+}
+
+// Badge vermelho com nº de lembretes não resolvidos (só p/ quem vê a aba)
+function atualizarBadgeLembretes() {
+  const badge = document.getElementById('badgeLembretes');
+  if (!badge) return;
+  const naoResolvidos = lembretes.filter(l => !l.resolvido).length;
+  if (naoResolvidos > 0) {
+    badge.textContent = naoResolvidos;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
 function salvarPedidos() { localStorage.setItem('aquagest_pedidos', JSON.stringify(pedidos)); }
 
 async function gerarPedido() {
@@ -6809,8 +7062,8 @@ function salvarUsuario() {
   fbSave('usuarios');
 }
 function renderPermissoes() {
-  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','relatorios','vendas','configuracoes','excluir','exportar'];
-  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Relatórios','Vendas Concluídas','Configurações','Excluir','Exportar'];
+  const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','lembretes','lembretesavisos','relatorios','vendas','configuracoes','excluir','exportar'];
+  const labels=['Dashboard','Clientes','Histórico','Estoque','Serviços','Visão Geral','Necessidades','Pedidos','Lembretes (enviar)','Lembretes e Avisos (gestor)','Relatórios','Vendas Concluídas','Configurações','Excluir','Exportar'];
   const perfis=['admin','gerente','tecnico','financeiro'];
   const nomePerfis=['👑 Admin','👔 Gerente','🔧 Técnico','📊 Financeiro'];
   document.getElementById('permissoesContainer').innerHTML=`<div class="table-wrap"><table class="perm-table">
@@ -6960,7 +7213,8 @@ function fazerBackupCompleto() {
     pedidos: JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]'),
     usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
     permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}'),
-    chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}')
+    chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}'),
+    lembretes: JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]')
   };
   
   const json = JSON.stringify(backup, null, 2);
@@ -7107,6 +7361,7 @@ function lerArquivoBackup(event) {
       if (backup.usuarios?.length > 0) localStorage.setItem('aquagest_usuarios', JSON.stringify(backup.usuarios));
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
       if (backup.chavesPix) localStorage.setItem('aquagest_chaves_pix', JSON.stringify(backup.chavesPix));
+      if (backup.lembretes) { localStorage.setItem('aquagest_lembretes', JSON.stringify(backup.lembretes)); lembretes = backup.lembretes; }
       
       // Recarregar dados na memória
       clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
@@ -7926,6 +8181,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
         usuarios:     { ls: 'aquagest_usuarios',     id: u => String(u.id) },
         historico:    { ls: 'aquagest_historico',    id: h => `${h.clienteId}_${h.ano}_${h.mes}` },
         vendasConcluidas: { ls: 'aquagest_vendas_concluidas', id: v => String(v.id) },
+        lembretes: { ls: 'aquagest_lembretes', id: l => String(l.id) },
       };
       const cfg = mapaChaves[colecao];
       if (!cfg) { console.warn('fbSaveCollection: coleção desconhecida', colecao); return false; }
@@ -8053,6 +8309,17 @@ window.addEventListener('resize', ajustarOffsetHeader);
         localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(mesclados));
         if (typeof vendasConcluidas !== 'undefined') { vendasConcluidas = mesclados; }
       }
+
+      // LEMBRETES — Firebase é a fonte compartilhada (técnicos e gestor)
+      const snapLem = await getDocs(collection(db, 'lembretes'));
+      const dadosFbLem = snapLem.empty ? [] : snapLem.docs.map(d => d.data());
+      const dadosLocaisLem = JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]');
+      const idsFbLem = new Set(dadosFbLem.map(l => String(l.id)));
+      const apenasLocaisLem = dadosLocaisLem.filter(l => !idsFbLem.has(String(l.id)));
+      const mescladosLem = [...dadosFbLem, ...apenasLocaisLem];
+      localStorage.setItem('aquagest_lembretes', JSON.stringify(mescladosLem));
+      if (typeof lembretes !== 'undefined') { lembretes = mescladosLem; }
+      if (typeof atualizarBadgeLembretes === 'function') atualizarBadgeLembretes();
 
       // USUÁRIOS — sempre sobrescreve para garantir senhas atualizadas
       const snapU = await getDocs(collection(db, 'usuarios'));
