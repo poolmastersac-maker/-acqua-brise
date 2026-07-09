@@ -1376,7 +1376,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
           <div class="form-group" bis_skin_checked="1"><label class="form-label">Status</label>
             <select class="form-input" id="fStatus"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option><option value="suspenso">Suspenso</option><option value="isento">Isento</option></select>
           </div>
-          <div class="form-group" bis_skin_checked="1"><label class="form-label">Técnico Responsável</label><select class="form-input" id="fTecnico"><option value="">— Selecione —</option><option value="Diego_tecnico">Diego_tecnico</option><option value="Arthur_tecnico">Arthur_tecnico</option><option value="Marcio_tecnico">Marcio_tecnico</option></select></div>
+          <div class="form-group" bis_skin_checked="1"><label class="form-label">Técnico Responsável</label><select class="form-input" id="fTecnico"><option value="">— Selecione —</option></select></div>
         </div>
         <div class="form-group" bis_skin_checked="1"><label class="form-label">Localização</label><input type="text" class="form-input" id="fEndereco" placeholder="Ex: Santa Adelia"></div>
         <div class="form-group" bis_skin_checked="1"><label class="form-label">💰 Conta de Recebimento <span style="color:var(--muted);font-size:0.75rem;">(chave PIX na cobrança)</span></label>
@@ -4633,8 +4633,23 @@ function renderDashboard() {
 
 // LISTA CLIENTES
 function preencherSelectTecnicos() {
-  const tecs = [...new Set(usuarios.filter(u=>u.perfil==='tecnico').map(u=>u.nome||u.usuario))];
-  document.getElementById('fTecnico').innerHTML = '<option value="">— Selecione —</option>'+tecs.map(t=>`<option value="${t}">${t}</option>`).join('');
+  // Unifica as fontes de identidade de técnico para evitar descasamento:
+  // 1) o vínculo (tecnicoVinculo) dos usuários técnicos cadastrados
+  // 2) os valores de técnico já usados nos clientes existentes
+  // Assim o cadastro oferece exatamente os mesmos rótulos que o sistema usa
+  // para filtrar clientes por técnico (campo c.tecnico === usuario.tecnicoVinculo).
+  const doUsuarios = usuarios
+    .filter(u => u.perfil === 'tecnico')
+    .map(u => u.tecnicoVinculo)
+    .filter(Boolean);
+  const dosClientes = clientes.map(c => c.tecnico).filter(Boolean);
+  const tecs = [...new Set([...doUsuarios, ...dosClientes])].sort();
+  const sel = document.getElementById('fTecnico');
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    tecs.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (atual) sel.value = atual;
 }
 function renderLista() {
   const busca = (document.getElementById('searchClientes')?.value||'').toLowerCase();
@@ -4696,6 +4711,7 @@ function selecionarCliente(id) {
 }
 function editarClienteSelecionado() {
   const c = clientes.find(x=>x.id===clienteSelecionadoId); if (!c) return;
+  preencherSelectTecnicos(); // garante que a opção do técnico do cliente exista
   document.getElementById('editId').value=c.id; document.getElementById('fNome').value=c.nome;
   document.getElementById('fTel').value=c.tel||''; document.getElementById('fDia').value=c.dia;
   document.getElementById('fValor').value=c.valor; document.getElementById('fStatus').value=c.status;
@@ -4754,7 +4770,11 @@ function saveClient() {
   const tipoPag = document.getElementById('fTipoPag').value;
   const tecnico = document.getElementById('fTecnico').value;
   const contaPix = document.getElementById('fContaPix').value;
-  if (!nome||!dia||!valor) { showToast('⚠ Preencha os campos obrigatórios','error'); return; }
+  // Validação: nome obrigatório, dia e valor devem ser números válidos.
+  // Aceita valor 0 (ex: cliente cortesia) — não usar !valor, pois 0 é falsy.
+  if (!nome) { showToast('⚠ Preencha o nome do cliente','error'); return; }
+  if (isNaN(dia) || dia < 1 || dia > 31) { showToast('⚠ Informe um dia de vencimento válido (1 a 31)','error'); return; }
+  if (isNaN(valor) || valor < 0) { showToast('⚠ Informe um valor válido','error'); return; }
   const editId = document.getElementById('editId').value;
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
@@ -5903,7 +5923,9 @@ function enviarLembrete() {
   lembretes.push(novo);
   salvarLembretes();
   if (window.fbSetDoc) {
-    window.fbSetDoc('lembretes', String(novo.id), novo).then(() => {
+    // Enviar ao Firebase SEM o campo interno _pendente (controle só local)
+    const { _pendente, ...paraFirebase } = novo;
+    window.fbSetDoc('lembretes', String(novo.id), paraFirebase).then(() => {
       // Confirmado no Firebase: remove a marca de pendente
       const ref = lembretes.find(l => l.id === novo.id);
       if (ref) { delete ref._pendente; salvarLembretes(); }
