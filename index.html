@@ -5117,11 +5117,15 @@ Se não encontrar código, use string vazia. Quantidade deve ser número inteiro
 }
 
 function mostrarPreVisualizacaoNF() {
+  // Descartar itens sem nome válido (resposta malformada da IA não deve travar o fluxo)
+  _nfItens = (_nfItens || []).filter(item => item && item.nome && String(item.nome).trim());
+  if (!_nfItens.length) { showToast('❌ Nenhum produto válido identificado na nota', 'error'); voltarNfStep1(); return; }
   let html = `<div style="font-weight:700;font-size:0.82rem;color:var(--accent2);margin-bottom:10px;">🤖 ${_nfItens.length} produto(s) identificado(s):</div>`;
   _nfItens.forEach(item => {
+    const nomeItem = String(item.nome || '').toLowerCase().trim();
     const prodExistente = produtos.find(p =>
       (item.codigo && p.codigo === String(item.codigo)) ||
-      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+      String(p.nome || '').toLowerCase().trim() === nomeItem
     );
     const isNovo = !prodExistente;
     const estoqueAtual = prodExistente ? prodExistente.qtd : 0;
@@ -5198,9 +5202,10 @@ function processarNfManual() {
   }
 
   _nfManualItens.forEach(item => {
+    const nomeItem = String(item.nome || '').toLowerCase().trim();
     const prodExistente = produtos.find(p =>
       (item.codigo && p.codigo === String(item.codigo)) ||
-      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+      String(p.nome || '').toLowerCase().trim() === nomeItem
     );
     const isNovo = !prodExistente;
     const estoqueAtual = prodExistente ? prodExistente.qtd : 0;
@@ -5236,15 +5241,17 @@ function voltarNfManualStep1() {
 function confirmarEntradaNFManual() {
   if (!_nfManualItens.length) return;
   _nfManualItens.forEach(item => {
+    const nomeItem = String(item.nome || '').toLowerCase().trim();
+    if (!nomeItem) return; // ignora item sem nome
     const idx = produtos.findIndex(p =>
       (item.codigo && p.codigo === String(item.codigo)) ||
-      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+      String(p.nome || '').toLowerCase().trim() === nomeItem
     );
     if (idx >= 0) {
       produtos[idx].qtd += item.quantidade;
       if (item.codigo && !produtos[idx].codigo) produtos[idx].codigo = String(item.codigo);
     } else {
-      produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
+      produtos.push({ id: gerarId(), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
     }
   });
   salvarProdutos(); renderEstoque(); fbSave('produtos');
@@ -5256,15 +5263,17 @@ function confirmarEntradaNFManual() {
 function confirmarEntradaNF() {
   if (!_nfItens.length) return;
   _nfItens.forEach(item => {
+    if (!item || !item.nome || !String(item.nome).trim()) return; // ignora item inválido
+    const nomeItem = String(item.nome).toLowerCase().trim();
     const idx = produtos.findIndex(p =>
       (item.codigo && p.codigo === String(item.codigo)) ||
-      p.nome.toLowerCase().trim() === item.nome.toLowerCase().trim()
+      String(p.nome || '').toLowerCase().trim() === nomeItem
     );
     if (idx >= 0) {
       produtos[idx].qtd += item.quantidade;
       if (item.codigo && !produtos[idx].codigo) produtos[idx].codigo = String(item.codigo);
     } else {
-      produtos.push({ id: Date.now() + Math.floor(Math.random()*1000), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
+      produtos.push({ id: gerarId(), codigo: String(item.codigo||''), nome: item.nome, qtd: item.quantidade, valor: 0, minimo: 7 });
     }
   });
   salvarProdutos(); renderEstoque(); fbSave('produtos');
@@ -5288,7 +5297,7 @@ function salvarProduto() {
   const editIdRaw = document.getElementById('prodEditId').value;
   // Converter id para number se existir — evita falha no findIndex por tipo (string !== number)
   const editId = editIdRaw ? (isNaN(Number(editIdRaw)) ? editIdRaw : Number(editIdRaw)) : null;
-  const prod={id:editId||Date.now(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
+  const prod={id:editId||gerarId(),codigo:document.getElementById('prodCodigo').value.trim(),nome,qtd:parseInt(document.getElementById('prodQtd').value,10)||0,valor:parseFloat(document.getElementById('prodValor').value)||0,minimo:parseInt(document.getElementById('prodMinimo').value,10)||7};
   const idx=produtos.findIndex(p=>p.id===prod.id); if(idx>=0) produtos[idx]=prod; else produtos.push(prod);
   salvarProdutos(); fecharModal('modalProduto'); renderEstoque(); showToast('✓ Produto salvo!','success');
   // Atualizar seletor de produtos no modal de necessidades se estiver aberto
@@ -5296,7 +5305,9 @@ function salvarProduto() {
   if (selProd) {
     selProd.innerHTML = produtos.slice().sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR')).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
   }
-  fbSave('produtos');
+  // Escrita granular: salva só o produto alterado
+  if (window.fbSetDoc) window.fbSetDoc('produtos', String(prod.id), prod);
+  else fbSave('produtos');
 }
 let _produtoParaExcluirId = null;
 
@@ -5338,7 +5349,10 @@ function salvarMovimento() {
   if(tipo==='entrada') p.qtd+=qtd;
   else if(tipo==='saida'){if(p.qtd<qtd){showToast('⚠ Estoque insuficiente','error');return;}p.qtd-=qtd;}
   else p.qtd=qtd;
-  salvarProdutos(); fecharModal('modalMovimento'); renderEstoque(); showToast('✓ Estoque atualizado!','success'); fbSave('produtos');
+  salvarProdutos(); fecharModal('modalMovimento'); renderEstoque(); showToast('✓ Estoque atualizado!','success');
+  // Escrita granular: salva só o produto movimentado
+  if (window.fbSetDoc) window.fbSetDoc('produtos', String(p.id), p);
+  else fbSave('produtos');
 }
 
 // SERVIÇOS
