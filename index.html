@@ -4133,6 +4133,13 @@ let emailRecuperacao = null;
 
 // SALVAR
 function salvar() { localStorage.setItem('aquagest_clientes', JSON.stringify(clientes)); }
+// Gera um ID numérico único. Date.now() sozinho pode colidir se dois registros
+// forem criados no mesmo milissegundo; um contador incremental garante unicidade.
+let _idCounter = 0;
+function gerarId() {
+  _idCounter = (_idCounter + 1) % 1000;
+  return Date.now() * 1000 + _idCounter;
+}
 function salvarHistorico() { localStorage.setItem('aquagest_historico', JSON.stringify(historico)); }
 function salvarProdutos() { localStorage.setItem('aquagest_produtos', JSON.stringify(produtos)); }
 function salvarNecessidades() { localStorage.setItem('aquagest_necessidades', JSON.stringify(necessidades)); }
@@ -4466,7 +4473,8 @@ function ordenarClientes(lista, ordem) {
     case 'valor':       return sorted.sort((a,b)=>Number(b.valor)-Number(a.valor));
     case 'status':      {
       const prioridade = {atrasado:0, pendente:1, pago:2, suspenso:3, isento:4};
-      return sorted.sort((a,b)=>(prioridade[a.status]??5)-(prioridade[b.status]??5));
+      // Usa o status calculado (o mesmo que aparece no badge), não o bruto
+      return sorted.sort((a,b)=>(prioridade[calcularStatus(a)]??5)-(prioridade[calcularStatus(b)]??5));
     }
     case 'recente':     return sorted.sort((a,b)=>{
       const ha = historico.filter(h=>h.clienteId===a.id&&h.status==='pago').sort((x,y)=>new Date(y.data||0)-new Date(x.data||0))[0];
@@ -4580,8 +4588,14 @@ function renderCardFeriados() {
 }
 
 function renderDashboard() {
-  const busca = document.getElementById('searchInput').value.toLowerCase();
-  const mesSel = document.getElementById('mesCobrar').value;
+  // Blindagem: se os elementos do dashboard ainda não existem (ex: chamada
+  // durante carregamento inicial antes do DOM pronto), aborta silenciosamente.
+  const elBusca = document.getElementById('searchInput');
+  const elMes = document.getElementById('mesCobrar');
+  const tbody = document.getElementById('tableBody');
+  if (!elBusca || !elMes || !tbody) return;
+  const busca = elBusca.value.toLowerCase();
+  const mesSel = elMes.value;
   const mesIdx = mesSel!==''?parseInt(mesSel,10):new Date().getMonth();
   const anoAtual = new Date().getFullYear();
 
@@ -4608,7 +4622,6 @@ function renderDashboard() {
     if (filtroAtual==='todos') return match;
     return match && getStatusMes(c)===filtroAtual;
   }), _ordemDashboard);
-  const tbody = document.getElementById('tableBody');
   if (!lista.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">🏊</div><div>Nenhum cliente encontrado</div></div></td></tr>`; }
   else {
     tbody.innerHTML = lista.map(c => {
@@ -4751,6 +4764,8 @@ function excluirClienteSelecionado() {
 }
 function confirmarExclusao() {
   const idParaDeletar = clienteSelecionadoId;
+  // Guardar os registros de histórico do cliente ANTES de filtrar, para deletá-los do Firebase
+  const historicoDoCliente = historico.filter(h => h.clienteId === idParaDeletar);
   clientes = clientes.filter(c=>c.id!==idParaDeletar);
   historico = historico.filter(h=>h.clienteId!==idParaDeletar);
   clienteSelecionadoId=null; salvar(); salvarHistorico();
@@ -4758,7 +4773,13 @@ function confirmarExclusao() {
   fecharModal('modalConfirm'); renderLista(); renderDashboard();
   showToast('Cliente removido','info');
   // Deletar do Firebase para não retornar ao recarregar
-  if (window.fbDeleteDoc) window.fbDeleteDoc('clientes', idParaDeletar);
+  if (window.fbDeleteDoc) {
+    window.fbDeleteDoc('clientes', idParaDeletar);
+    // Deletar também o histórico do cliente (senão fica órfão no banco e volta no merge)
+    historicoDoCliente.forEach(h => {
+      window.fbDeleteDoc('historico', `${h.clienteId}_${h.ano}_${h.mes}`);
+    });
+  }
 }
 function saveClient() {
   const nome = document.getElementById('fNome').value.trim();
@@ -4779,7 +4800,7 @@ function saveClient() {
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
     if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}; showToast('✓ Cliente atualizado!','success'); }
-  } else { clientes.push({id:Date.now(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}); showToast('✓ Cliente cadastrado!','success'); }
+  } else { clientes.push({id:gerarId(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}); showToast('✓ Cliente cadastrado!','success'); }
   salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
 }
 function limparForm() {
@@ -5914,7 +5935,7 @@ function enviarLembrete() {
   if (!texto) { showToast('⚠ Escreva o lembrete antes de enviar','error'); return; }
   const cliente = clienteId ? clientes.find(c => c.id === Number(clienteId)) : null;
   const novo = {
-    id: Date.now(),
+    id: gerarId(),
     texto,
     clienteId: clienteId ? Number(clienteId) : null,
     clienteNome: cliente ? cliente.nome : '',
@@ -6123,7 +6144,7 @@ async function gerarPedido() {
   const clienteIdNum = clienteIdPedido ? Number(clienteIdPedido) : null;
 
   const pedido = {
-    id: Date.now(),
+    id: gerarId(),
     data: hoje.toISOString(),
     status: 'pendente',
     consolidado: false,
@@ -6967,7 +6988,7 @@ function salvarNecessidade() {
   if (!produtoId || isNaN(produtoId)) { showToast('⚠ Selecione um produto válido','error'); return; }
   if (qtd < 1) { showToast('⚠ Quantidade deve ser ao menos 1','error'); return; }
   const produtoSalvo = produtos.find(x => Number(x.id) === Number(produtoId));
-  necessidades.push({id:Date.now(),clienteId,produtoId:Number(produtoId),codigoProduto:produtoSalvo?.codigo||'',nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
+  necessidades.push({id:gerarId(),clienteId,produtoId:Number(produtoId),codigoProduto:produtoSalvo?.codigo||'',nomeProduto:produtoSalvo?.nome||'',qtd,data,obs,entregue:false,pago:false});
   salvarNecessidades(); renderNecessidades();
   showToast('✓ Adicionado! Selecione mais produtos ou gere o pedido.','success');
   fbSave('necessidades');
@@ -7117,7 +7138,7 @@ function salvarUsuario() {
       showToast('✓ Usuário atualizado!','success');
     }
   } else {
-    usuarios.push({id:Date.now(),usuario,senha,email,perfil,tecnicoVinculo,nome:usuario});
+    usuarios.push({id:gerarId(),usuario,senha,email,perfil,tecnicoVinculo,nome:usuario});
     showToast('✓ Usuário criado!','success');
   }
   salvarUsuarios();
