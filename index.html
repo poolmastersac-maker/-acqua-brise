@@ -5875,16 +5875,21 @@ function salvarLembretes() {
 function limparLembretesAntigos() {
   const agora = Date.now();
   const LIMITE = 90 * 24 * 60 * 60 * 1000; // 90 dias
-  const antes = lembretes.length;
-  lembretes = lembretes.filter(l => {
-    if (!l.resolvido) return true;
+  const removidos = [];
+  const mantidos = [];
+  lembretes.forEach(l => {
+    if (!l.resolvido) { mantidos.push(l); return; }
     const dataRes = l.dataResolucao ? new Date(l.dataResolucao).getTime() : agora;
-    return (agora - dataRes) <= LIMITE;
+    if ((agora - dataRes) <= LIMITE) mantidos.push(l);
+    else removidos.push(l);
   });
-  if (lembretes.length !== antes) {
+  if (removidos.length > 0) {
+    lembretes = mantidos;
     salvarLembretes();
-    // Refletir remoções no Firebase
-    if (window.fbSaveCollection) window.fbSaveCollection('lembretes');
+    // Deletar de fato do Firebase, senão ressuscitam na próxima sincronização
+    if (window.fbDeleteDoc) {
+      removidos.forEach(l => window.fbDeleteDoc('lembretes', String(l.id)));
+    }
   }
 }
 
@@ -8258,7 +8263,10 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!cfg) { console.warn('fbSaveCollection: coleção desconhecida', colecao); return false; }
       const lista = JSON.parse(localStorage.getItem(cfg.ls) || '[]');
       for (const item of lista) {
-        await setDoc(doc(db, colecao, cfg.id(item)), limpar(item));
+        // Remover campos internos (prefixo _) que não devem ir ao Firebase
+        const semInternos = {};
+        for (const chave in item) { if (!chave.startsWith('_')) semInternos[chave] = item[chave]; }
+        await setDoc(doc(db, colecao, cfg.id(item)), limpar(semInternos));
       }
       setBadge(true);
       return true;
@@ -8321,13 +8329,23 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // LER do Firebase — Firebase é fonte principal
   async function carregarDoFirebase() {
     try {
+      // Helper de merge: Firebase como base + registros locais ainda não sincronizados.
+      // Evita perder dados criados offline (antes eram sobrescritos e se perdiam).
+      const mesclarPorId = (dadosFirebase, lsKey, chaveId) => {
+        const locais = JSON.parse(localStorage.getItem(lsKey) || '[]');
+        const idsFb = new Set(dadosFirebase.map(x => String(chaveId(x))));
+        const soLocais = locais.filter(x => !idsFb.has(String(chaveId(x))));
+        return [...dadosFirebase, ...soLocais];
+      };
+
       // CLIENTES
       const snapC = await getDocs(collection(db, 'clientes'));
       if (!snapC.empty) {
         const dados = snapC.docs.map(d => d.data());
         if (dados.length > 0) {
-          localStorage.setItem('aquagest_clientes', JSON.stringify(dados));
-          if (typeof clientes !== 'undefined') { clientes = dados; }
+          const mesclado = mesclarPorId(dados, 'aquagest_clientes', c => c.id);
+          localStorage.setItem('aquagest_clientes', JSON.stringify(mesclado));
+          if (typeof clientes !== 'undefined') { clientes = mesclado; }
         }
       }
 
@@ -8335,8 +8353,9 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const snapH = await getDocs(collection(db, 'historico'));
       if (!snapH.empty) {
         const dados = snapH.docs.map(d => d.data());
-        localStorage.setItem('aquagest_historico', JSON.stringify(dados));
-        if (typeof historico !== 'undefined') { historico = dados; }
+        const mesclado = mesclarPorId(dados, 'aquagest_historico', h => `${h.clienteId}_${h.ano}_${h.mes}`);
+        localStorage.setItem('aquagest_historico', JSON.stringify(mesclado));
+        if (typeof historico !== 'undefined') { historico = mesclado; }
       }
 
       // PRODUTOS
@@ -8344,8 +8363,9 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!snapP.empty) {
         const dados = snapP.docs.map(d => d.data());
         if (dados.length > 0) {
-          localStorage.setItem('aquagest_produtos', JSON.stringify(dados));
-          if (typeof produtos !== 'undefined') { produtos = dados; }
+          const mesclado = mesclarPorId(dados, 'aquagest_produtos', p => p.id);
+          localStorage.setItem('aquagest_produtos', JSON.stringify(mesclado));
+          if (typeof produtos !== 'undefined') { produtos = mesclado; }
         }
       }
 
@@ -8353,8 +8373,9 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const snapN = await getDocs(collection(db, 'necessidades'));
       if (!snapN.empty) {
         const dados = snapN.docs.map(d => d.data());
-        localStorage.setItem('aquagest_necessidades', JSON.stringify(dados));
-        if (typeof necessidades !== 'undefined') { necessidades = dados; }
+        const mesclado = mesclarPorId(dados, 'aquagest_necessidades', n => n.id);
+        localStorage.setItem('aquagest_necessidades', JSON.stringify(mesclado));
+        if (typeof necessidades !== 'undefined') { necessidades = mesclado; }
       }
 
       // PEDIDOS — mesclar Firebase com local para não perder pedidos recém criados
@@ -8363,7 +8384,11 @@ window.addEventListener('resize', ajustarOffsetHeader);
         const dadosFirebase = snapPed.docs.map(d => d.data());
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
         const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
-        const pedidosApenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+        // Não ressuscitar pedidos que já viraram venda concluída
+        const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
+        const pedidosApenasLocais = dadosLocais.filter(p =>
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id))
+        );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
         if (typeof pedidos !== 'undefined') { pedidos = dadosMesclados; }
@@ -8428,17 +8453,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
           localStorage.setItem('aquagest_chaves_pix', JSON.stringify(dadosPix));
           if (typeof chavesPix !== 'undefined') { chavesPix = dadosPix; }
         }
-      }
 
-      // Carregar pedido fornecedor salvo no Firebase
-      try {
-        const pfDoc = await getDocs(collection(db, 'config'));
-        pfDoc.forEach(d => {
-          if (d.id === 'pedido_fornecedor') {
-            localStorage.setItem('aquagest_pedido_fornecedor', JSON.stringify(d.data()));
-          }
-        });
-      } catch(e) { console.warn('Pedido fornecedor não encontrado no Firebase'); }
+        // PEDIDO FORNECEDOR — do mesmo snapshot de config (evita 2ª leitura)
+        const pfDoc = snapPerm.docs.find(d => d.id === 'pedido_fornecedor');
+        if (pfDoc) {
+          localStorage.setItem('aquagest_pedido_fornecedor', JSON.stringify(pfDoc.data()));
+        }
+      }
 
       setBadge(true);
 
@@ -8465,10 +8486,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
         const dadosFirebase = snapPed.docs.map(d => d.data());
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 
-        // Mesclar: nunca descartar pedidos locais que ainda não chegaram ao Firebase
-        // Usar Firebase como base, mas manter pedidos locais que não estão no Firebase ainda
+        // Mesclar: manter pedidos locais que ainda não chegaram ao Firebase,
+        // MAS descartar os que já viraram venda concluída (não devem ressuscitar).
         const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
-        const pedidosApenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
+        const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
+        const pedidosApenasLocais = dadosLocais.filter(p =>
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id))
+        );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
 
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
