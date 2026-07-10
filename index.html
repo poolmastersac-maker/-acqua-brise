@@ -4743,17 +4743,23 @@ function pagarClienteSelecionado() {
   const mesIdx = hoje.getMonth();
   const anoAtual = hoje.getFullYear();
   const idx = historico.findIndex(h=>h.clienteId===c.id&&h.ano===anoAtual&&h.mes===mesIdx);
+  let regAlterado;
   if (c.status==='pago') {
-    const reg = {clienteId:c.id,ano:anoAtual,mes:mesIdx,status:'pago',valor:c.valor,data:hoje.toISOString().slice(0,10),obs:'Marcado via Painel'};
-    if (idx>=0) historico[idx]=reg; else historico.push(reg);
+    regAlterado = {clienteId:c.id,ano:anoAtual,mes:mesIdx,status:'pago',valor:c.valor,data:hoje.toISOString().slice(0,10),obs:'Marcado via Painel'};
+    if (idx>=0) historico[idx]=regAlterado; else historico.push(regAlterado);
   } else {
-    if (idx>=0) historico[idx].status='pendente';
+    if (idx>=0) { historico[idx].status='pendente'; regAlterado = historico[idx]; }
   }
   salvarHistorico();
   selecionarCliente(c.id);
   renderDashboard();
   showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success');
-  fbSave('clientes'); fbSave('historico');
+  // Escrita granular (só o cliente e o registro afetados)
+  if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c); else fbSave('clientes');
+  if (regAlterado) {
+    if (window.fbSalvarHistorico) window.fbSalvarHistorico([regAlterado]);
+    else fbSave('historico');
+  }
 }
 function cobrarClienteSelecionado() { if (clienteSelecionadoId) gerarCobranca(clienteSelecionadoId); }
 function abrirHistoricoCliente() { if (!clienteSelecionadoId) return; histClienteId=clienteSelecionadoId; navegarPara('historico'); }
@@ -4836,7 +4842,8 @@ function togglePago(id) {
   if (idx >= 0) historico[idx] = reg; else historico.push(reg);
 
   // Atualizar c.status APENAS se for o mês atual do sistema
-  if (mesIdx === mesAtualSistema) {
+  const clienteMudou = (mesIdx === mesAtualSistema);
+  if (clienteMudou) {
     c.status = novoStatus;
     salvar();
   }
@@ -4845,7 +4852,14 @@ function togglePago(id) {
   renderDashboard();
   atualizarStats();
   showToast(novoStatus === 'pago' ? '✓ Pago!' : 'Pagamento desfeito', 'success');
-  fbSave('clientes'); fbSave('historico');
+  // Escrita granular: salva SÓ o registro de histórico alterado e, se mudou,
+  // SÓ o cliente afetado — em vez de reescrever as coleções inteiras (economia de cota).
+  if (window.fbSalvarHistorico) window.fbSalvarHistorico([reg]);
+  else fbSave('historico');
+  if (clienteMudou) {
+    if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c);
+    else fbSave('clientes');
+  }
 }
 
 // HISTÓRICO
@@ -4869,7 +4883,10 @@ function renderHistorico() {
     const reg = historico.find(h=>h.clienteId===histClienteId&&h.ano===histAno&&h.mes===mi);
     return reg||{clienteId:histClienteId,ano:histAno,mes:mi,status:'pendente',valor:c.valor,data:'',obs:''};
   });
-  pagsMes.forEach(p=>{ if(p.status==='pago'||p.status==='isento') totalRecebido+=Number(p.valor||0); else if(p.status!=='suspenso') totalPendente+=Number(c.valor||0); });
+  pagsMes.forEach(p=>{
+    if(p.status==='pago'||p.status==='isento') totalRecebido+=Number(p.valor||0);
+    else if(p.status!=='suspenso') totalPendente+=Number(p.valor||c.valor||0);
+  });
   document.getElementById('histContent').innerHTML = `
     <div class="hist-header-card">
       <div class="hist-client-info">
@@ -4924,9 +4941,17 @@ function salvarPagamento() {
   const reg={clienteId,ano,mes:mesIdx,status,valor,data,obs};
   if(idx>=0) historico[idx]=reg; else historico.push(reg);
   const hoje=new Date();
-  if(mesIdx===hoje.getMonth()&&ano===hoje.getFullYear()) { const c=clientes.find(x=>x.id===clienteId); if(c){c.status=status;salvar();} }
+  let clienteAlterado=null;
+  if(mesIdx===hoje.getMonth()&&ano===hoje.getFullYear()) { const c=clientes.find(x=>x.id===clienteId); if(c){c.status=status;salvar();clienteAlterado=c;} }
   salvarHistorico(); fecharModal('modalPagamento'); renderHistorico(); renderDashboard();
-  showToast('✓ Pagamento registrado!','success'); fbSave('historico'); fbSave('clientes');
+  showToast('✓ Pagamento registrado!','success');
+  // Escrita granular (só o registro e o cliente afetados)
+  if (window.fbSalvarHistorico) window.fbSalvarHistorico([reg]);
+  else fbSave('historico');
+  if (clienteAlterado) {
+    if (window.fbSetDoc) window.fbSetDoc('clientes', String(clienteAlterado.id), clienteAlterado);
+    else fbSave('clientes');
+  }
 }
 
 // ESTOQUE
