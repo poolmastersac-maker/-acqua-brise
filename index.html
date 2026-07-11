@@ -6176,27 +6176,31 @@ async function gerarPedido() {
   if (!itens.length) { showToast('⚠ Nenhuma necessidade pendente para gerar pedido', 'error'); return; }
 
   const hoje = new Date();
-  // Todos os itens são do mesmo cliente (opção A: 1 pedido = 1 cliente)
-  // clienteId vem diretamente da necessidade, que é selecionada no modal
-  const clienteIdPedido = itens[0]?.clienteId || null;
-  // Garantir que clienteId é number para bater com clientes[].id
-  const clienteIdNum = clienteIdPedido ? Number(clienteIdPedido) : null;
 
-  const pedido = {
-    id: gerarId(),
-    data: hoje.toISOString(),
-    status: 'pendente',
-    consolidado: false,
-    tecnico: usuarioLogado?.usuario || '',
-    clienteId: clienteIdNum,
-    itens: itens.map(n => {
+  // Agrupar as necessidades por cliente — cada cliente vira um pedido separado.
+  // Isso garante que o técnico possa acumular necessidades de vários clientes
+  // ao longo do dia e, ao gerar, obter um pedido independente para cada um.
+  const porCliente = {};
+  itens.forEach(n => {
+    const chave = String(n.clienteId);
+    if (!porCliente[chave]) porCliente[chave] = [];
+    porCliente[chave].push(n);
+  });
+
+  const pedidosCriados = [];
+  const idsUsados = new Set();
+
+  Object.keys(porCliente).forEach(chaveCliente => {
+    const itensCliente = porCliente[chaveCliente];
+    const clienteIdNum = chaveCliente && chaveCliente !== 'null' ? Number(chaveCliente) : null;
+    const c = clientes.find(x => x.id === clienteIdNum);
+
+    const itensPedido = itensCliente.map(n => {
       const p = produtos.find(x => Number(x.id) === Number(n.produtoId))
              || (n.codigoProduto && produtos.find(x => String(x.codigo) === String(n.codigoProduto)))
              || (n.nomeProduto && produtos.find(x => x.nome === n.nomeProduto))
              || (n.produto && produtos.find(x => x.nome === n.produto))
              || produtos.find(x => String(x.codigo) === String(n.produtoId));
-      const c = clientes.find(x => x.id === n.clienteId);
-      // Se não achar o produto, usa o nome salvo ou mantém como desconhecido
       const nomeProd = p?.nome || n.nomeProduto || n.produto || null;
       if (!nomeProd) return null;
       return {
@@ -6210,35 +6214,52 @@ async function gerarPedido() {
         valorUnit: Number(p?.valor || 0),
         obs: n.obs || ''
       };
-    }).filter(item => item !== null)
-  };
+    }).filter(item => item !== null);
 
-  // Verificar se o pedido tem ao menos 1 item válido
-  if (!pedido.itens.length) {
+    // Só cria o pedido se tiver ao menos 1 item válido
+    if (!itensPedido.length) return;
+
+    const pedido = {
+      id: gerarId(),
+      data: hoje.toISOString(),
+      status: 'pendente',
+      consolidado: false,
+      tecnico: usuarioLogado?.usuario || '',
+      clienteId: clienteIdNum,
+      itens: itensPedido
+    };
+    pedidosCriados.push(pedido);
+    // Marcar as necessidades desse cliente como usadas
+    itensCliente.forEach(n => idsUsados.add(n.id));
+  });
+
+  if (!pedidosCriados.length) {
     showToast('⚠ Nenhum produto válido encontrado. Verifique o estoque.', 'error');
     return;
   }
 
-  pedidos.push(pedido);
+  // Adicionar todos os pedidos criados
+  pedidosCriados.forEach(ped => pedidos.push(ped));
   salvarPedidos();
 
-  // Remover as necessidades que foram incluídas no pedido
-  const idsUsados = new Set(itens.map(n => n.id));
+  // Remover as necessidades que foram incluídas nos pedidos
   necessidades = necessidades.filter(n => !idsUsados.has(n.id));
   salvarNecessidades();
 
-  showToast('✓ Pedido gerado! Necessidades limpas.', 'success');
+  const msg = pedidosCriados.length === 1
+    ? '✓ Pedido gerado! Necessidades limpas.'
+    : `✓ ${pedidosCriados.length} pedidos gerados (um por cliente)! Necessidades limpas.`;
+  showToast(msg, 'success');
   navegarPara('pedidos');
 
-  // Salvar pedido diretamente no Firebase e depois deletar necessidades
+  // Salvar cada pedido no Firebase e depois deletar as necessidades usadas
   if (window.fbSetDoc && window.fbDeleteDoc) {
     try {
-      await window.fbSetDoc('pedidos', String(pedido.id), pedido);
+      await Promise.all(pedidosCriados.map(ped => window.fbSetDoc('pedidos', String(ped.id), ped)));
       await Promise.all([...idsUsados].map(id => window.fbDeleteDoc('necessidades', id)));
-      // Não chamar fbSync aqui: o pedido já foi salvo e as necessidades já
-      // foram deletadas. Um fbSync recriaria as necessidades deletadas.
+      // Não chamar fbSync aqui: pedidos já salvos e necessidades já deletadas.
     } catch(e) {
-      console.error('Erro ao salvar pedido no Firebase:', e);
+      console.error('Erro ao salvar pedidos no Firebase:', e);
       fbSave('pedidos');
     }
   } else {
@@ -7054,7 +7075,7 @@ function gerarPedidoDoModal() {
 }
 
 
-function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades();fbSave('necessidades');} }
+function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades(); if(window.fbSetDoc) window.fbSetDoc('necessidades', String(n.id), n); else fbSave('necessidades');} }
 function excluirNec(id) {
   necessidades = necessidades.filter(x => x.id !== id);
   salvarNecessidades();
