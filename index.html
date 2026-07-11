@@ -7600,9 +7600,10 @@ function atualizarInfoBackup() {
 }
 
 // UTILITÁRIOS
-function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+function fecharModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('open'); }
 function showToast(msg,type='info') {
-  const t=document.getElementById('toast'); t.textContent=msg;
+  const t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg;
   t.className=`toast ${type} show`; setTimeout(()=>t.classList.remove('show'),3000);
 }
 
