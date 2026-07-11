@@ -4354,7 +4354,15 @@ function salvarNovaSenha() {
   if (nova.length < 4) { showToast('Senha muito curta','error'); return; }
   if (nova !== conf) { document.getElementById('novaSenhaErro').classList.add('show'); return; }
   const u = usuarios.find(x => x.email === emailRecuperacao);
-  if (u) { u.senha = nova; salvarUsuarios(); }
+  if (u) {
+    u.senha = nova;
+    salvarUsuarios();
+    window._fbUsuarios = [...usuarios];
+    // Persistir a nova senha no Firebase, senão só vale neste dispositivo
+    // e a próxima sincronização reverteria a troca.
+    if (window.fbSetDoc) window.fbSetDoc('usuarios', String(u.id), u);
+    else fbSave('usuarios');
+  }
   showToast('✓ Senha alterada com sucesso!','success');
   voltarLogin();
 }
@@ -4389,9 +4397,11 @@ function aplicarPermissoes(forcarRedirecionamento) {
 
 // NAVEGAÇÃO
 function navegarPara(pagina) {
+  const paginaEl = document.getElementById('page-'+pagina);
+  if (!paginaEl) return; // página inexistente: aborta sem quebrar
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('page-'+pagina).classList.add('active');
+  paginaEl.classList.add('active');
   // Marcar aba ativa pelo data-aba (robusto, não depende de ordem)
   const tabAtiva = document.querySelector('.nav-tab[data-aba="'+pagina+'"]');
   if (tabAtiva) tabAtiva.classList.add('active');
@@ -7220,6 +7230,12 @@ function salvarUsuario() {
   if(!usuario||senha.length<4){showToast('⚠ Preencha usuário e senha (mín. 4 chars)','error');return;}
   if(perfil==='tecnico'&&!tecnicoVinculo){showToast('⚠ Selecione o técnico vinculado','error');return;}
   const editId=document.getElementById('userEditId').value;
+  // Impedir login duplicado (comparação case-insensitive), exceto o próprio ao editar
+  const loginExiste = usuarios.some(u =>
+    u.usuario.toLowerCase() === usuario.toLowerCase() &&
+    String(u.id) !== String(editId)
+  );
+  if (loginExiste) { showToast('⚠ Já existe um usuário com esse login','error'); return; }
   if(editId){
     const idx=usuarios.findIndex(u=>u.id===Number(editId));
     if(idx>=0){
