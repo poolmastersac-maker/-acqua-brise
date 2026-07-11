@@ -5422,12 +5422,23 @@ function abrirOrcWpp(sId) {
 // VISÃO GERAL
 function mudarAnoVG(delta) { vgAno+=delta; document.getElementById('vgAnoDisplay').textContent=vgAno; renderVisaoGeral(); }
 function renderVisaoGeral() {
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
   const rows=clientes.map(c=>{
     const meses=MESES.map((_,mi)=>{
       const reg=historico.find(h=>h.clienteId===c.id&&h.ano===vgAno&&h.mes===mi);
-      const st=reg?.status||'pendente';
-      const cor=st==='pago'||st==='isento'?'var(--green)':st==='atrasado'?'var(--red)':'var(--yellow)';
-      const label=st==='pago'?'✓':st==='isento'?'I':st==='atrasado'?'A':'·';
+      let st;
+      if (reg) {
+        st = reg.status;
+      } else if (vgAno === anoAtual && mi === mesAtual) {
+        // Mês atual sem registro: calcular status real (pode estar atrasado)
+        st = calcularStatus(c);
+      } else {
+        st = 'pendente';
+      }
+      const cor=st==='pago'||st==='isento'?'var(--green)':st==='atrasado'?'var(--red)':st==='suspenso'?'var(--muted)':'var(--yellow)';
+      const label=st==='pago'?'✓':st==='isento'?'I':st==='atrasado'?'A':st==='suspenso'?'S':'·';
       return `<td style="text-align:center;color:${cor};font-weight:700;">${label}</td>`;
     }).join('');
     return `<tr><td><div class="client-name" style="font-size:0.82rem;">${c.nome}</div></td>${meses}</tr>`;
@@ -7308,7 +7319,17 @@ function exportarPDF(tipo) {
     const histFiltrado = getHistoricoFiltrado();
     doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:histFiltrado.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,h.data||''];})});
   }
-  const filename = tipo==='clientes' ? 'clientes.pdf' : (anoSel === 'todos' ? 'historico_completo.pdf' : `historico_${anoSel}.pdf`);
+  let filename;
+  if (tipo === 'clientes') {
+    filename = 'clientes.pdf';
+  } else {
+    // Mesmo padrão de nome do Excel: historico_ANO_MM-mes.pdf
+    const MESES_ARQ = ['01-janeiro','02-fevereiro','03-marco','04-abril','05-maio','06-junho','07-julho','08-agosto','09-setembro','10-outubro','11-novembro','12-dezembro'];
+    let sufixo = '';
+    if (anoSel !== 'todos') sufixo += '_' + anoSel;
+    if (mesSel !== 'todos') sufixo += '_' + MESES_ARQ[Number(mesSel)];
+    filename = sufixo ? `historico${sufixo}.pdf` : 'historico_completo.pdf';
+  }
   doc.save(filename);
   showToast('✓ PDF exportado!','success');
 }
@@ -7575,12 +7596,15 @@ function identificarConta(obs) {
 }
 
 function getHistRelatorio() {
-  const mes = document.getElementById('relMes')?.value;
-  const ano = parseInt(document.getElementById('relAno')?.value || '0', 10);
+  const mesEl = document.getElementById('relMes');
+  const anoEl = document.getElementById('relAno');
   const conta = document.getElementById('relConta')?.value || 'todas';
+  // Blindagem: se os elementos ainda não existem, não filtra por mês/ano
+  const mes = mesEl ? mesEl.value : 'todos';
+  const ano = anoEl ? parseInt(anoEl.value || '0', 10) : 0;
   return historico.filter(h => {
     if (h.status !== 'pago') return false;
-    if (mes !== 'todos' && h.mes !== parseInt(mes, 10)) return false;
+    if (mes != null && mes !== '' && mes !== 'todos' && h.mes !== parseInt(mes, 10)) return false;
     if (ano && h.ano !== ano) return false;
     if (conta !== 'todas' && identificarConta(h.obs) !== conta) return false;
     return true;
@@ -7763,7 +7787,9 @@ function renderRelLista(hist) {
       </div>
       ${sorted.map(h=>{
         const c = clientes.find(x=>x.id===h.clienteId);
-        const conta = CONTAS_CONFIG.find(x=>x.key===identificarConta(h.obs));
+        const conta = CONTAS_CONFIG.find(x=>x.key===identificarConta(h.obs))
+                   || CONTAS_CONFIG.find(x=>x.key==='nao_identificado')
+                   || { label:'—', cor:'#888780' };
         const dataFmt = h.data ? h.data.split('-').reverse().join('/') : '—';
         const valorFmt = 'R$ '+Number(h.valor||0).toFixed(2).replace('.',',');
         return `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr 2fr;gap:8px;padding:10px 12px;border-top:1px solid var(--border);font-size:0.82rem;align-items:center;">
