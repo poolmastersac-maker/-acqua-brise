@@ -6022,9 +6022,23 @@ async function sincronizarLembretes(aposRender) {
   try {
     const dadosFirebase = await window.fbGetLembretes();
     if (dadosFirebase !== null) {
-      // Preserva apenas lembretes locais ainda não sincronizados (criados offline agora)
       const idsFirebase = new Set(dadosFirebase.map(l => String(l.id)));
+      // Preserva lembretes locais ainda não sincronizados:
+      // - _pendente: criados offline que ainda não subiram
+      // - que não existem no Firebase mas existem localmente (ex: acabou de criar)
       const locaisPendentes = lembretes.filter(l => l._pendente && !idsFirebase.has(String(l.id)));
+      // Índice dos dados do Firebase por id, para mesclar preservando resolução local mais recente
+      const fbPorId = {};
+      dadosFirebase.forEach(l => { fbPorId[String(l.id)] = l; });
+      // Se um lembrete local foi resolvido e a versão do Firebase ainda não reflete isso
+      // (edição concorrente), mantém o estado "resolvido" local para não perder a ação.
+      lembretes.forEach(local => {
+        const fb = fbPorId[String(local.id)];
+        if (fb && local.resolvido && !fb.resolvido) {
+          fb.resolvido = true;
+          fb.dataResolucao = local.dataResolucao || fb.dataResolucao;
+        }
+      });
       lembretes = [...dadosFirebase, ...locaisPendentes];
       localStorage.setItem('aquagest_lembretes', JSON.stringify(lembretes));
     }
@@ -6060,7 +6074,7 @@ function cardLembrete(l, gestor) {
   const dt = new Date(l.data);
   const dataFmt = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const clienteTag = l.clienteNome
-    ? `<span class="lembrete-cliente-tag">🏠 ${l.clienteNome}</span>`
+    ? `<span class="lembrete-cliente-tag">🏠 ${escapeHtml(l.clienteNome)}</span>`
     : `<span class="lembrete-cliente-tag geral">Aviso geral</span>`;
   const statusBadge = l.resolvido
     ? `<span class="lembrete-status-badge ok">✓ Resolvido</span>`
@@ -6084,7 +6098,7 @@ function cardLembrete(l, gestor) {
     <div class="lembrete-card ${l.resolvido ? 'resolvido-card' : 'nao-resolvido'}">
       <div class="lembrete-card-top">
         <div class="lembrete-meta">
-          <span class="lembrete-tec">👤 ${l.autor}</span>
+          <span class="lembrete-tec">👤 ${escapeHtml(l.autor || '')}</span>
           ${clienteTag}
           <span>🕐 ${dataFmt}</span>
         </div>
@@ -6141,7 +6155,11 @@ function resolverLembrete(id) {
   l.resolvido = true;
   l.dataResolucao = new Date().toISOString();
   salvarLembretes();
-  if (window.fbSetDoc) window.fbSetDoc('lembretes', String(l.id), l);
+  if (window.fbSetDoc) {
+    // Enviar sem o campo interno _pendente (controle só local)
+    const { _pendente, ...paraFirebase } = l;
+    window.fbSetDoc('lembretes', String(l.id), paraFirebase);
+  }
   showToast('✓ Lembrete marcado como resolvido.','success');
   desenharLembretesAvisos();
   atualizarBadgeLembretes();
