@@ -6688,13 +6688,47 @@ function renderVendasConcluidas() {
   const container = document.getElementById('pedidosBody');
   if (!Array.isArray(vendasConcluidas)) vendasConcluidas = [];
 
-  // Ler filtros (os selects são injetados no próprio container)
+  // Opções de ano e técnico disponíveis
+  const anos = [...new Set(vendasConcluidas.map(v => new Date(v.dataConclusao||v.data).getFullYear()))].sort((a,b)=>b-a);
+  const tecnicos = [...new Set(vendasConcluidas.map(v => v.tecnico).filter(Boolean))].sort();
+  const mesesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Os filtros são desenhados UMA vez. A área de resultados (#vcResultados) é
+  // atualizada separadamente ao filtrar, para NÃO recriar o campo de busca
+  // (recriar o input faria o cursor perder o foco a cada tecla digitada).
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+      <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">🔍 Filtrar:</span>
+      <select class="form-input" id="vcFiltroMes" style="width:auto;min-width:120px;" onchange="filtrarVendasConcluidas()">
+        <option value="">Todos os meses</option>
+        ${mesesNomes.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
+      </select>
+      <select class="form-input" id="vcFiltroAno" style="width:auto;min-width:90px;" onchange="filtrarVendasConcluidas()">
+        <option value="">Todos os anos</option>
+        ${anos.map(a=>`<option value="${a}">${a}</option>`).join('')}
+      </select>
+      <select class="form-input" id="vcFiltroTecnico" style="width:auto;min-width:130px;" onchange="filtrarVendasConcluidas()">
+        <option value="">Todos os técnicos</option>
+        ${tecnicos.map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select>
+      <input type="text" class="form-input" id="vcFiltroCliente" placeholder="🔍 Cliente..." oninput="filtrarVendasConcluidas()" style="width:auto;min-width:140px;">
+    </div>
+    <div id="vcResultados"></div>`;
+
+  filtrarVendasConcluidas();
+}
+
+// Atualiza SÓ a área de resultados (total + cards), preservando os campos de filtro.
+function filtrarVendasConcluidas() {
+  const alvo = document.getElementById('vcResultados');
+  if (!alvo) return;
+  if (!Array.isArray(vendasConcluidas)) vendasConcluidas = [];
+
   const fMes = document.getElementById('vcFiltroMes')?.value ?? '';
   const fAno = document.getElementById('vcFiltroAno')?.value ?? '';
   const fCliente = (document.getElementById('vcFiltroCliente')?.value || '').toLowerCase();
   const fTecnico = document.getElementById('vcFiltroTecnico')?.value || '';
 
-  // Aplicar filtros
   let lista = vendasConcluidas.filter(v => {
     const d = new Date(v.dataConclusao || v.dataPagamento || v.data);
     if (fMes !== '' && d.getMonth() !== Number(fMes)) return false;
@@ -6704,31 +6738,10 @@ function renderVendasConcluidas() {
     return true;
   }).sort((a,b) => new Date(b.dataConclusao) - new Date(a.dataConclusao));
 
-  // Opções de ano e técnico disponíveis
-  const anos = [...new Set(vendasConcluidas.map(v => new Date(v.dataConclusao||v.data).getFullYear()))].sort((a,b)=>b-a);
-  const tecnicos = [...new Set(vendasConcluidas.map(v => v.tecnico).filter(Boolean))].sort();
   const fmt = v => 'R$ ' + Number(v).toFixed(2).replace('.',',');
   const totalGeral = lista.reduce((s,v) => s + Number(v.valorTotal||0), 0);
 
-  const mesesNomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-
-  const filtrosHtml = `
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
-      <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">🔍 Filtrar:</span>
-      <select class="form-input" id="vcFiltroMes" style="width:auto;min-width:120px;" onchange="renderVendasConcluidas()">
-        <option value="">Todos os meses</option>
-        ${mesesNomes.map((m,i)=>`<option value="${i}" ${String(fMes)===String(i)?'selected':''}>${m}</option>`).join('')}
-      </select>
-      <select class="form-input" id="vcFiltroAno" style="width:auto;min-width:90px;" onchange="renderVendasConcluidas()">
-        <option value="">Todos os anos</option>
-        ${anos.map(a=>`<option value="${a}" ${String(fAno)===String(a)?'selected':''}>${a}</option>`).join('')}
-      </select>
-      <select class="form-input" id="vcFiltroTecnico" style="width:auto;min-width:130px;" onchange="renderVendasConcluidas()">
-        <option value="">Todos os técnicos</option>
-        ${tecnicos.map(t=>`<option value="${t}" ${fTecnico===t?'selected':''}>${t}</option>`).join('')}
-      </select>
-      <input type="text" class="form-input" id="vcFiltroCliente" placeholder="🔍 Cliente..." value="${fCliente}" oninput="renderVendasConcluidas()" style="width:auto;min-width:140px;">
-    </div>
+  const totalHtml = `
     <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;margin-bottom:16px;border-left:3px solid #059669;">
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;">Total em vendas concluídas</div>
       <div style="font-size:1.5rem;font-weight:700;color:#059669;">${fmt(totalGeral)}</div>
@@ -6736,9 +6749,7 @@ function renderVendasConcluidas() {
     </div>`;
 
   if (!lista.length) {
-    container.innerHTML = filtrosHtml + '<div class="empty"><div class="empty-icon">✅</div><div>Nenhuma venda concluída no período</div></div>';
-    // re-vincular valores dos filtros após innerHTML
-    restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente);
+    alvo.innerHTML = totalHtml + '<div class="empty"><div class="empty-icon">✅</div><div>Nenhuma venda concluída no período</div></div>';
     return;
   }
 
@@ -6751,7 +6762,6 @@ function renderVendasConcluidas() {
         <span class="pedido-item-valor">${i.valorUnit>0?'R$ '+Number(i.valorUnit*i.qtd).toFixed(2):'—'}</span>
       </div>`).join('');
 
-    // Desfazer só até 15 dias após a conclusão
     const diasPassados = (agora - new Date(v.dataConclusao).getTime()) / (1000*60*60*24);
     const podeDesfazer = diasPassados <= 15;
     const btnDesfazer = podeDesfazer
@@ -6779,17 +6789,7 @@ function renderVendasConcluidas() {
     </div>`;
   }).join('');
 
-  container.innerHTML = filtrosHtml + cards;
-  restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente);
-}
-
-// Restaura os valores dos filtros após re-render (innerHTML recria os selects)
-function restaurarFiltrosVC(fMes, fAno, fTecnico, fCliente) {
-  const m = document.getElementById('vcFiltroMes'); if (m) m.value = fMes;
-  const a = document.getElementById('vcFiltroAno'); if (a) a.value = fAno;
-  const t = document.getElementById('vcFiltroTecnico'); if (t) t.value = fTecnico;
-  const c = document.getElementById('vcFiltroCliente');
-  if (c && document.activeElement !== c) c.value = fCliente;
+  alvo.innerHTML = totalHtml + cards;
 }
 
 // Desfazer venda concluída (até 15 dias) → volta ao Consolidado desmarcado
