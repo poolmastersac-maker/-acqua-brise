@@ -8640,9 +8640,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
         if (typeof pedidos !== 'undefined') {
           pedidos = dadosMesclados;
-          // Atualizar a tela se a página de pedidos estiver visível
+          // Atualizar a tela se a página de pedidos estiver visível.
+          // Exceção: se estiver na sub-aba "Vendas Concluídas", NÃO re-renderizar,
+          // pois isso recriaria os filtros e apagaria a busca que o usuário está
+          // digitando. Essa sub-aba não depende do polling de pedidos.
           const paginaPedidos = document.getElementById('page-pedidos');
-          if (paginaPedidos && paginaPedidos.classList.contains('active')) {
+          const naSubAbaVendas = (typeof _subTabAtiva !== 'undefined' && _subTabAtiva === 'vendas');
+          if (paginaPedidos && paginaPedidos.classList.contains('active') && !naSubAbaVendas) {
             renderPedidos();
           }
         }
