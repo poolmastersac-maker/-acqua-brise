@@ -4263,6 +4263,43 @@ function sessaoValida() {
   return (Date.now() - ultimoUso) < TIMEOUT_SESSAO;
 }
 
+// Encaixa a tela de login na área REALMENTE visível do aparelho.
+// Com zoom ativo, o navegador monta a página numa área maior do que a que
+// aparece na tela; sem isso, o card ficaria centralizado nessa área maior e
+// cairia fora do campo de visão. Também mantém o card visível quando o
+// teclado do celular abre e reduz o espaço disponível.
+let _rafLogin = null;
+function ajustarLoginVisivel() {
+  const overlay = document.getElementById('loginOverlay');
+  const vv = window.visualViewport;
+  if (!overlay) return;
+  // Navegador antigo sem suporte: mantém o comportamento padrão do CSS
+  if (!vv) return;
+  if (overlay.style.display === 'none' || overlay.style.display === '') return;
+  if (_rafLogin) cancelAnimationFrame(_rafLogin);
+  _rafLogin = requestAnimationFrame(() => {
+    overlay.style.left = vv.offsetLeft + 'px';
+    overlay.style.top = vv.offsetTop + 'px';
+    overlay.style.right = 'auto';
+    overlay.style.bottom = 'auto';
+    overlay.style.width = vv.width + 'px';
+    overlay.style.height = vv.height + 'px';
+  });
+}
+
+// Limpa os ajustes ao esconder o login (volta ao CSS padrão)
+function limparAjusteLogin() {
+  const overlay = document.getElementById('loginOverlay');
+  if (!overlay) return;
+  overlay.style.left = overlay.style.top = overlay.style.right = overlay.style.bottom = '';
+  overlay.style.width = overlay.style.height = '';
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', ajustarLoginVisivel);
+  window.visualViewport.addEventListener('scroll', ajustarLoginVisivel);
+}
+
 function verificarLogin() {
   // Recarregar usuários do localStorage (pode ter sido atualizado pelo Firebase)
   const fresh = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
@@ -4276,6 +4313,7 @@ function verificarLogin() {
   localStorage.removeItem('drprime_logado');
   localStorage.removeItem('drprime_ultimoUso');
   document.getElementById('loginOverlay').style.display = 'flex';
+  ajustarLoginVisivel();
 }
 function fazerLogin() {
   const usr = document.getElementById('loginUsuario').value.trim();
@@ -4299,6 +4337,7 @@ function fazerLogin() {
 }
 function entrar() {
   document.getElementById('loginOverlay').style.display = 'none';
+  limparAjusteLogin();
   document.getElementById('mainHeader').style.display = 'flex';
   document.getElementById('statsBar').style.display = 'block';
   document.getElementById('userAv').textContent = (usuarioLogado.nome||usuarioLogado.usuario).charAt(0).toUpperCase();
@@ -4319,6 +4358,7 @@ function fazerLogout() {
   document.getElementById('mainHeader').style.display = 'none';
   document.getElementById('statsBar').style.display = 'none';
   document.getElementById('loginOverlay').style.display = 'flex';
+  ajustarLoginVisivel();
   document.getElementById('loginUsuario').value = '';
   document.getElementById('loginSenha').value = '';
   document.getElementById('loginErro').classList.remove('show');
