@@ -1492,8 +1492,11 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 <div class="page" id="page-pedidos" bis_skin_checked="1">
   <!-- TOOLBAR TÉCNICO -->
   <div class="toolbar" id="pedidosToolbarTecnico" style="display:none;" bis_skin_checked="1">
-    <div style="font-size:0.9rem;font-weight:700;color:var(--accent2);" bis_skin_checked="1">📋 Meus Pedidos</div>
-    <button class="btn btn-primary btn-sm" onclick="enviarParaConsolidado()">📤 Enviar para Consolidado</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" bis_skin_checked="1">
+      <button class="sub-tab active" id="subTabTecMeus" onclick="trocarSubTabPedidos('meus')">📋 Meus Pedidos</button>
+      <button class="sub-tab" id="subTabTecEnviados" onclick="trocarSubTabPedidos('enviados')">📤 Pedidos Enviados</button>
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnEnviarConsolidado" onclick="enviarParaConsolidado()">📤 Enviar para Consolidado</button>
   </div>
   <!-- TOOLBAR GESTOR -->
   <div class="toolbar" id="pedidosToolbarGestor" style="display: flex;" bis_skin_checked="1">
@@ -5490,6 +5493,14 @@ function trocarSubTabPedidos(aba) {
   if (btnMeus) { if(aba==='meus') btnMeus.classList.add('active'); else btnMeus.classList.remove('active'); }
   if (btnTodos) { if(aba==='todos') btnTodos.classList.add('active'); else btnTodos.classList.remove('active'); }
   if (btnVendas) { if(aba==='vendas') btnVendas.classList.add('active'); else btnVendas.classList.remove('active'); }
+  // Sub-abas do técnico (Meus Pedidos / Pedidos Enviados)
+  const btnTecMeus = document.getElementById('subTabTecMeus');
+  const btnTecEnviados = document.getElementById('subTabTecEnviados');
+  if (btnTecMeus) btnTecMeus.classList.toggle('active', aba==='meus');
+  if (btnTecEnviados) btnTecEnviados.classList.toggle('active', aba==='enviados');
+  // O botão "Enviar para Consolidado" só faz sentido na aba Meus Pedidos
+  const btnEnviarCons = document.getElementById('btnEnviarConsolidado');
+  if (btnEnviarCons) btnEnviarCons.style.display = aba==='enviados' ? 'none' : '';
   // mostrar/ocultar botão enviar todos só no consolidado
   const btnWpp = document.getElementById('btnEnviarTodosWpp');
   if (btnWpp) btnWpp.style.display = aba === 'todos' ? '' : 'none';
@@ -5535,7 +5546,12 @@ async function enviarParaConsolidado() {
   // Marcar como consolidado
   meusPendentes.forEach(ped => {
     const idx = pedidos.findIndex(x => x.id === ped.id);
-    if (idx >= 0) { pedidos[idx].consolidado = true; pedidos[idx].tecnico = usuarioLogado?.usuario || ''; }
+    if (idx >= 0) {
+      pedidos[idx].consolidado = true;
+      pedidos[idx].tecnico = usuarioLogado?.usuario || '';
+      // Registrar quando foi enviado (usado para ocultar da aba do técnico após 15 dias)
+      pedidos[idx].dataConsolidado = new Date().toISOString();
+    }
   });
   salvarPedidos();
   renderPedidos();
@@ -5593,6 +5609,16 @@ function renderPedidos() {
   // Se estava na aba vendas mas perdeu acesso, volta para consolidado
   if (_subTabAtiva === 'vendas' && !podeVerVendas) _subTabAtiva = 'todos';
 
+  // O técnico só tem as sub-abas 'meus' e 'enviados'. Se a sub-aba ativa for
+  // uma do gestor ('todos'/'vendas'), joga para 'meus'.
+  if (isTecnico && _subTabAtiva !== 'meus' && _subTabAtiva !== 'enviados') {
+    _subTabAtiva = 'meus';
+    const btnTecMeus = document.getElementById('subTabTecMeus');
+    const btnTecEnviados = document.getElementById('subTabTecEnviados');
+    if (btnTecMeus) btnTecMeus.classList.add('active');
+    if (btnTecEnviados) btnTecEnviados.classList.remove('active');
+  }
+
   // Renderização da sub-aba Vendas Concluídas
   if (!isTecnico && _subTabAtiva === 'vendas') {
     renderVendasConcluidas();
@@ -5602,12 +5628,27 @@ function renderPedidos() {
   // Definir lista conforme perfil e sub-aba
   let pedidosFiltrados;
   if (isTecnico) {
-    // Técnico vê apenas seus pedidos não consolidados
-    // Sem vínculo = não vê nenhum pedido
-    pedidosFiltrados = vinculo ? pedidos.filter(ped => {
-      if (ped.consolidado) return false;
-      return ped.tecnico === usuarioLogado?.usuario;
-    }) : [];
+    if (_subTabAtiva === 'enviados') {
+      // Pedidos Enviados: os que o técnico já mandou pro consolidado,
+      // ocultando os com mais de 15 dias de enviados (só some da visão do
+      // técnico — o pedido continua intacto para o gestor).
+      const agora = Date.now();
+      const QUINZE_DIAS = 15 * 24 * 60 * 60 * 1000;
+      pedidosFiltrados = vinculo ? pedidos.filter(ped => {
+        if (!ped.consolidado) return false;
+        if (ped.tecnico !== usuarioLogado?.usuario) return false;
+        // Se não tiver data de envio (pedidos antigos), usa a data do pedido como base
+        const base = ped.dataConsolidado ? new Date(ped.dataConsolidado).getTime() : new Date(ped.data).getTime();
+        return (agora - base) <= QUINZE_DIAS;
+      }) : [];
+    } else {
+      // Meus Pedidos: não consolidados do próprio técnico
+      // Sem vínculo = não vê nenhum pedido
+      pedidosFiltrados = vinculo ? pedidos.filter(ped => {
+        if (ped.consolidado) return false;
+        return ped.tecnico === usuarioLogado?.usuario;
+      }) : [];
+    }
   } else {
     // Gestor: sub-aba meus = não consolidados | consolidado = consolidados
     const seletor = document.getElementById('filtroPedidoTecnico');
@@ -5634,13 +5675,26 @@ function renderPedidos() {
   }
 
   if (!pedidosFiltrados.length) {
-    const msg = isTecnico ? 'Nenhum pedido pendente' : (_subTabAtiva === 'todos' ? 'Nenhum pedido consolidado' : 'Nenhum pedido aberto');
+    let msg;
+    if (isTecnico) {
+      msg = _subTabAtiva === 'enviados' ? 'Nenhum pedido enviado nos últimos 15 dias' : 'Nenhum pedido pendente';
+    } else {
+      msg = _subTabAtiva === 'todos' ? 'Nenhum pedido consolidado' : 'Nenhum pedido aberto';
+    }
     container.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>${msg}</div></div>`;
     return;
   }
 
-  // Ordenar do mais recente para o mais antigo
-  const sorted = [...pedidosFiltrados].sort((a,b) => b.id - a.id);
+  // Ordenar do mais recente para o mais antigo.
+  // Na aba "Pedidos Enviados" usa a data de envio ao consolidado; nas demais, o id (que é temporal).
+  const sorted = [...pedidosFiltrados].sort((a,b) => {
+    if (isTecnico && _subTabAtiva === 'enviados') {
+      const tA = a.dataConsolidado ? new Date(a.dataConsolidado).getTime() : a.id;
+      const tB = b.dataConsolidado ? new Date(b.dataConsolidado).getTime() : b.id;
+      return tB - tA;
+    }
+    return b.id - a.id;
+  });
 
   container.innerHTML = sorted.map(ped => {
     const data = new Date(ped.data);
@@ -5686,12 +5740,12 @@ function renderPedidos() {
               ${item.cliente ? `<div style="font-size:0.75rem;color:var(--muted);">Cliente: ${item.cliente}</div>` : ''}
               ${item.obs ? `<div style="font-size:0.75rem;color:var(--muted);font-style:italic;">${item.obs}</div>` : ''}
             </div>
-            <span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '—'}</span>
+            ${isTecnico ? '' : `<span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '—'}</span>`}
           </div>`).join('')}
 
       </div>
       <div class="pedido-footer">
-        <div class="pedido-checks">
+        ${isTecnico ? '' : `<div class="pedido-checks">
           <label class="pedido-check-label ${ped.entregue ? 'entregue-ativo' : ''}" id="label-entregue-${ped.id}" title="Marcar como entregue — baixa o estoque automaticamente">
             <input type="checkbox" ${ped.entregue ? 'checked' : ''} onchange="togglePedidoEntregue(${ped.id}, this)">
             ✅ Entregue
@@ -5700,7 +5754,7 @@ function renderPedidos() {
             <input type="checkbox" ${ped.pago ? 'checked' : ''} onchange="togglePedidoPago(${ped.id}, this)">
             💜 Pago
           </label>
-        </div>
+        </div>`}
         <div style="display:flex;gap:8px;">
           <button class="btn btn-ghost btn-sm" onclick="excluirPedido(${ped.id})">🗑 Excluir</button>
           ${btnWpp}
