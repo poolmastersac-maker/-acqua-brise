@@ -2005,6 +2005,10 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     </div>
   </div>
   <div class="lembrete-secao-titulo" bis_skin_checked="1">Meus lembretes enviados</div>
+  <div class="sub-tabs" style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <button class="sub-tab active" id="mlSubAtivos" onclick="trocarSubMeusLembretes('ativos')">📥 Ativos</button>
+    <button class="sub-tab" id="mlSubResolvidos" onclick="trocarSubMeusLembretes('resolvidos')">✓ Resolvidos</button>
+  </div>
   <div id="meusLembretesBody" bis_skin_checked="1"></div>
 </div>
 
@@ -5313,47 +5317,104 @@ function renderLembretesTecnico() {
   sincronizarLembretes(desenharMeusLembretes);
 }
 
+let _subMeusLembretes = 'ativos';
+function trocarSubMeusLembretes(sub) {
+  _subMeusLembretes = sub;
+  const btnA = document.getElementById('mlSubAtivos');
+  const btnR = document.getElementById('mlSubResolvidos');
+  if (btnA) btnA.classList.toggle('active', sub === 'ativos');
+  if (btnR) btnR.classList.toggle('active', sub === 'resolvidos');
+  desenharMeusLembretes();
+}
+
 function desenharMeusLembretes() {
   const body = document.getElementById('meusLembretesBody');
   if (!body) return;
   const meuUsuario = usuarioLogado?.usuario || '';
+  const querResolvidos = _subMeusLembretes === 'resolvidos';
+  const agora = Date.now();
+  const SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
+
   const meus = lembretes
-    .filter(l => l.autorUsuario === meuUsuario && !l.resolvido)
-    .sort((a,b) => new Date(b.data) - new Date(a.data));
+    .filter(l => l.autorUsuario === meuUsuario)
+    .filter(l => {
+      // Um lembrete "finalizado" pelo admin (resolvido) também some dos ativos do técnico.
+      const resolvidoParaTecnico = l.resolvidoPorTecnico || l.resolvido;
+      if (querResolvidos) {
+        // Sub-aba Resolvidos do técnico: os que ELE resolveu, sumindo após 7 dias
+        if (!resolvidoParaTecnico) return false;
+        const base = l.dataResolvidoTecnico ? new Date(l.dataResolvidoTecnico).getTime()
+                   : (l.dataResolucao ? new Date(l.dataResolucao).getTime() : new Date(l.data).getTime());
+        return (agora - base) <= SETE_DIAS;
+      } else {
+        // Sub-aba Ativos: ainda não resolvidos por ele nem finalizados
+        return !resolvidoParaTecnico;
+      }
+    })
+    .sort((a,b) => {
+      if (querResolvidos) {
+        const tA = a.dataResolvidoTecnico ? new Date(a.dataResolvidoTecnico) : new Date(a.dataResolucao || a.data);
+        const tB = b.dataResolvidoTecnico ? new Date(b.dataResolvidoTecnico) : new Date(b.dataResolucao || b.data);
+        return tB - tA;
+      }
+      return new Date(b.data) - new Date(a.data);
+    });
+
   if (!meus.length) {
-    body.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><div>Você ainda não enviou lembretes (ou foram resolvidos).</div></div>';
+    const msg = querResolvidos
+      ? 'Nenhum lembrete resolvido nos últimos 7 dias.'
+      : 'Nenhum lembrete ativo. Tudo em dia! 🎉';
+    body.innerHTML = `<div class="empty"><div class="empty-icon">📝</div><div>${msg}</div></div>`;
     return;
   }
   body.innerHTML = meus.map(l => cardLembrete(l, false)).join('');
 }
 
-// Monta o HTML de um card de lembrete. gestor=true mostra ações (resolver/apagar)
+// Monta o HTML de um card de lembrete.
+// gestor=true → visão do admin (finalizar/apagar). gestor=false → visão do técnico (resolver).
 function cardLembrete(l, gestor) {
   const dt = new Date(l.data);
   const dataFmt = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const clienteTag = l.clienteNome
     ? `<span class="lembrete-cliente-tag">🏠 ${escapeHtml(l.clienteNome)}</span>`
     : `<span class="lembrete-cliente-tag geral">Aviso geral</span>`;
-  const statusBadge = l.resolvido
-    ? `<span class="lembrete-status-badge ok">✓ Resolvido</span>`
-    : `<span class="lembrete-status-badge pendente">⏳ Pendente</span>`;
+  // Badge de status
+  let statusBadge;
+  if (l.resolvido) {
+    statusBadge = `<span class="lembrete-status-badge ok">✓ Finalizado</span>`;
+  } else if (l.resolvidoPorTecnico) {
+    statusBadge = `<span class="lembrete-status-badge ok">✓ Resolvido pelo técnico</span>`;
+  } else {
+    statusBadge = `<span class="lembrete-status-badge pendente">⏳ Pendente</span>`;
+  }
   let acoes = '';
   if (gestor && !l.resolvido) {
+    // Admin: vê se o técnico já resolvinha + checkbox "Finalizado" (sempre)
+    const marcaTecnico = l.resolvidoPorTecnico
+      ? `<span style="font-size:0.72rem;color:#059669;font-weight:600;">✓ resolvido pelo técnico</span>`
+      : '';
     acoes = `
       <div class="lembrete-acoes">
-        <label class="lembrete-chk"><input type="checkbox" onchange="resolverLembrete(${l.id})"> Marcar como resolvido</label>
+        ${marcaTecnico}
+        <label class="lembrete-chk"><input type="checkbox" onchange="resolverLembrete(${l.id})"> Finalizado</label>
         <button class="btn btn-red btn-sm" style="margin-left:auto;" onclick="apagarLembrete(${l.id})">🗑 Apagar</button>
       </div>`;
   } else if (gestor && l.resolvido) {
     const dtRes = l.dataResolucao ? new Date(l.dataResolucao).toLocaleDateString('pt-BR') : '';
     acoes = `
       <div class="lembrete-acoes">
-        <span style="font-size:0.72rem;color:var(--muted);">Resolvido em ${dtRes}</span>
+        <span style="font-size:0.72rem;color:var(--muted);">Finalizado em ${dtRes}</span>
         <button class="btn btn-red btn-sm" style="margin-left:auto;" onclick="apagarLembrete(${l.id})">🗑 Apagar</button>
+      </div>`;
+  } else if (!gestor && !l.resolvidoPorTecnico && !l.resolvido) {
+    // Técnico: checkbox para resolver o próprio lembrete (some da lista dele)
+    acoes = `
+      <div class="lembrete-acoes">
+        <label class="lembrete-chk"><input type="checkbox" onchange="resolverLembretePorTecnico(${l.id})"> Marcar como resolvido</label>
       </div>`;
   }
   return `
-    <div class="lembrete-card ${l.resolvido ? 'resolvido-card' : 'nao-resolvido'}">
+    <div class="lembrete-card ${(l.resolvido || l.resolvidoPorTecnico) ? 'resolvido-card' : 'nao-resolvido'}">
       <div class="lembrete-card-top">
         <div class="lembrete-meta">
           <span class="lembrete-tec">👤 ${escapeHtml(l.autor || '')}</span>
@@ -5440,9 +5501,25 @@ function resolverLembrete(id) {
     const { _pendente, ...paraFirebase } = l;
     window.fbSetDoc('lembretes', String(l.id), paraFirebase);
   }
-  showToast('✓ Lembrete marcado como resolvido.','success');
+  showToast('✓ Lembrete finalizado.','success');
   desenharLembretesAvisos();
   atualizarBadgeLembretes();
+}
+
+// Resolução feita pelo TÉCNICO: marca só para a visão dele. O lembrete
+// continua ativo para o admin (que ainda precisa finalizá-lo). Não deleta nada.
+function resolverLembretePorTecnico(id) {
+  const l = lembretes.find(x => x.id === id);
+  if (!l) return;
+  l.resolvidoPorTecnico = true;
+  l.dataResolvidoTecnico = new Date().toISOString();
+  salvarLembretes();
+  if (window.fbSetDoc) {
+    const { _pendente, ...paraFirebase } = l;
+    window.fbSetDoc('lembretes', String(l.id), paraFirebase);
+  }
+  showToast('✓ Resolvido! Saiu da sua lista de ativos.','success');
+  desenharMeusLembretes();
 }
 
 function apagarLembrete(id) {
