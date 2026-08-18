@@ -6773,8 +6773,10 @@ function gerarCobranca(id) {
   const status=calcularStatus(c); const nome=c.nome.split(' ')[0];
   // Bloco de PIX conforme a conta vinculada ao cliente (se houver chave cadastrada)
   const dadosPix = getChavePixCliente(c);
+  // Remove pontuação da chave (pontos, barra, traço) para o cliente copiar só os números
+  const chaveLimpa = dadosPix ? String(dadosPix.chave).replace(/[.\-/\s]/g, '') : '';
   const blocoPix = dadosPix
-    ? `\n\nPagamento via PIX (CNPJ):\nConta: ${dadosPix.label}\n\nChave (toque e segure para copiar):\n${dadosPix.chave}`
+    ? `\n\nPagamento via PIX (CNPJ):\nConta: ${dadosPix.label}\n\nChave (toque e segure para copiar):\n${chaveLimpa}`
     : '';
   const msg=status==='atrasado'
     ?`Olá, ${nome}!\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
