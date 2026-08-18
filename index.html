@@ -119,6 +119,23 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .cliente-item.selected .chevron{transform:rotate(90deg);color:var(--accent);}
 .card-feriados{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#F0F8FF,#EAF4FB);border:1px solid var(--border);border-radius:10px;padding:7px 14px;margin-bottom:10px;flex-wrap:wrap;}
 .card-feriados.hidden{display:none;}
+/* Card de vencimentos próximos */
+.card-vencimentos{background:linear-gradient(135deg,#FFF8F0,#FFF3E6);border:1px solid #F5D9B8;border-radius:10px;padding:9px 14px;margin-bottom:10px;}
+.card-vencimentos.hidden{display:none;}
+.cv-topo{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.cv-titulo{font-size:0.82rem;font-weight:700;color:#B5721A;white-space:nowrap;}
+.cv-contador{font-size:0.7rem;font-weight:700;background:#F0A340;color:#fff;border-radius:20px;padding:1px 9px;}
+.cv-lista{display:flex;flex-direction:column;gap:6px;}
+.cv-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #F0E0CC;border-radius:8px;padding:7px 11px;flex-wrap:wrap;}
+.cv-item.naopago{border-color:#F0A340;background:#FFFBF5;}
+.cv-quando{font-size:0.72rem;font-weight:800;color:#B5721A;white-space:nowrap;min-width:74px;}
+.cv-item.venchoje .cv-quando{color:#DC2626;}
+.cv-nome{font-size:0.82rem;font-weight:600;color:var(--text);flex:1;min-width:120px;}
+.cv-valor{font-size:0.8rem;font-weight:700;color:var(--accent2);white-space:nowrap;}
+.cv-pago-tag{font-size:0.66rem;font-weight:700;color:#059669;background:#ECFDF5;border-radius:20px;padding:1px 8px;white-space:nowrap;}
+.cv-btn-cob{background:#25D366;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:0.74rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:0.2s;}
+.cv-btn-cob:hover{background:#1EB456;}
+@media(max-width:600px){.cv-nome{min-width:90px;}}
 .nav-badge{background:var(--red);color:#fff;font-size:0.62rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;margin-left:2px;}
 .lembrete-form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
 .lembrete-form-titulo{font-size:1rem;font-weight:700;color:var(--accent2);margin-bottom:4px;}
@@ -614,6 +631,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 
 <!-- DASHBOARD -->
 <div class="page" id="page-dashboard" bis_skin_checked="1">
+  <div id="cardVencimentos" class="card-vencimentos"></div>
   <div id="cardFeriados" class="card-feriados" bis_skin_checked="1">
     <span class="cf-titulo">📅 Feriados:</span>
     <div class="cf-lista" bis_skin_checked="1">
@@ -3752,6 +3770,80 @@ function renderCardFeriados() {
     <div class="cf-lista">${itens}</div>`;
 }
 
+// Card de vencimentos próximos: clientes que vencem nos próximos 5 dias.
+// Baseado no dia de vencimento (c.dia). Destaca quem ainda não pagou o mês.
+// Não mostra suspensos nem isentos. Só aparece para quem não é técnico.
+function renderCardVencimentos() {
+  const card = document.getElementById('cardVencimentos');
+  if (!card) return;
+
+  // Técnico não vê este card (é informação de gestão/cobrança)
+  const isTecnico = usuarioLogado?.perfil === 'tecnico';
+  if (isTecnico) { card.classList.add('hidden'); return; }
+
+  const JANELA = 5; // dias de antecedência
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const ultimoDiaMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
+  const diaHoje = hoje.getDate();
+
+  const proximos = [];
+  clientes.forEach(c => {
+    // Ignora suspensos e isentos
+    if (c.status === 'suspenso' || c.status === 'isento') return;
+    if (!c.dia) return;
+    // Dia de vencimento ajustado ao mês (ex: dia 31 em mês de 30 vira 30)
+    const diaVenc = Math.min(Number(c.dia), ultimoDiaMes);
+    const faltam = diaVenc - diaHoje;
+    // Só entra se vence de hoje até os próximos 5 dias
+    if (faltam < 0 || faltam > JANELA) return;
+    // Já pagou este mês?
+    const reg = historico.find(h => h.clienteId === c.id && h.mes === mesAtual && h.ano === anoAtual);
+    const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
+    proximos.push({ cliente: c, faltam, diaVenc, pago });
+  });
+
+  if (!proximos.length) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+
+  // Ordena: não pagos primeiro, depois por proximidade do vencimento
+  proximos.sort((a, b) => {
+    if (a.pago !== b.pago) return a.pago ? 1 : -1;
+    return a.faltam - b.faltam;
+  });
+
+  const naoPagos = proximos.filter(p => !p.pago).length;
+
+  const itens = proximos.map(p => {
+    const c = p.cliente;
+    let quando;
+    if (p.faltam === 0) quando = 'vence hoje!';
+    else if (p.faltam === 1) quando = 'vence amanhã';
+    else quando = `vence em ${p.faltam}d`;
+    const classeItem = !p.pago ? 'naopago' : '';
+    const classeHoje = (p.faltam === 0 && !p.pago) ? 'venchoje' : '';
+    // Se já pagou, mostra tag "pago" no lugar do botão de cobrança
+    const acao = p.pago
+      ? `<span class="cv-pago-tag">✓ Pago</span>`
+      : `<button class="cv-btn-cob" onclick="gerarCobranca(${c.id})" title="Enviar cobrança por WhatsApp">💬 Cobrar</button>`;
+    return `
+      <div class="cv-item ${classeItem} ${classeHoje}">
+        <span class="cv-quando">${quando}</span>
+        <span class="cv-nome">${escapeHtml(c.nome)}</span>
+        <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
+        ${acao}
+      </div>`;
+  }).join('');
+
+  card.innerHTML = `
+    <div class="cv-topo">
+      <span class="cv-titulo">⏰ Vencimentos próximos (5 dias)</span>
+      ${naoPagos > 0 ? `<span class="cv-contador">${naoPagos} a cobrar</span>` : ''}
+    </div>
+    <div class="cv-lista">${itens}</div>`;
+}
+
 function renderDashboard() {
   // Blindagem: se os elementos do dashboard ainda não existem (ex: chamada
   // durante carregamento inicial antes do DOM pronto), aborta silenciosamente.
@@ -3807,6 +3899,7 @@ function renderDashboard() {
   }
   atualizarStats();
   renderCardFeriados();
+  renderCardVencimentos();
 }
 
 // LISTA CLIENTES
