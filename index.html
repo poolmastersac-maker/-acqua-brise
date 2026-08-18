@@ -6774,11 +6774,11 @@ function gerarCobranca(id) {
   // Bloco de PIX conforme a conta vinculada ao cliente (se houver chave cadastrada)
   const dadosPix = getChavePixCliente(c);
   const blocoPix = dadosPix
-    ? `\n\n💰 Pagamento via PIX:\n🏦 Conta: ${dadosPix.label}\n🔑 Chave: ${dadosPix.chave}`
+    ? `\n\nPagamento via PIX:\nConta: ${dadosPix.label}\nChave: ${dadosPix.chave}`
     : '';
   const msg=status==='atrasado'
-    ?`Olá, ${nome}! 🏊\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nPode me pagar via PIX! Qualquer dúvida, estou à disposição. 😊${blocoPix}\n\nAtenciosamente,\nAcqua Brise 🌊`
-    :`Olá, ${nome}! 🏊\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.\n\nO pagamento pode ser feito via PIX.${blocoPix}\n\nObrigado pela preferência! 😊\n\nAtenciosamente,\nAcqua Brise 🌊`;
+    ?`Olá, ${nome}!\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
+    :`Olá, ${nome}!\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.${blocoPix}\n\nObrigado pela preferência!\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`;
   document.getElementById('cobrancaNome').textContent=c.nome;
   document.getElementById('cobrancaTexto').textContent=msg;
   document.getElementById('modalCobranca').classList.add('open');
