@@ -607,7 +607,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <button class="nav-tab" data-aba="estoque" onclick="navegarPara('estoque')"><span>📦</span><span>Estoque</span></button>
     <button class="nav-tab" data-aba="visaogeral" onclick="navegarPara('visaogeral')"><span>📅</span><span>Visão Geral</span></button>
     <button class="nav-tab" data-aba="necessidades" onclick="navegarPara('necessidades')" style="display: none;"><span>🧴</span><span>Necessidades</span></button>
-    <button class="nav-tab" data-aba="pedidos" onclick="navegarPara('pedidos')"><span>📋</span><span>Pedidos</span></button>
+    <button class="nav-tab" data-aba="pedidos" onclick="navegarPara('pedidos')"><span>📋</span><span>Pedidos</span><span id="badgePedidos" class="nav-badge" style="display:none;"></span></button>
     <button class="nav-tab" data-aba="lembretes" onclick="navegarPara('lembretes')" style="display: none;"><span>📝</span><span>Lembretes</span></button>
     <button class="nav-tab" data-aba="lembretesavisos" onclick="navegarPara('lembretesavisos')"><span>📨</span><span>Lembretes e Avisos</span><span id="badgeLembretes" class="nav-badge" style="">7</span></button>
     <button class="nav-tab" data-aba="servicos" onclick="navegarPara('servicos')"><span>🔧</span><span>Serviços</span></button>
@@ -3485,6 +3485,7 @@ function entrar() {
   atualizarStats();
   limparLembretesAntigos();
   atualizarBadgeLembretes();
+  atualizarBadgePedidos();
   setTimeout(ajustarOffsetHeader, 100);
 }
 function fazerLogout() {
@@ -3591,7 +3592,7 @@ function navegarPara(pagina) {
   if (pagina==='visaogeral') renderVisaoGeral();
   if (pagina==='necessidades') renderNecessidades();
   if (pagina==='lembretes') renderLembretesTecnico();
-  if (pagina==='lembretesavisos') renderLembretesAvisos();
+  if (pagina==='lembretesavisos') { renderLembretesAvisos(); marcarAbaVista('lembretes'); }
   if (pagina==='pedidos') {
     renderPedidos();
     // Sempre busca dados frescos do Firebase ao abrir aba pedidos
@@ -3609,7 +3610,11 @@ function navegarPara(pagina) {
             renderPedidos();
           }
         } catch(e) { /* silencioso */ }
+        // Marcar como visto DEPOIS de ter os dados frescos (badge zera corretamente)
+        marcarAbaVista('pedidos');
       })();
+    } else {
+      marcarAbaVista('pedidos');
     }
   }
   if (pagina==='relatorios') renderRelatoriosPage();
@@ -5533,12 +5538,64 @@ function apagarLembrete(id) {
 }
 
 // Badge vermelho com nº de lembretes não resolvidos (só p/ quem vê a aba)
+// ── Badges de "novidades" (Pedidos e Lembretes) ──
+// Mostram quantos itens NOVOS chegaram desde a última vez que o gestor abriu a aba.
+// "Novo" = criado por um usuário técnico depois do último acesso à aba.
+// A marca de "visto" é por aparelho (guardada no localStorage local).
+
+function _ehAutorTecnico(usuarioLogin) {
+  if (!usuarioLogin) return false;
+  const u = usuarios.find(x => x.usuario === usuarioLogin);
+  return u ? u.perfil === 'tecnico' : false;
+}
+
+function _getUltimoVisto(chave) {
+  const v = localStorage.getItem(chave);
+  return v ? Number(v) : 0;
+}
+
+function marcarAbaVista(qual) {
+  const agora = Date.now();
+  if (qual === 'pedidos') localStorage.setItem('aquagest_visto_pedidos', String(agora));
+  if (qual === 'lembretes') localStorage.setItem('aquagest_visto_lembretes', String(agora));
+  atualizarBadgeLembretes();
+  atualizarBadgePedidos();
+}
+
 function atualizarBadgeLembretes() {
   const badge = document.getElementById('badgeLembretes');
   if (!badge) return;
-  const naoResolvidos = lembretes.filter(l => !l.resolvido).length;
-  if (naoResolvidos > 0) {
-    badge.textContent = naoResolvidos;
+  const ultimoVisto = _getUltimoVisto('aquagest_visto_lembretes');
+  // Conta lembretes criados por técnicos, ainda não resolvidos, depois do último acesso
+  const novos = lembretes.filter(l => {
+    if (l.resolvido) return false;
+    if (!_ehAutorTecnico(l.autorUsuario)) return false;
+    const t = new Date(l.data).getTime();
+    return t > ultimoVisto;
+  }).length;
+  if (novos > 0) {
+    badge.textContent = novos;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function atualizarBadgePedidos() {
+  const badge = document.getElementById('badgePedidos');
+  if (!badge) return;
+  const ultimoVisto = _getUltimoVisto('aquagest_visto_pedidos');
+  // Conta pedidos que técnicos enviaram ao consolidado, ainda não finalizados
+  // (não entregue ou não pago), depois do último acesso do gestor.
+  const novos = pedidos.filter(ped => {
+    if (!ped.consolidado) return false;
+    if (ped.entregue && ped.pago) return false; // já finalizado, não é "pendente"
+    if (!_ehAutorTecnico(ped.tecnico)) return false;
+    const base = ped.dataConsolidado ? new Date(ped.dataConsolidado).getTime() : 0;
+    return base > ultimoVisto;
+  }).length;
+  if (novos > 0) {
+    badge.textContent = novos;
     badge.style.display = '';
   } else {
     badge.style.display = 'none';
@@ -7934,6 +7991,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
         if (typeof pedidos !== 'undefined') { pedidos = dadosMesclados; }
+        if (typeof atualizarBadgePedidos === 'function') atualizarBadgePedidos();
       }
 
       // VENDAS CONCLUÍDAS — mesclar Firebase com local
@@ -8049,6 +8107,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
           if (paginaPedidos && paginaPedidos.classList.contains('active') && !naSubAbaVendas) {
             renderPedidos();
           }
+          if (typeof atualizarBadgePedidos === 'function') atualizarBadgePedidos();
         }
       }
     } catch(e) { /* silencioso */ }
