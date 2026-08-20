@@ -3812,6 +3812,15 @@ function renderCardVencimentos() {
     // Já pagou este mês?
     const reg = historico.find(h => h.clienteId === c.id && h.mes === mesAtual && h.ano === anoAtual);
     const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
+    // Cliente pago some do card 2 dias corridos após a data do pagamento.
+    // (Continua pago no histórico — some apenas desta visualização.)
+    if (pago && reg.data) {
+      const dataPag = new Date(reg.data + 'T00:00:00');
+      if (!isNaN(dataPag.getTime())) {
+        const diasDesdePag = Math.floor((hoje - dataPag) / (1000 * 60 * 60 * 24));
+        if (diasDesdePag > 2) return;
+      }
+    }
     proximos.push({ cliente: c, faltam, diaVenc, pago });
   });
 
