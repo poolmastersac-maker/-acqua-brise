@@ -6776,11 +6776,11 @@ function gerarCobranca(id) {
   // Remove pontuação da chave (pontos, barra, traço) para o cliente copiar só os números
   const chaveLimpa = dadosPix ? String(dadosPix.chave).replace(/[.\-/\s]/g, '') : '';
   const blocoPix = dadosPix
-    ? `\n\nPagamento via PIX (CNPJ):\nConta: ${dadosPix.label}\n\nChave (toque e segure para copiar):\n${chaveLimpa}`
+    ? `\n\nPagamento via PIX (CNPJ)\nConta: ${dadosPix.label}\n\nChave PIX:\n\n${chaveLimpa}`
     : '';
   const msg=status==='atrasado'
-    ?`Olá, ${nome}!\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
-    :`Olá, ${nome}!\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.${blocoPix}\n\nObrigado!\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`;
+    ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
+    :`Olá, ${nome}! Tudo bem?\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.${blocoPix}\n\nObrigado!\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`;
   document.getElementById('cobrancaNome').textContent=c.nome;
   document.getElementById('cobrancaTexto').textContent=msg;
   document.getElementById('modalCobranca').classList.add('open');
