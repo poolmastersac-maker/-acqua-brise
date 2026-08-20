@@ -3601,10 +3601,12 @@ function navegarPara(pagina) {
         try {
           const dadosFirebase = await window.fbGetPedidos();
           if (dadosFirebase && dadosFirebase.length >= 0) {
+            const excluidosAba = window._pedidosExcluidos || new Set();
+            const dadosFirebaseFiltrado = dadosFirebase.filter(p => !excluidosAba.has(String(p.id)));
             const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-            const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
-            const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
-            const mesclados = [...dadosFirebase, ...apenasLocais];
+            const idsFirebase = new Set(dadosFirebaseFiltrado.map(p => String(p.id)));
+            const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)) && !excluidosAba.has(String(p.id)));
+            const mesclados = [...dadosFirebaseFiltrado, ...apenasLocais];
             localStorage.setItem('aquagest_pedidos', JSON.stringify(mesclados));
             pedidos = mesclados;
             renderPedidos();
@@ -5743,10 +5745,12 @@ async function atualizarPedidosFirebase() {
     showToast('🔄 Buscando pedidos...', 'info');
     const dadosFirebase = await window.fbGetPedidos();
     if (dadosFirebase && dadosFirebase.length >= 0) {
+      const excluidosAt = window._pedidosExcluidos || new Set();
+      const dadosFirebaseFiltrado = dadosFirebase.filter(p => !excluidosAt.has(String(p.id)));
       const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-      const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
-      const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)));
-      const mesclados = [...dadosFirebase, ...apenasLocais];
+      const idsFirebase = new Set(dadosFirebaseFiltrado.map(p => String(p.id)));
+      const apenasLocais = dadosLocais.filter(p => !idsFirebase.has(String(p.id)) && !excluidosAt.has(String(p.id)));
+      const mesclados = [...dadosFirebaseFiltrado, ...apenasLocais];
       localStorage.setItem('aquagest_pedidos', JSON.stringify(mesclados));
       pedidos = mesclados;
       renderPedidos();
@@ -6407,19 +6411,29 @@ function excluirPedido(id) {
   pedidoParaExcluirId = id;
   document.getElementById('modalConfirmPedido').classList.add('open');
 }
-function confirmarExclusaoPedido() {
+// IDs de pedidos recém-excluídos — impede que o polling os ressuscite
+// enquanto a exclusão no Firebase ainda está propagando.
+window._pedidosExcluidos = window._pedidosExcluidos || new Set();
+
+async function confirmarExclusaoPedido() {
   if (!pedidoParaExcluirId) return;
   const idParaDeletar = pedidoParaExcluirId;
+  // Marca como excluído ANTES de tudo (o polling vai respeitar essa marca)
+  window._pedidosExcluidos.add(String(idParaDeletar));
   pedidos = pedidos.filter(x => x.id !== idParaDeletar);
   pedidoParaExcluirId = null;
   salvarPedidos();
   fecharModal('modalConfirmPedido');
   renderPedidos();
+  atualizarBadgePedidos();
   showToast('Pedido removido', 'info');
-  // Deletar do Firebase — não chamar fbSync depois para evitar recriar o documento
+  // Deletar do Firebase e AGUARDAR a conclusão (evita corrida com o polling)
   if (window.fbDeleteDoc) {
-    window.fbDeleteDoc('pedidos', idParaDeletar);
+    await window.fbDeleteDoc('pedidos', idParaDeletar);
   }
+  // Mantém a marca por um tempo para cobrir pollings em andamento,
+  // depois libera (o documento já não existe mais no Firebase).
+  setTimeout(() => { window._pedidosExcluidos.delete(String(idParaDeletar)); }, 60000);
 }
 
 // NECESSIDADES
@@ -7980,13 +7994,15 @@ window.addEventListener('resize', ajustarOffsetHeader);
       // PEDIDOS — mesclar Firebase com local para não perder pedidos recém criados
       const snapPed = await getDocs(collection(db, 'pedidos'));
       if (!snapPed.empty) {
-        const dadosFirebase = snapPed.docs.map(d => d.data());
-        const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
-        const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
+        const excluidosP = window._pedidosExcluidos || new Set();
         // Não ressuscitar pedidos que já viraram venda concluída
         const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
+        const dadosFirebase = snapPed.docs.map(d => d.data())
+          .filter(p => !excluidosP.has(String(p.id)) && !vendasIds.has(String(p.id)));
+        const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
+        const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
         const pedidosApenasLocais = dadosLocais.filter(p =>
-          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id))
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosP.has(String(p.id))
         );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
@@ -8083,15 +8099,17 @@ window.addEventListener('resize', ajustarOffsetHeader);
     try {
       const snapPed = await getDocs(collection(db, 'pedidos'));
       if (!snapPed.empty) {
-        const dadosFirebase = snapPed.docs.map(d => d.data());
+        const excluidosPol = window._pedidosExcluidos || new Set();
+        const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
+        const dadosFirebase = snapPed.docs.map(d => d.data())
+          .filter(p => !excluidosPol.has(String(p.id)) && !vendasIds.has(String(p.id)));
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 
         // Mesclar: manter pedidos locais que ainda não chegaram ao Firebase,
         // MAS descartar os que já viraram venda concluída (não devem ressuscitar).
         const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
-        const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
         const pedidosApenasLocais = dadosLocais.filter(p =>
-          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id))
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosPol.has(String(p.id))
         );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
 
