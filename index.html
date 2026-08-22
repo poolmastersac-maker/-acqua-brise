@@ -3807,19 +3807,25 @@ function renderCardVencimentos() {
     // Dia de vencimento ajustado ao mês (ex: dia 31 em mês de 30 vira 30)
     const diaVenc = Math.min(Number(c.dia), ultimoDiaMes);
     const faltam = diaVenc - diaHoje;
-    // Só entra se vence de hoje até os próximos 5 dias
-    if (faltam < 0 || faltam > JANELA) return;
     // Já pagou este mês?
     const reg = historico.find(h => h.clienteId === c.id && h.mes === mesAtual && h.ano === anoAtual);
     const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
-    // Cliente pago some do card 2 dias corridos após a data do pagamento.
-    // (Continua pago no histórico — some apenas desta visualização.)
-    if (pago && reg.data) {
-      const dataPag = new Date(reg.data + 'T00:00:00');
-      if (!isNaN(dataPag.getTime())) {
-        const diasDesdePag = Math.floor((hoje - dataPag) / (1000 * 60 * 60 * 24));
-        if (diasDesdePag > 2) return;
+
+    if (pago) {
+      // PAGO: só entra se venceu dentro da janela de 5 dias (pra você ver que entrou),
+      // e some 2 dias corridos após a data do pagamento.
+      if (faltam < 0 || faltam > JANELA) return;
+      if (reg.data) {
+        const dataPag = new Date(reg.data + 'T00:00:00');
+        if (!isNaN(dataPag.getTime())) {
+          const diasDesdePag = Math.floor((hoje - dataPag) / (1000 * 60 * 60 * 24));
+          if (diasDesdePag > 2) return;
+        }
       }
+    } else {
+      // NÃO PAGO: aparece se vence nos próximos 5 dias OU se já venceu (atrasado),
+      // permanecendo no card até o pagamento acontecer.
+      if (faltam > JANELA) return;
     }
     proximos.push({ cliente: c, faltam, diaVenc, pago });
   });
@@ -3827,22 +3833,29 @@ function renderCardVencimentos() {
   if (!proximos.length) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
 
-  // Ordena: não pagos primeiro, depois por proximidade do vencimento
-  proximos.sort((a, b) => {
-    if (a.pago !== b.pago) return a.pago ? 1 : -1;
-    return a.faltam - b.faltam;
-  });
+  // Ordena por data de vencimento: os que venceram há mais tempo primeiro
+  // (faltam mais negativo = venceu há mais dias), depois os próximos a vencer.
+  proximos.sort((a, b) => a.faltam - b.faltam);
 
   const naoPagos = proximos.filter(p => !p.pago).length;
 
   const itens = proximos.map(p => {
     const c = p.cliente;
     let quando;
-    if (p.faltam === 0) quando = 'vence hoje!';
-    else if (p.faltam === 1) quando = 'vence amanhã';
-    else quando = `vence em ${p.faltam}d`;
+    const atrasado = p.faltam < 0 && !p.pago;
+    if (atrasado) {
+      const diasAtraso = Math.abs(p.faltam);
+      quando = diasAtraso === 1 ? 'venceu ontem' : `venceu há ${diasAtraso}d`;
+    } else if (p.faltam === 0) {
+      quando = 'vence hoje!';
+    } else if (p.faltam === 1) {
+      quando = 'vence amanhã';
+    } else {
+      quando = `vence em ${p.faltam}d`;
+    }
     const classeItem = !p.pago ? 'naopago' : '';
-    const classeHoje = (p.faltam === 0 && !p.pago) ? 'venchoje' : '';
+    // Vermelho de destaque para vence hoje (não pago) e para atrasados
+    const classeHoje = ((p.faltam === 0 || atrasado) && !p.pago) ? 'venchoje' : '';
     // Se já pagou, mostra tag "pago" no lugar do botão de cobrança
     const acao = p.pago
       ? `<span class="cv-pago-tag">✓ Pago</span>`
@@ -3858,7 +3871,7 @@ function renderCardVencimentos() {
 
   card.innerHTML = `
     <div class="cv-topo">
-      <span class="cv-titulo">⏰ Vencimentos próximos (5 dias)</span>
+      <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
       ${naoPagos > 0 ? `<span class="cv-contador">${naoPagos} a cobrar</span>` : ''}
     </div>
     <div class="cv-lista">${itens}</div>`;
