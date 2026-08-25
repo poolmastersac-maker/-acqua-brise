@@ -4134,10 +4134,18 @@ function saveClient() {
   if (isNaN(dia) || dia < 1 || dia > 31) { showToast('⚠ Informe um dia de vencimento válido (1 a 31)','error'); return; }
   if (isNaN(valor) || valor < 0) { showToast('⚠ Informe um valor válido','error'); return; }
   const editId = document.getElementById('editId').value;
+  // Blinda o cliente editado/criado contra o polling sobrescrever com dado antigo
+  // do Firebase antes do fbSave subir. A marca guarda o momento da edição.
+  window._clientesEditadosRecentemente = window._clientesEditadosRecentemente || {};
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
     if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}; showToast('✓ Cliente atualizado!','success'); }
-  } else { clientes.push({id:gerarId(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}); showToast('✓ Cliente cadastrado!','success'); }
+    window._clientesEditadosRecentemente[String(editId)] = Date.now();
+  } else {
+    const novoId = gerarId();
+    clientes.push({id:novoId,nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}); showToast('✓ Cliente cadastrado!','success');
+    window._clientesEditadosRecentemente[String(novoId)] = Date.now();
+  }
   salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
 }
 function limparForm() {
@@ -8034,7 +8042,22 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!snapC.empty) {
         const dados = snapC.docs.map(d => d.data());
         if (dados.length > 0) {
-          const mesclado = mesclarPorId(dados, 'aquagest_clientes', c => c.id);
+          // Blindagem: para clientes editados nos últimos 60s, mantém a versão
+          // LOCAL (recém-editada) em vez da do Firebase, que pode estar defasada
+          // enquanto o fbSave ainda propaga.
+          const editadosRecentes = window._clientesEditadosRecentemente || {};
+          const agora = Date.now();
+          const locaisAtuais = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
+          const mapaLocal = {};
+          locaisAtuais.forEach(c => { mapaLocal[String(c.id)] = c; });
+          const dadosAjustados = dados.map(cFb => {
+            const marca = editadosRecentes[String(cFb.id)];
+            if (marca && (agora - marca) < 60000 && mapaLocal[String(cFb.id)]) {
+              return mapaLocal[String(cFb.id)]; // prioriza a edição local recente
+            }
+            return cFb;
+          });
+          const mesclado = mesclarPorId(dadosAjustados, 'aquagest_clientes', c => c.id);
           localStorage.setItem('aquagest_clientes', JSON.stringify(mesclado));
           if (typeof clientes !== 'undefined') { clientes = mesclado; }
         }
