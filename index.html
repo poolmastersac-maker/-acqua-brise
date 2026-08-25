@@ -711,6 +711,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
           <div class="form-group" bis_skin_checked="1"><label class="form-label">Técnico Responsável</label><select class="form-input" id="fTecnico"><option value="">— Selecione —</option><option value="Arthur_tecnico">Arthur_tecnico</option><option value="Diego_tecnico">Diego_tecnico</option><option value="Marcio_tecnico">Marcio_tecnico</option></select></div>
         </div>
         <div class="form-group" bis_skin_checked="1"><label class="form-label">Localização</label><input type="text" class="form-input" id="fEndereco" placeholder="Ex: Santa Adelia"></div>
+        <div class="form-group" bis_skin_checked="1"><label class="form-label">📅 Cliente desde <span style="color:var(--muted);font-size:0.75rem;">(data de entrada no sistema)</span></label><input type="date" class="form-input" id="fClienteDesde"></div>
         <div class="form-group" bis_skin_checked="1"><label class="form-label">💰 Conta de Recebimento <span style="color:var(--muted);font-size:0.75rem;">(chave PIX na cobrança)</span></label>
           <select class="form-input" id="fContaPix">
             <option value="">— Não definida —</option>
@@ -4059,6 +4060,7 @@ function editarClienteSelecionado() {
   document.getElementById('fEndereco').value=c.endereco||''; document.getElementById('fTipoPag').value=c.tipoPag||'atual';
   document.getElementById('fTecnico').value=c.tecnico||'';
   document.getElementById('fContaPix').value=c.contaPix||'';
+  document.getElementById('fClienteDesde').value=c.clienteDesde||'';
   document.getElementById('formTitulo').textContent='Editar Cliente'; document.getElementById('formIcon').textContent='✏️';
   document.querySelector('.form-card').scrollIntoView({behavior:'smooth'}); navegarPara('clientes');
 }
@@ -4125,6 +4127,7 @@ function saveClient() {
   const tipoPag = document.getElementById('fTipoPag').value;
   const tecnico = document.getElementById('fTecnico').value;
   const contaPix = document.getElementById('fContaPix').value;
+  const clienteDesde = document.getElementById('fClienteDesde').value; // 'YYYY-MM-DD' ou ''
   // Validação: nome obrigatório, dia e valor devem ser números válidos.
   // Aceita valor 0 (ex: cliente cortesia) — não usar !valor, pois 0 é falsy.
   if (!nome) { showToast('⚠ Preencha o nome do cliente','error'); return; }
@@ -4133,12 +4136,12 @@ function saveClient() {
   const editId = document.getElementById('editId').value;
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
-    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}; showToast('✓ Cliente atualizado!','success'); }
-  } else { clientes.push({id:gerarId(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix}); showToast('✓ Cliente cadastrado!','success'); }
+    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}; showToast('✓ Cliente atualizado!','success'); }
+  } else { clientes.push({id:gerarId(),nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}); showToast('✓ Cliente cadastrado!','success'); }
   salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
 }
 function limparForm() {
-  ['editId','fNome','fTel','fDia','fValor','fEndereco'].forEach(id=>document.getElementById(id).value='');
+  ['editId','fNome','fTel','fDia','fValor','fEndereco','fClienteDesde'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fStatus').value='pendente'; document.getElementById('fTipoPag').value='atual';
   document.getElementById('fTecnico').value='';
   document.getElementById('fContaPix').value='';
