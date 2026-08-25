@@ -125,6 +125,8 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .cv-topo{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
 .cv-titulo{font-size:0.82rem;font-weight:700;color:#B5721A;white-space:nowrap;}
 .cv-contador{font-size:0.7rem;font-weight:700;background:#F0A340;color:#fff;border-radius:20px;padding:1px 9px;}
+.cv-seletor{margin-left:auto;font-size:0.75rem;font-weight:600;color:#B5721A;background:#fff;border:1px solid #F0E0CC;border-radius:7px;padding:3px 8px;cursor:pointer;}
+.cv-vazio{font-size:0.8rem;color:var(--muted);text-align:center;padding:12px;}
 .cv-lista{display:flex;flex-direction:column;gap:6px;}
 .cv-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #F0E0CC;border-radius:8px;padding:7px 11px;flex-wrap:wrap;}
 .cv-item.naopago{border-color:#F0A340;background:#FFFBF5;}
@@ -3784,6 +3786,13 @@ function renderCardFeriados() {
 // Card de vencimentos próximos: clientes que vencem nos próximos 5 dias.
 // Baseado no dia de vencimento (c.dia). Destaca quem ainda não pagou o mês.
 // Não mostra suspensos nem isentos. Só aparece para quem não é técnico.
+// Guarda a opção escolhida no seletor do card (padrão: a vencer)
+let _filtroVencimentos = 'avencer';
+function trocarFiltroVencimentos(v) {
+  _filtroVencimentos = v;
+  renderCardVencimentos();
+}
+
 function renderCardVencimentos() {
   const card = document.getElementById('cardVencimentos');
   if (!card) return;
@@ -3827,52 +3836,80 @@ function renderCardVencimentos() {
       // permanecendo no card até o pagamento acontecer.
       if (faltam > JANELA) return;
     }
-    proximos.push({ cliente: c, faltam, diaVenc, pago });
+    // Classifica: "vencido" = não pago e já passou do dia; senão "a vencer" (inclui pagos)
+    const grupo = (!pago && faltam < 0) ? 'vencido' : 'avencer';
+    proximos.push({ cliente: c, faltam, diaVenc, pago, grupo });
   });
 
+  // Contadores por grupo (para os rótulos do seletor)
+  const totalAvencer = proximos.filter(p => p.grupo === 'avencer').length;
+  const totalVencidos = proximos.filter(p => p.grupo === 'vencido').length;
+
+  // Se não há absolutamente nada, esconde o card inteiro
   if (!proximos.length) { card.classList.add('hidden'); return; }
   card.classList.remove('hidden');
 
+  // Aplica o filtro selecionado
+  let lista;
+  if (_filtroVencimentos === 'vencidos') lista = proximos.filter(p => p.grupo === 'vencido');
+  else if (_filtroVencimentos === 'todos') lista = proximos.slice();
+  else lista = proximos.filter(p => p.grupo === 'avencer'); // 'avencer' (padrão)
+
   // Ordena por data de vencimento: os que venceram há mais tempo primeiro
   // (faltam mais negativo = venceu há mais dias), depois os próximos a vencer.
-  proximos.sort((a, b) => a.faltam - b.faltam);
+  lista.sort((a, b) => a.faltam - b.faltam);
 
-  const naoPagos = proximos.filter(p => !p.pago).length;
+  const naoPagos = lista.filter(p => !p.pago).length;
 
-  const itens = proximos.map(p => {
-    const c = p.cliente;
-    let quando;
-    const atrasado = p.faltam < 0 && !p.pago;
-    if (atrasado) {
-      const diasAtraso = Math.abs(p.faltam);
-      quando = diasAtraso === 1 ? 'venceu ontem' : `venceu há ${diasAtraso}d`;
-    } else if (p.faltam === 0) {
-      quando = 'vence hoje!';
-    } else if (p.faltam === 1) {
-      quando = 'vence amanhã';
-    } else {
-      quando = `vence em ${p.faltam}d`;
-    }
-    const classeItem = !p.pago ? 'naopago' : '';
-    // Vermelho de destaque para vence hoje (não pago) e para atrasados
-    const classeHoje = ((p.faltam === 0 || atrasado) && !p.pago) ? 'venchoje' : '';
-    // Se já pagou, mostra tag "pago" no lugar do botão de cobrança
-    const acao = p.pago
-      ? `<span class="cv-pago-tag">✓ Pago</span>`
-      : `<button class="cv-btn-cob" onclick="gerarCobranca(${c.id})" title="Enviar cobrança por WhatsApp">💬 Cobrar</button>`;
-    return `
-      <div class="cv-item ${classeItem} ${classeHoje}">
-        <span class="cv-quando">${quando}</span>
-        <span class="cv-nome">${escapeHtml(c.nome)}</span>
-        <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
-        ${acao}
-      </div>`;
-  }).join('');
+  let itens;
+  if (!lista.length) {
+    const vazioMsg = _filtroVencimentos === 'vencidos'
+      ? 'Nenhum cliente vencido. 🎉'
+      : (_filtroVencimentos === 'todos' ? 'Nada por aqui.' : 'Nenhum vencimento próximo.');
+    itens = `<div class="cv-vazio">${vazioMsg}</div>`;
+  } else {
+    itens = lista.map(p => {
+      const c = p.cliente;
+      let quando;
+      const atrasado = p.faltam < 0 && !p.pago;
+      if (atrasado) {
+        const diasAtraso = Math.abs(p.faltam);
+        quando = diasAtraso === 1 ? 'venceu ontem' : `venceu há ${diasAtraso}d`;
+      } else if (p.faltam === 0) {
+        quando = 'vence hoje!';
+      } else if (p.faltam === 1) {
+        quando = 'vence amanhã';
+      } else {
+        quando = `vence em ${p.faltam}d`;
+      }
+      const classeItem = !p.pago ? 'naopago' : '';
+      // Vermelho de destaque para vence hoje (não pago) e para atrasados
+      const classeHoje = ((p.faltam === 0 || atrasado) && !p.pago) ? 'venchoje' : '';
+      // Se já pagou, mostra tag "pago" no lugar do botão de cobrança
+      const acao = p.pago
+        ? `<span class="cv-pago-tag">✓ Pago</span>`
+        : `<button class="cv-btn-cob" onclick="gerarCobranca(${c.id})" title="Enviar cobrança por WhatsApp">💬 Cobrar</button>`;
+      return `
+        <div class="cv-item ${classeItem} ${classeHoje}">
+          <span class="cv-quando">${quando}</span>
+          <span class="cv-nome">${escapeHtml(c.nome)}</span>
+          <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
+          ${acao}
+        </div>`;
+    }).join('');
+  }
+
+  const opt = (val, texto) => `<option value="${val}" ${_filtroVencimentos===val?'selected':''}>${texto}</option>`;
 
   card.innerHTML = `
     <div class="cv-topo">
       <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
       ${naoPagos > 0 ? `<span class="cv-contador">${naoPagos} a cobrar</span>` : ''}
+      <select class="cv-seletor" onchange="trocarFiltroVencimentos(this.value)">
+        ${opt('avencer', `A vencer (${totalAvencer})`)}
+        ${opt('vencidos', `Vencidos (${totalVencidos})`)}
+        ${opt('todos', `Todos (${proximos.length})`)}
+      </select>
     </div>
     <div class="cv-lista">${itens}</div>`;
 }
