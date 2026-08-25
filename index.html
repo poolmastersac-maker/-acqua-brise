@@ -5710,6 +5710,9 @@ async function gerarPedido() {
   salvarPedidos();
 
   // Remover as necessidades que foram incluídas nos pedidos
+  // Marca como excluídas para o polling não as ressuscitar durante a propagação.
+  window._necessidadesExcluidas = window._necessidadesExcluidas || new Set();
+  idsUsados.forEach(id => window._necessidadesExcluidas.add(String(id)));
   necessidades = necessidades.filter(n => !idsUsados.has(n.id));
   salvarNecessidades();
 
@@ -5732,6 +5735,10 @@ async function gerarPedido() {
   } else {
     fbSave('pedidos');
   }
+  // Libera as marcas de exclusão após um tempo (deletes já propagaram)
+  setTimeout(() => {
+    idsUsados.forEach(id => window._necessidadesExcluidas.delete(String(id)));
+  }, 60000);
 }
 
 let _subTabAtiva = 'todos'; // gestor começa no consolidado
@@ -6606,15 +6613,22 @@ function gerarPedidoDoModal() {
 
 
 function toggleNec(id,campo) { const n=necessidades.find(x=>x.id===id); if(n){n[campo]=!n[campo];salvarNecessidades(); if(window.fbSetDoc) window.fbSetDoc('necessidades', String(n.id), n); else fbSave('necessidades');} }
-function excluirNec(id) {
+// IDs de necessidades recém-excluídas — impede que o polling as ressuscite
+// enquanto a exclusão no Firebase ainda está propagando.
+window._necessidadesExcluidas = window._necessidadesExcluidas || new Set();
+
+async function excluirNec(id) {
+  window._necessidadesExcluidas.add(String(id));
   necessidades = necessidades.filter(x => x.id !== id);
   salvarNecessidades();
   renderNecessidades();
   showToast('Removida', 'info');
-  // Deletar do Firebase — não chamar fbSync depois para evitar recriar a necessidade
+  // Deletar do Firebase e aguardar (evita corrida com o polling)
   if (window.fbDeleteDoc) {
-    window.fbDeleteDoc('necessidades', id);
+    await window.fbDeleteDoc('necessidades', id);
   }
+  // Mantém a marca por um tempo para cobrir pollings em andamento
+  setTimeout(() => { window._necessidadesExcluidas.delete(String(id)); }, 60000);
 }
 
 // CONFIGURAÇÕES
@@ -7966,11 +7980,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
     try {
       // Helper de merge: Firebase como base + registros locais ainda não sincronizados.
       // Evita perder dados criados offline (antes eram sobrescritos e se perdiam).
-      const mesclarPorId = (dadosFirebase, lsKey, chaveId) => {
+      const mesclarPorId = (dadosFirebase, lsKey, chaveId, excluidos) => {
+        const exc = excluidos || new Set();
+        const fbFiltrado = dadosFirebase.filter(x => !exc.has(String(chaveId(x))));
         const locais = JSON.parse(localStorage.getItem(lsKey) || '[]');
-        const idsFb = new Set(dadosFirebase.map(x => String(chaveId(x))));
-        const soLocais = locais.filter(x => !idsFb.has(String(chaveId(x))));
-        return [...dadosFirebase, ...soLocais];
+        const idsFb = new Set(fbFiltrado.map(x => String(chaveId(x))));
+        const soLocais = locais.filter(x => !idsFb.has(String(chaveId(x))) && !exc.has(String(chaveId(x))));
+        return [...fbFiltrado, ...soLocais];
       };
 
       // CLIENTES
@@ -8008,7 +8024,8 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const snapN = await getDocs(collection(db, 'necessidades'));
       if (!snapN.empty) {
         const dados = snapN.docs.map(d => d.data());
-        const mesclado = mesclarPorId(dados, 'aquagest_necessidades', n => n.id);
+        const excluidasNec = window._necessidadesExcluidas || new Set();
+        const mesclado = mesclarPorId(dados, 'aquagest_necessidades', n => n.id, excluidasNec);
         localStorage.setItem('aquagest_necessidades', JSON.stringify(mesclado));
         if (typeof necessidades !== 'undefined') { necessidades = mesclado; }
       }
