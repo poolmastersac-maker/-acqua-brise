@@ -134,6 +134,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .cv-quando{font-size:0.72rem;font-weight:800;color:#B5721A;white-space:nowrap;min-width:74px;}
 .cv-item.venchoje .cv-quando{color:#DC2626;}
 .cv-nome{font-size:0.82rem;font-weight:600;color:var(--text);flex:1;min-width:120px;}
+.cv-data{font-size:0.75rem;font-weight:600;color:var(--muted);white-space:nowrap;}
 .cv-valor{font-size:0.8rem;font-weight:700;color:var(--accent2);white-space:nowrap;}
 .cv-pago-tag{font-size:0.66rem;font-weight:700;color:#059669;background:#ECFDF5;border-radius:20px;padding:1px 8px;white-space:nowrap;}
 .cv-btn-cob{background:#25D366;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:0.74rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:0.2s;}
@@ -2264,6 +2265,7 @@ function renderCardVencimentos() {
         <div class="cv-item ${classeItem} ${classeHoje}">
           <span class="cv-quando">${quando}</span>
           <span class="cv-nome">${escapeHtml(c.nome)}</span>
+          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(mesAtual+1).padStart(2,'0')}</span>
           <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
           ${acao}
         </div>`;
