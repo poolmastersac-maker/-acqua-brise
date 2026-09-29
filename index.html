@@ -4269,8 +4269,41 @@ async function enviarParaConsolidado() {
   }
 }
 
+// Preço de venda atual do produto no Estoque (0 se não achar / sem preço)
+function precoEstoqueDoItem(item) {
+  // Tenta por id, código e nome; usa o primeiro que tiver preço
+  const candidatos = [
+    produtos.find(x => Number(x.id) === Number(item.produtoId)),
+    item.codigoProduto ? produtos.find(x => String(x.codigo) === String(item.codigoProduto)) : null,
+    produtos.find(x => x.nome === item.produto)
+  ];
+  for (const prod of candidatos) { if (prod && Number(prod.valor) > 0) return Number(prod.valor); }
+  return 0;
+}
+// Itens de pedido gerados sem preço (produto estava sem valor no Estoque)
+// recebem o preço atual do Estoque e ficam salvos no pedido.
+// Itens que já têm preço NÃO são alterados.
+function preencherPrecosFaltantes() {
+  const alterados = [];
+  (pedidos || []).forEach(ped => {
+    let mudou = false;
+    (ped.itens || []).forEach(item => {
+      if (Number(item.valorUnit) > 0) return;
+      const v = precoEstoqueDoItem(item);
+      if (v > 0) { item.valorUnit = v; mudou = true; }
+    });
+    if (mudou) alterados.push(ped);
+  });
+  if (alterados.length) {
+    salvarPedidos();
+    if (window.fbSetDoc) alterados.forEach(ped => window.fbSetDoc('pedidos', String(ped.id), ped));
+  }
+  return alterados.length;
+}
+
 function renderPedidos() {
   const container = document.getElementById('pedidosBody');
+  preencherPrecosFaltantes();
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
 
@@ -4418,7 +4451,7 @@ function renderPedidos() {
               ${item.cliente ? `<div style="font-size:0.75rem;color:var(--muted);">Cliente: ${item.cliente}</div>` : ''}
               ${item.obs ? `<div style="font-size:0.75rem;color:var(--muted);font-style:italic;">${item.obs}</div>` : ''}
             </div>
-            ${isTecnico ? '' : `<span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '—'}</span>`}
+            ${isTecnico ? '' : `<span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '<span style="color:var(--red);font-weight:600;font-size:0.8rem;" title="Cadastre o preço de venda deste produto no Estoque">⚠ sem preço</span>'}</span>`}
           </div>`).join('')}
 
       </div>
@@ -4541,6 +4574,7 @@ function verificarVendaConcluida(ped) {
     showToast('Este pedido foi excluído em outro aparelho.', 'info');
     return;
   }
+  preencherPrecosFaltantes(); // venda registra o preço certo
 
   const agora = new Date().toISOString();
   const cliente = (() => {
@@ -4674,7 +4708,7 @@ function filtrarVendasConcluidas() {
     const produtos = (v.itens||[]).filter(i=>i.produto&&i.produto!=='—').map(i => `
       <div class="pedido-item">
         <div><span class="pedido-item-nome">${i.produto}</span><span class="pedido-item-qtd">x${i.qtd}</span></div>
-        <span class="pedido-item-valor">${i.valorUnit>0?'R$ '+Number(i.valorUnit*i.qtd).toFixed(2):'—'}</span>
+        <span class="pedido-item-valor">${i.valorUnit>0?'R$ '+Number(i.valorUnit*i.qtd).toFixed(2):'<span style="color:var(--red);font-weight:600;font-size:0.8rem;" title="Cadastre o preço de venda deste produto no Estoque">⚠ sem preço</span>'}</span>
       </div>`).join('');
 
     const diasPassados = (agora - new Date(v.dataConclusao).getTime()) / (1000*60*60*24);
@@ -4781,10 +4815,10 @@ function enviarPedidoWhatsApp(id) {
 
   // Sempre busca o valor atual do estoque — preço do estoque tem prioridade
   // Fallback por nome caso o produtoId não bata (produtos editados geram novo id)
+  // Se o produto estiver sem preço no Estoque, usa o valor já salvo no pedido.
   const itensComValor = ped.itens.map(item => {
-    const prod = produtos.find(x => x.id === Number(item.produtoId))
-               || produtos.find(x => x.nome === item.produto);
-    const valorAtual = Number(prod?.valor || 0);
+    const valorEstoque = precoEstoqueDoItem(item);
+    const valorAtual = valorEstoque > 0 ? valorEstoque : Number(item.valorUnit || 0);
     return { ...item, valorUnit: valorAtual };
   });
   const total = itensComValor.reduce((s, i) => s + (i.valorUnit * i.qtd), 0);
@@ -4814,7 +4848,12 @@ function enviarPedidoWhatsApp(id) {
   // Marcar como enviado
   const idPedido = id;
   const idx = pedidos.findIndex(x => x.id === idPedido);
-  if (idx >= 0) { pedidos[idx].status = 'enviado'; salvarPedidos(); renderPedidos(); }
+  if (idx >= 0) {
+    pedidos[idx].status = 'enviado';
+    // Grava no pedido os mesmos preços enviados ao cliente (pedido = mensagem)
+    pedidos[idx].itens = pedidos[idx].itens.map((it, i) => ({ ...it, valorUnit: itensComValor[i].valorUnit }));
+    salvarPedidos(); renderPedidos();
+  }
   showToast('✓ Pedido enviado!', 'success');
   fbSave('pedidos');
 
@@ -6641,7 +6680,11 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!snapP.empty) {
         const dados = snapP.docs.map(d => d.data());
         if (dados.length > 0) {
-          const mesclado = mesclarPorId(dados, 'aquagest_produtos', p => p.id, null, 'produtos');
+          let mesclado = mesclarPorId(dados, 'aquagest_produtos', p => p.id, null, 'produtos');
+          // Produtos-modelo de fábrica (ids 9001–9008, sem preço) que só existem neste
+          // aparelho não são produtos reais: descartar (antes geravam pedidos sem preço)
+          const idsFbProd = new Set(dados.map(p => String(p.id)));
+          mesclado = mesclado.filter(p => !(Number(p.id) >= 9001 && Number(p.id) <= 9008 && !idsFbProd.has(String(p.id))));
           localStorage.setItem('aquagest_produtos', JSON.stringify(mesclado));
           if (typeof produtos !== 'undefined') { produtos = mesclado; }
         }
