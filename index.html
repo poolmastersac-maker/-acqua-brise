@@ -5341,7 +5341,9 @@ function fazerBackupCompleto() {
     usuarios: JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]'),
     permissoes: JSON.parse(localStorage.getItem('aquagest_permissoes') || '{}'),
     chavesPix: JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}'),
-    lembretes: JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]')
+    lembretes: JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]'),
+    vendasConcluidas: JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]'),
+    pedidoFornecedor: JSON.parse(localStorage.getItem('aquagest_pedido_fornecedor') || 'null')
   };
   
   const json = JSON.stringify(backup, null, 2);
@@ -5489,6 +5491,9 @@ function lerArquivoBackup(event) {
       if (backup.permissoes) localStorage.setItem('aquagest_permissoes', JSON.stringify(backup.permissoes));
       if (backup.chavesPix) localStorage.setItem('aquagest_chaves_pix', JSON.stringify(backup.chavesPix));
       if (backup.lembretes) { localStorage.setItem('aquagest_lembretes', JSON.stringify(backup.lembretes)); lembretes = backup.lembretes; }
+      // Backups antigos não têm estes campos: só restaura se existirem (não apaga nada)
+      if (Array.isArray(backup.vendasConcluidas)) { localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(backup.vendasConcluidas)); vendasConcluidas = backup.vendasConcluidas; }
+      if (backup.pedidoFornecedor) localStorage.setItem('aquagest_pedido_fornecedor', JSON.stringify(backup.pedidoFornecedor));
       
       // Recarregar dados na memória
       clientes = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
