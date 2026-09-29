@@ -4534,6 +4534,13 @@ function togglePedidoPago(id, checkbox) {
 // concluída: sai da lista de pedidos e vai para vendasConcluidas.
 function verificarVendaConcluida(ped) {
   if (!ped || !ped.entregue || !ped.pago) return; // precisa dos DOIS
+  // Pedido que já foi excluído em outro aparelho: não virar venda
+  if (window.estaExcluido && window.estaExcluido('pedidos', ped.id)) {
+    pedidos = pedidos.filter(p => String(p.id) !== String(ped.id));
+    salvarPedidos(); renderPedidos();
+    showToast('Este pedido foi excluído em outro aparelho.', 'info');
+    return;
+  }
 
   const agora = new Date().toISOString();
   const cliente = (() => {
@@ -4565,6 +4572,8 @@ function verificarVendaConcluida(ped) {
   if (!vendasConcluidas.find(v => String(v.id) === String(venda.id))) {
     vendasConcluidas.push(venda);
     salvarVendasConcluidas();
+    // Se essa venda já tinha sido desfeita antes, retira a marca de exclusão
+    if (window.fbReativar) window.fbReativar('vendasConcluidas', venda.id);
     if (window.fbSetDoc) window.fbSetDoc('vendasConcluidas', String(venda.id), venda);
   }
 
@@ -4733,6 +4742,8 @@ function desfazerVenda(id) {
     entregue: false,
     pago: false
   };
+  // O pedido volta com o mesmo ID: retira a marca de exclusão antes de gravar
+  if (window.fbReativar) window.fbReativar('pedidos', pedido.id);
   pedidos.push(pedido);
   salvarPedidos();
   if (window.fbSetDoc) window.fbSetDoc('pedidos', String(pedido.id), pedido);
@@ -5504,6 +5515,20 @@ function lerArquivoBackup(event) {
       usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || '[]');
       chavesPix = JSON.parse(localStorage.getItem('aquagest_chaves_pix') || '{}');
       
+      // Itens do backup voltam a valer: retira-os da lista de exclusões
+      if (window.fbReativar && window.estaExcluido) {
+        const reativar = (colecao, lista, chave) => (Array.isArray(lista) ? lista : []).forEach(x => {
+          const k = chave(x); if (window.estaExcluido(colecao, k)) window.fbReativar(colecao, k);
+        });
+        reativar('clientes', backup.clientes, c => c.id);
+        reativar('historico', backup.historico, h => `${h.clienteId}_${h.ano}_${h.mes}`);
+        reativar('produtos', backup.produtos, p => p.id);
+        reativar('necessidades', backup.necessidades, n => n.id);
+        reativar('pedidos', backup.pedidos, p => p.id);
+        reativar('usuarios', backup.usuarios, u => u.id);
+        reativar('lembretes', backup.lembretes, l => l.id);
+        reativar('vendasConcluidas', backup.vendasConcluidas, v => v.id);
+      }
       showToast(`✓ Backup restaurado! ${backup.clientes.length} clientes carregados.`, 'success');
       renderDashboard();
       atualizarStats();
@@ -6215,7 +6240,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-  import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAtn8uAazSzISsp_C91YXQzwJKdy6fZPII",
@@ -6240,6 +6265,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // ESCREVER no Firebase — chamado via fbSyncRequest
   async function syncToFirebase() {
     try {
+      try { if (await carregarExclusoes(false)) aplicarExclusoesLocais(); } catch(e) {}
       const clientes   = JSON.parse(localStorage.getItem('aquagest_clientes')     || '[]');
       const historico  = JSON.parse(localStorage.getItem('aquagest_historico')    || '[]');
       const produtos   = JSON.parse(localStorage.getItem('aquagest_produtos')     || '[]');
@@ -6251,12 +6277,13 @@ window.addEventListener('resize', ajustarOffsetHeader);
       // Remove undefined recursivamente — Firestore os rejeita e pendura a escrita
       const limpar = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v));
 
-      for (const c of clientes)    await setDoc(doc(db,'clientes',String(c.id)), limpar(c));
-      for (const h of historico)   await setDoc(doc(db,'historico',`${h.clienteId}_${h.ano}_${h.mes}`), limpar(h));
-      for (const p of produtos)    await setDoc(doc(db,'produtos',String(p.id)), limpar(p));
-      for (const n of necessidades) await setDoc(doc(db,'necessidades',String(n.id)), limpar(n));
-      for (const p2 of pedidos)    await setDoc(doc(db,'pedidos',String(p2.id)), limpar(p2));
-      for (const u of usuarios)    await setDoc(doc(db,'usuarios',String(u.id)), limpar(u));
+      const ex = window.estaExcluido;
+      for (const c of clientes)    if (!ex('clientes', c.id)) await setDoc(doc(db,'clientes',String(c.id)), limpar(c));
+      for (const h of historico)   { const k = `${h.clienteId}_${h.ano}_${h.mes}`; if (!ex('historico', k)) await setDoc(doc(db,'historico',k), limpar(h)); }
+      for (const p of produtos)    if (!ex('produtos', p.id)) await setDoc(doc(db,'produtos',String(p.id)), limpar(p));
+      for (const n of necessidades) if (!ex('necessidades', n.id)) await setDoc(doc(db,'necessidades',String(n.id)), limpar(n));
+      for (const p2 of pedidos)    if (!ex('pedidos', p2.id)) await setDoc(doc(db,'pedidos',String(p2.id)), limpar(p2));
+      for (const u of usuarios)    if (!ex('usuarios', u.id)) await setDoc(doc(db,'usuarios',String(u.id)), limpar(u));
       await setDoc(doc(db,'config','permissoes'), limpar({...permissoes, _versao: window._permissoesVersao || '3.0'}));
 
       setBadge(true);
@@ -6291,6 +6318,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
 
   // Expor função de set para uso direto no JS principal
   window.fbSetDoc = async function(colecao, id, dados) {
+    if (window.estaExcluido && window.estaExcluido(colecao, id)) return false; // excluído: não regravar
     try {
       // Sanitizar: Firestore rejeita valores undefined e pendura a promise.
       // Remove recursivamente qualquer undefined antes de salvar.
@@ -6303,8 +6331,146 @@ window.addEventListener('resize', ajustarOffsetHeader);
     }
   };
 
-  // Expor função de delete para uso no JS principal
+  // ============================================================
+  // REGISTRO DE EXCLUSÕES (anti-ressurreição)
+  // Toda exclusão vira um documento na coleção 'exclusoes'
+  // (ex.: 'pedidos_123'). Todos os aparelhos leem essa lista e
+  // NUNCA regravam nem exibem o que está nela. Resolve registros
+  // excluídos que voltavam porque outro aparelho ainda tinha a
+  // cópia local e a regravava no Firebase.
+  // Reativar (desfazer venda, restaurar backup) grava ativo:false.
+  // ============================================================
+  const LS_EXC = 'aquagest_exclusoes';
+  const LS_EXC_PEND = 'aquagest_exclusoes_pendentes';
+  const chaveExc = (colecao, id) => colecao + ':' + String(id);
+  const docIdExc = (colecao, id) => colecao + '_' + String(id);
+  window._exclusoes = new Set(JSON.parse(localStorage.getItem(LS_EXC) || '[]'));
+  window._exclusoesUltimoTs = 0;
+  const persistirExc = () => localStorage.setItem(LS_EXC, JSON.stringify([...window._exclusoes]));
+  window.estaExcluido = (colecao, id) => window._exclusoes.has(chaveExc(colecao, id));
+
+  // Última ação feita NESTE aparelho para cada item (registrar/reativar).
+  // Uma leitura do Firebase mais antiga que ela não pode desfazê-la.
+  const opsLocais = {};
+  async function gravarExclusao(colecao, id, ativo, ts) {
+    const reg = { colecao, id: String(id), ts: ts || Date.now(), data: new Date().toISOString(),
+      usuario: (typeof usuarioLogado !== 'undefined' && usuarioLogado) ? (usuarioLogado.usuario || '') : '' };
+    if (!ativo) reg.ativo = false;
+    try {
+      await setDoc(doc(db, 'exclusoes', docIdExc(colecao, id)), reg);
+      return true;
+    } catch(e) {
+      // Sem conexão / regra bloqueando: guarda para reenviar no próximo carregamento
+      console.error('Erro ao registrar exclusão:', e);
+      const pend = JSON.parse(localStorage.getItem(LS_EXC_PEND) || '[]')
+        .filter(x => !(x.colecao === colecao && String(x.id) === String(id)));
+      pend.push({ colecao, id: String(id), ativo: !!ativo });
+      localStorage.setItem(LS_EXC_PEND, JSON.stringify(pend));
+      return false;
+    }
+  }
+  window.fbRegistrarExclusao = function(colecao, id) {
+    const k = chaveExc(colecao, id), ts = Date.now();
+    opsLocais[k] = ts;
+    window._exclusoes.add(k); persistirExc();
+    return gravarExclusao(colecao, id, true, ts);
+  };
+  window.fbReativar = function(colecao, id) {
+    const k = chaveExc(colecao, id);
+    if (!window._exclusoes.has(k)) return Promise.resolve(true);
+    const ts = Date.now();
+    opsLocais[k] = ts;
+    window._exclusoes.delete(k); persistirExc();
+    return gravarExclusao(colecao, id, false, ts);
+  };
+
+  // Lê a coleção 'exclusoes'. completo=true: lista inteira (fonte da verdade).
+  // completo=false: só registros recentes (usado no polling, economiza leituras).
+  // Retorna true se chegou alguma exclusão nova.
+  async function carregarExclusoes(completo) {
+    const antes = window._exclusoes.size;
+    let snap;
+    if (!completo && window._exclusoesUltimoTs) {
+      // margem de 10 min cobre relógios levemente diferentes entre aparelhos
+      snap = await getDocs(query(collection(db, 'exclusoes'), where('ts', '>', window._exclusoesUltimoTs - 600000)));
+    } else {
+      snap = await getDocs(collection(db, 'exclusoes'));
+    }
+    const conj = completo ? new Set() : window._exclusoes;
+    let novas = false;
+    snap.docs.forEach(d => {
+      const x = d.data();
+      if (!x || !x.colecao || x.id === undefined) return;
+      const k = chaveExc(x.colecao, x.id);
+      if (Number(x.ts) > window._exclusoesUltimoTs) window._exclusoesUltimoTs = Number(x.ts);
+      // Ação local mais recente prevalece sobre leitura antiga do Firebase
+      if (opsLocais[k] && opsLocais[k] > Number(x.ts || 0)) {
+        if (window._exclusoes.has(k)) conj.add(k); else conj.delete(k);
+        return;
+      }
+      if (x.ativo === false) conj.delete(k);
+      else { if (!window._exclusoes.has(k)) novas = true; conj.add(k); }
+    });
+    // Ações locais feitas durante a leitura continuam valendo
+    for (const k in opsLocais) { if (window._exclusoes.has(k)) conj.add(k); else conj.delete(k); }
+    // Aplicar e reenviar o que ficou pendente neste aparelho
+    const pend = JSON.parse(localStorage.getItem(LS_EXC_PEND) || '[]');
+    if (pend.length) {
+      localStorage.setItem(LS_EXC_PEND, '[]');
+      for (const x of pend) {
+        const k = chaveExc(x.colecao, x.id);
+        if (x.ativo) conj.add(k); else conj.delete(k);
+        await gravarExclusao(x.colecao, x.id, x.ativo);
+      }
+    }
+    window._exclusoes = conj;
+    persistirExc();
+    return novas || (completo && window._exclusoes.size !== antes);
+  }
+
+  // Remove das cópias locais (e da memória) tudo que está na lista de exclusões
+  const MAPA_LOCAL = {
+    clientes:         { ls: 'aquagest_clientes',          id: c => c.id },
+    historico:        { ls: 'aquagest_historico',         id: h => `${h.clienteId}_${h.ano}_${h.mes}` },
+    produtos:         { ls: 'aquagest_produtos',          id: p => p.id },
+    necessidades:     { ls: 'aquagest_necessidades',      id: n => n.id },
+    pedidos:          { ls: 'aquagest_pedidos',           id: p => p.id },
+    vendasConcluidas: { ls: 'aquagest_vendas_concluidas', id: v => v.id },
+    lembretes:        { ls: 'aquagest_lembretes',         id: l => l.id },
+    usuarios:         { ls: 'aquagest_usuarios',          id: u => u.id },
+  };
+  function atribuirGlobal(colecao, lista) {
+    switch (colecao) {
+      case 'clientes':         if (typeof clientes !== 'undefined') clientes = lista; break;
+      case 'historico':        if (typeof historico !== 'undefined') historico = lista; break;
+      case 'produtos':         if (typeof produtos !== 'undefined') produtos = lista; break;
+      case 'necessidades':     if (typeof necessidades !== 'undefined') necessidades = lista; break;
+      case 'pedidos':          if (typeof pedidos !== 'undefined') pedidos = lista; break;
+      case 'vendasConcluidas': if (typeof vendasConcluidas !== 'undefined') vendasConcluidas = lista; break;
+      case 'lembretes':        if (typeof lembretes !== 'undefined') lembretes = lista; break;
+      case 'usuarios':         if (typeof usuarios !== 'undefined') usuarios = lista; break;
+    }
+  }
+  function aplicarExclusoesLocais() {
+    let mudou = false;
+    for (const colecao in MAPA_LOCAL) {
+      const cfg = MAPA_LOCAL[colecao];
+      const lista = JSON.parse(localStorage.getItem(cfg.ls) || '[]');
+      if (!Array.isArray(lista)) continue;
+      const filtrada = lista.filter(x => !window.estaExcluido(colecao, cfg.id(x)));
+      if (filtrada.length !== lista.length) {
+        localStorage.setItem(cfg.ls, JSON.stringify(filtrada));
+        atribuirGlobal(colecao, filtrada);
+        mudou = true;
+      }
+    }
+    return mudou;
+  }
+
+  // Expor função de delete para uso no JS principal.
+  // Toda exclusão é registrada na lista de exclusões ANTES de apagar.
   window.fbDeleteDoc = async function(colecao, id) {
+    window.fbRegistrarExclusao(colecao, id);
     try {
       await deleteDoc(doc(db, colecao, String(id)));
     } catch(e) {
@@ -6333,8 +6499,11 @@ window.addEventListener('resize', ajustarOffsetHeader);
       };
       const cfg = mapaChaves[colecao];
       if (!cfg) { console.warn('fbSaveCollection: coleção desconhecida', colecao); return false; }
+      // Confere exclusões recentes de outros aparelhos antes de gravar
+      try { if (await carregarExclusoes(false)) aplicarExclusoesLocais(); } catch(e) {}
       const lista = JSON.parse(localStorage.getItem(cfg.ls) || '[]');
       for (const item of lista) {
+        if (window.estaExcluido(colecao, cfg.id(item))) continue; // excluído: não regravar
         // Remover campos internos (prefixo _) que não devem ir ao Firebase
         const semInternos = {};
         for (const chave in item) { if (!chave.startsWith('_')) semInternos[chave] = item[chave]; }
@@ -6389,6 +6558,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
   window.fbSalvarHistorico = async function(registros) {
     try {
       for (const h of registros) {
+        if (window.estaExcluido('historico', `${h.clienteId}_${h.ano}_${h.mes}`)) continue;
         await setDoc(doc(db, 'historico', `${h.clienteId}_${h.ano}_${h.mes}`), h);
       }
       setBadge(true);
@@ -6401,14 +6571,33 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // LER do Firebase — Firebase é fonte principal
   async function carregarDoFirebase() {
     try {
+      // LISTA DE EXCLUSÕES — carregar ANTES de tudo (fonte da verdade do que foi apagado)
+      let exclusoesOk = false;
+      try { await carregarExclusoes(true); exclusoesOk = true; }
+      catch(e) { console.error('Erro ao carregar exclusões (usando cópia local):', e); }
+
+      // Apaga do Firebase documentos que estão na lista de exclusões
+      // (registros "fantasmas" regravados por aparelhos com versão antiga)
+      const limparFantasmas = (colecao, docs, chaveId) => {
+        if (!exclusoesOk) return;
+        docs.forEach(x => {
+          const k = String(chaveId(x));
+          if (window.estaExcluido(colecao, k)) deleteDoc(doc(db, colecao, k)).catch(() => {});
+        });
+      };
+      const naoExcluido = (colecao, chaveId) => x => !window.estaExcluido(colecao, chaveId(x));
+
       // Helper de merge: Firebase como base + registros locais ainda não sincronizados.
       // Evita perder dados criados offline (antes eram sobrescritos e se perdiam).
-      const mesclarPorId = (dadosFirebase, lsKey, chaveId, excluidos) => {
+      // Tudo que está na lista de exclusões é descartado dos dois lados.
+      const mesclarPorId = (dadosFirebase, lsKey, chaveId, excluidos, colecao) => {
         const exc = excluidos || new Set();
-        const fbFiltrado = dadosFirebase.filter(x => !exc.has(String(chaveId(x))));
+        const ok = x => !exc.has(String(chaveId(x))) && !(colecao && window.estaExcluido(colecao, chaveId(x)));
+        if (colecao) limparFantasmas(colecao, dadosFirebase, chaveId);
+        const fbFiltrado = dadosFirebase.filter(ok);
         const locais = JSON.parse(localStorage.getItem(lsKey) || '[]');
         const idsFb = new Set(fbFiltrado.map(x => String(chaveId(x))));
-        const soLocais = locais.filter(x => !idsFb.has(String(chaveId(x))) && !exc.has(String(chaveId(x))));
+        const soLocais = locais.filter(x => !idsFb.has(String(chaveId(x))) && ok(x));
         return [...fbFiltrado, ...soLocais];
       };
 
@@ -6432,7 +6621,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
             }
             return cFb;
           });
-          const mesclado = mesclarPorId(dadosAjustados, 'aquagest_clientes', c => c.id);
+          const mesclado = mesclarPorId(dadosAjustados, 'aquagest_clientes', c => c.id, null, 'clientes');
           localStorage.setItem('aquagest_clientes', JSON.stringify(mesclado));
           if (typeof clientes !== 'undefined') { clientes = mesclado; }
         }
@@ -6442,7 +6631,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
       const snapH = await getDocs(collection(db, 'historico'));
       if (!snapH.empty) {
         const dados = snapH.docs.map(d => d.data());
-        const mesclado = mesclarPorId(dados, 'aquagest_historico', h => `${h.clienteId}_${h.ano}_${h.mes}`);
+        const mesclado = mesclarPorId(dados, 'aquagest_historico', h => `${h.clienteId}_${h.ano}_${h.mes}`, null, 'historico');
         localStorage.setItem('aquagest_historico', JSON.stringify(mesclado));
         if (typeof historico !== 'undefined') { historico = mesclado; }
       }
@@ -6452,7 +6641,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!snapP.empty) {
         const dados = snapP.docs.map(d => d.data());
         if (dados.length > 0) {
-          const mesclado = mesclarPorId(dados, 'aquagest_produtos', p => p.id);
+          const mesclado = mesclarPorId(dados, 'aquagest_produtos', p => p.id, null, 'produtos');
           localStorage.setItem('aquagest_produtos', JSON.stringify(mesclado));
           if (typeof produtos !== 'undefined') { produtos = mesclado; }
         }
@@ -6463,23 +6652,26 @@ window.addEventListener('resize', ajustarOffsetHeader);
       if (!snapN.empty) {
         const dados = snapN.docs.map(d => d.data());
         const excluidasNec = window._necessidadesExcluidas || new Set();
-        const mesclado = mesclarPorId(dados, 'aquagest_necessidades', n => n.id, excluidasNec);
+        const mesclado = mesclarPorId(dados, 'aquagest_necessidades', n => n.id, excluidasNec, 'necessidades');
         localStorage.setItem('aquagest_necessidades', JSON.stringify(mesclado));
         if (typeof necessidades !== 'undefined') { necessidades = mesclado; }
       }
 
       // PEDIDOS — mesclar Firebase com local para não perder pedidos recém criados
+      // (processa mesmo com o Firebase vazio, para limpar cópias locais excluídas)
       const snapPed = await getDocs(collection(db, 'pedidos'));
-      if (!snapPed.empty) {
+      {
         const excluidosP = window._pedidosExcluidos || new Set();
         // Não ressuscitar pedidos que já viraram venda concluída
         const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
-        const dadosFirebase = snapPed.docs.map(d => d.data())
-          .filter(p => !excluidosP.has(String(p.id)) && !vendasIds.has(String(p.id)));
+        const brutosFb = snapPed.docs.map(d => d.data());
+        limparFantasmas('pedidos', brutosFb, p => p.id);
+        const dadosFirebase = brutosFb
+          .filter(p => !excluidosP.has(String(p.id)) && !vendasIds.has(String(p.id)) && !window.estaExcluido('pedidos', p.id));
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
         const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
         const pedidosApenasLocais = dadosLocais.filter(p =>
-          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosP.has(String(p.id))
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosP.has(String(p.id)) && !window.estaExcluido('pedidos', p.id)
         );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
         localStorage.setItem('aquagest_pedidos', JSON.stringify(dadosMesclados));
@@ -6490,10 +6682,12 @@ window.addEventListener('resize', ajustarOffsetHeader);
       // VENDAS CONCLUÍDAS — mesclar Firebase com local
       const snapVC = await getDocs(collection(db, 'vendasConcluidas'));
       if (!snapVC.empty) {
-        const dadosFirebase = snapVC.docs.map(d => d.data());
+        const brutosVC = snapVC.docs.map(d => d.data());
+        limparFantasmas('vendasConcluidas', brutosVC, v => v.id);
+        const dadosFirebase = brutosVC.filter(naoExcluido('vendasConcluidas', v => v.id));
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]');
         const idsFirebase = new Set(dadosFirebase.map(v => String(v.id)));
-        const apenasLocais = dadosLocais.filter(v => !idsFirebase.has(String(v.id)));
+        const apenasLocais = dadosLocais.filter(v => !idsFirebase.has(String(v.id)) && !window.estaExcluido('vendasConcluidas', v.id));
         const mesclados = [...dadosFirebase, ...apenasLocais];
         localStorage.setItem('aquagest_vendas_concluidas', JSON.stringify(mesclados));
         if (typeof vendasConcluidas !== 'undefined') { vendasConcluidas = mesclados; }
@@ -6501,10 +6695,12 @@ window.addEventListener('resize', ajustarOffsetHeader);
 
       // LEMBRETES — Firebase é a fonte compartilhada (técnicos e gestor)
       const snapLem = await getDocs(collection(db, 'lembretes'));
-      const dadosFbLem = snapLem.empty ? [] : snapLem.docs.map(d => d.data());
+      const brutosLem = snapLem.empty ? [] : snapLem.docs.map(d => d.data());
+      limparFantasmas('lembretes', brutosLem, l => l.id);
+      const dadosFbLem = brutosLem.filter(naoExcluido('lembretes', l => l.id));
       const dadosLocaisLem = JSON.parse(localStorage.getItem('aquagest_lembretes') || '[]');
       const idsFbLem = new Set(dadosFbLem.map(l => String(l.id)));
-      const apenasLocaisLem = dadosLocaisLem.filter(l => !idsFbLem.has(String(l.id)));
+      const apenasLocaisLem = dadosLocaisLem.filter(l => !idsFbLem.has(String(l.id)) && !window.estaExcluido('lembretes', l.id));
       const mescladosLem = [...dadosFbLem, ...apenasLocaisLem];
       localStorage.setItem('aquagest_lembretes', JSON.stringify(mescladosLem));
       if (typeof lembretes !== 'undefined') { lembretes = mescladosLem; }
@@ -6513,7 +6709,9 @@ window.addEventListener('resize', ajustarOffsetHeader);
       // USUÁRIOS — sempre sobrescreve para garantir senhas atualizadas
       const snapU = await getDocs(collection(db, 'usuarios'));
       if (!snapU.empty) {
-        const dados = snapU.docs.map(d => d.data());
+        const brutosU = snapU.docs.map(d => d.data());
+        limparFantasmas('usuarios', brutosU, u => u.id);
+        const dados = brutosU.filter(naoExcluido('usuarios', u => u.id));
         if (dados.length > 0) {
           localStorage.setItem('aquagest_usuarios', JSON.stringify(dados));
           if (typeof usuarios !== 'undefined') { usuarios = dados; }
@@ -6554,6 +6752,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
         }
       }
 
+      aplicarExclusoesLocais();
       setBadge(true);
 
       // Atualizar tela se usuário já estiver logado
@@ -6574,19 +6773,28 @@ window.addEventListener('resize', ajustarOffsetHeader);
   // Polling a cada 15 segundos para gestor ver pedidos consolidados em tempo real
   setInterval(async () => {
     try {
+      // Novas exclusões feitas em outros aparelhos (lê só as recentes)
+      let chegaramExclusoes = false;
+      try { chegaramExclusoes = await carregarExclusoes(false); } catch(e) { /* segue com a lista atual */ }
+      if (chegaramExclusoes && aplicarExclusoesLocais()) {
+        if (typeof usuarioLogado !== 'undefined' && usuarioLogado) {
+          if (typeof renderDashboard === 'function') renderDashboard();
+          if (typeof atualizarStats === 'function') atualizarStats();
+        }
+      }
       const snapPed = await getDocs(collection(db, 'pedidos'));
-      if (!snapPed.empty) {
+      {
         const excluidosPol = window._pedidosExcluidos || new Set();
         const vendasIds = new Set((JSON.parse(localStorage.getItem('aquagest_vendas_concluidas') || '[]')).map(v => String(v.id)));
         const dadosFirebase = snapPed.docs.map(d => d.data())
-          .filter(p => !excluidosPol.has(String(p.id)) && !vendasIds.has(String(p.id)));
+          .filter(p => !excluidosPol.has(String(p.id)) && !vendasIds.has(String(p.id)) && !window.estaExcluido('pedidos', p.id));
         const dadosLocais = JSON.parse(localStorage.getItem('aquagest_pedidos') || '[]');
 
         // Mesclar: manter pedidos locais que ainda não chegaram ao Firebase,
         // MAS descartar os que já viraram venda concluída (não devem ressuscitar).
         const idsFirebase = new Set(dadosFirebase.map(p => String(p.id)));
         const pedidosApenasLocais = dadosLocais.filter(p =>
-          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosPol.has(String(p.id))
+          !idsFirebase.has(String(p.id)) && !vendasIds.has(String(p.id)) && !excluidosPol.has(String(p.id)) && !window.estaExcluido('pedidos', p.id)
         );
         const dadosMesclados = [...dadosFirebase, ...pedidosApenasLocais];
 
