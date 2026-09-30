@@ -4455,7 +4455,14 @@ function renderPedidos() {
             </div>
             ${isTecnico ? '' : `<span class="pedido-item-valor">${item.valorUnit > 0 ? 'R$ '+Number(item.valorUnit * item.qtd).toFixed(2) : '<span style="color:var(--red);font-weight:600;font-size:0.8rem;" title="Cadastre o preço de venda deste produto no Estoque">⚠ sem preço</span>'}</span>`}
           </div>`).join('')}
-
+        ${isTecnico ? '' : (() => {
+          const semPreco = ped.itens.filter(i => i.produto && i.produto !== '—' && !(Number(i.valorUnit) > 0)).length;
+          const aviso = semPreco ? `<span style="font-size:0.72rem;font-weight:600;color:var(--red);margin-left:8px;">(${semPreco} item(ns) sem preço fora da soma)</span>` : '';
+          return `<div class="pedido-item" style="border-top:2px solid var(--border);border-bottom:none;margin-top:4px;padding-top:10px;">
+            <div><span class="pedido-item-nome" style="font-weight:800;">TOTAL</span>${aviso}</div>
+            <span class="pedido-item-valor" style="font-size:1.05rem;font-weight:800;">R$ ${Number(total).toFixed(2)}</span>
+          </div>`;
+        })()}
       </div>
       <div class="pedido-footer">
         ${isTecnico ? '' : `<div class="pedido-checks">
