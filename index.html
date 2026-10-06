@@ -2165,6 +2165,77 @@ function trocarFiltroVencimentos(v) {
   renderCardVencimentos();
 }
 
+// Seletor de mês do card: '' = mês atual; 'AAAA-M' (M de 0 a 11) = mês passado
+let _mesVencimentos = '';
+function trocarMesVencimentos(v) {
+  _mesVencimentos = v;
+  renderCardVencimentos();
+}
+function seletorMesVencimentosHTML() {
+  const hoje = new Date();
+  let html = `<select class="cv-seletor cv-seletor-mes" onchange="trocarMesVencimentos(this.value)" title="Ver clientes em aberto de outro mês">`;
+  html += `<option value="" ${_mesVencimentos===''?'selected':''}>📅 ${MESES[hoje.getMonth()]}/${hoje.getFullYear()} (atual)</option>`;
+  for (let i = 1; i <= 11; i++) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const v = d.getFullYear() + '-' + d.getMonth();
+    html += `<option value="${v}" ${_mesVencimentos===v?'selected':''}>📅 ${MESES[d.getMonth()]}/${d.getFullYear()}</option>`;
+  }
+  return html + '</select>';
+}
+
+// Card no modo "mês passado": lista quem ficou sem pagamento naquele mês
+function renderCardVencimentosMes(card) {
+  const [ano, mes] = _mesVencimentos.split('-').map(Number);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const ultimoDiaMes = new Date(ano, mes + 1, 0).getDate();
+  const fimDoMes = new Date(ano, mes, ultimoDiaMes, 23, 59, 59);
+  const nomeMes = `${MESES[mes]}/${ano}`;
+
+  const lista = [];
+  clientes.forEach(c => {
+    if (c.status === 'suspenso' || c.status === 'isento') return;
+    if (!c.dia) return;
+    // Quem virou cliente depois desse mês não entra ("Cliente desde")
+    if (c.clienteDesde) {
+      const desde = new Date(c.clienteDesde + 'T00:00:00');
+      if (!isNaN(desde.getTime()) && desde > fimDoMes) return;
+    }
+    const reg = historico.find(h => h.clienteId === c.id && h.mes === mes && h.ano === ano);
+    const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
+    if (pago) return;
+    const diaVenc = Math.min(Number(c.dia), ultimoDiaMes);
+    const dataVenc = new Date(ano, mes, diaVenc);
+    const diasAtraso = Math.round((hoje - dataVenc) / (1000*60*60*24));
+    lista.push({ cliente: c, diaVenc, diasAtraso });
+  });
+  lista.sort((a, b) => b.diasAtraso - a.diasAtraso || a.cliente.nome.localeCompare(b.cliente.nome));
+  const totalAberto = lista.reduce((s, p) => s + Number(p.cliente.valor || 0), 0);
+
+  const itens = !lista.length
+    ? `<div class="cv-vazio">Nenhum cliente em aberto em ${nomeMes}. 🎉</div>`
+    : lista.map(p => {
+        const c = p.cliente;
+        const quando = p.diasAtraso === 1 ? 'venceu ontem' : `venceu há ${p.diasAtraso}d`;
+        return `
+        <div class="cv-item naopago venchoje">
+          <span class="cv-quando">${quando}</span>
+          <span class="cv-nome">${escapeHtml(c.nome)}</span>
+          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(mes+1).padStart(2,'0')}</span>
+          <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
+          <button class="cv-btn-cob" onclick="gerarCobranca(${c.id}, ${mes}, ${ano})" title="Enviar cobrança de ${nomeMes} por WhatsApp">💬 Cobrar</button>
+        </div>`;
+      }).join('');
+
+  card.classList.remove('hidden');
+  card.innerHTML = `
+    <div class="cv-topo">
+      <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
+      ${lista.length ? `<span class="cv-contador">${lista.length} em aberto · R$ ${totalAberto.toFixed(2)}</span>` : ''}
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">${seletorMesVencimentosHTML()}</span>
+    </div>
+    <div class="cv-lista">${itens}</div>`;
+}
+
 function renderCardVencimentos() {
   const card = document.getElementById('cardVencimentos');
   if (!card) return;
@@ -2172,6 +2243,13 @@ function renderCardVencimentos() {
   // Técnico não vê este card (é informação de gestão/cobrança)
   const isTecnico = usuarioLogado?.perfil === 'tecnico';
   if (isTecnico) { card.classList.add('hidden'); return; }
+
+  // Mês passado selecionado no seletor de mês
+  if (_mesVencimentos) {
+    const h = new Date();
+    if (_mesVencimentos === h.getFullYear() + '-' + h.getMonth()) _mesVencimentos = '';
+    else { renderCardVencimentosMes(card); return; }
+  }
 
   const JANELA = 5; // dias de antecedência
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -2217,8 +2295,7 @@ function renderCardVencimentos() {
   const totalAvencer = proximos.filter(p => p.grupo === 'avencer').length;
   const totalVencidos = proximos.filter(p => p.grupo === 'vencido').length;
 
-  // Se não há absolutamente nada, esconde o card inteiro
-  if (!proximos.length) { card.classList.add('hidden'); return; }
+  // O card fica sempre visível (para o seletor de mês continuar acessível)
   card.classList.remove('hidden');
 
   // Aplica o filtro selecionado
@@ -2278,11 +2355,14 @@ function renderCardVencimentos() {
     <div class="cv-topo">
       <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
       ${naoPagos > 0 ? `<span class="cv-contador">${naoPagos} a cobrar</span>` : ''}
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
       <select class="cv-seletor" onchange="trocarFiltroVencimentos(this.value)">
         ${opt('avencer', `A vencer (${totalAvencer})`)}
         ${opt('vencidos', `Vencidos (${totalVencidos})`)}
         ${opt('todos', `Todos (${proximos.length})`)}
       </select>
+      ${seletorMesVencimentosHTML()}
+      </span>
     </div>
     <div class="cv-lista">${itens}</div>`;
 }
@@ -5351,10 +5431,14 @@ function exportarPDF(tipo) {
 }
 
 // COBRANÇA
-function gerarCobranca(id) {
+function gerarCobranca(id, mesRef, anoRef) {
   const c=clientes.find(x=>x.id===id); if(!c) return;
   cobrancaAtual=c;
   const status=calcularStatus(c); const nome=c.nome.split(' ')[0];
+  // Cobrança de um mês passado específico (vinda do seletor de mês do card)
+  const hojeCob = new Date();
+  const mesPassado = (typeof mesRef === 'number' && typeof anoRef === 'number')
+    && !(mesRef === hojeCob.getMonth() && anoRef === hojeCob.getFullYear());
   // Bloco de PIX conforme a conta vinculada ao cliente (se houver chave cadastrada)
   const dadosPix = getChavePixCliente(c);
   // Remove pontuação da chave (pontos, barra, traço) para o cliente copiar só os números
@@ -5362,7 +5446,10 @@ function gerarCobranca(id) {
   const blocoPix = dadosPix
     ? `\n\nPagamento via PIX (CNPJ)\nConta: ${dadosPix.label}\n\nChave PIX:\n\n${chaveLimpa}`
     : '';
-  const msg=status==='atrasado'
+  const diaMesRef = mesPassado ? Math.min(Number(c.dia), new Date(anoRef, mesRef + 1, 0).getDate()) : 0;
+  const msg=mesPassado
+    ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que a mensalidade de manutenção de piscina referente a *${MESES[mesRef]}/${anoRef}*, no valor de *R$ ${Number(c.valor).toFixed(2)}*, está em aberto.\n\nO vencimento foi dia *${String(diaMesRef).padStart(2,'0')}/${String(mesRef+1).padStart(2,'0')}/${anoRef}*.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
+    :status==='atrasado'
     ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
     :`Olá, ${nome}! Tudo bem?\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.${blocoPix}\n\nObrigado!\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`;
   document.getElementById('cobrancaNome').textContent=c.nome;
