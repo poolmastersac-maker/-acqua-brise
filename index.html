@@ -1726,6 +1726,20 @@ function aplicarPrivacidade() {
 }
 
 // STATUS
+// Regra do retroativo: vale para todo cliente marcado como "Retroativo" no cadastro
+// (Tipo de pagamento). O vencimento dele paga o mês ANTERIOR.
+// Ex.: vence 01/10 → esse pagamento é de setembro.
+function ehRetroativoVenc(c) {
+  return !!c && c.tipoPag === 'retro';
+}
+// Data de vencimento da mensalidade de um mês (competência mes/ano, mes de 0 a 11).
+// Retroativo: vence no mês seguinte. Dia ajustado ao tamanho do mês.
+function dataVencimentoCompetencia(c, mes, ano) {
+  const desloc = ehRetroativoVenc(c) ? 1 : 0;
+  const ultimo = new Date(ano, mes + desloc + 1, 0).getDate();
+  return new Date(ano, mes + desloc, Math.min(Number(c.dia), ultimo));
+}
+
 function calcularStatus(c) {
   if (c.status === 'suspenso') return 'suspenso';
   if (c.status === 'isento') return 'isento';
@@ -1737,8 +1751,9 @@ function calcularStatus(c) {
   if (regMes) return regMes.status;
   // Sem registro no histórico — calcular por data de vencimento
   // NUNCA retornar 'pago' sem registro no histórico pois propagaria para meses anteriores
-  const diaVenc = Math.min(Number(c.dia), new Date(anoAtual, mesAtual + 1, 0).getDate());
-  const dataLimite = new Date(anoAtual, mesAtual, diaVenc + 3);
+  // (retroativo: a mensalidade deste mês só vence no mês seguinte)
+  const venc = dataVencimentoCompetencia(c, mesAtual, anoAtual);
+  const dataLimite = new Date(venc.getFullYear(), venc.getMonth(), venc.getDate() + 3);
   if (hoje > dataLimite) return 'atrasado';
   return 'pendente';
 }
@@ -2203,10 +2218,10 @@ function renderCardVencimentosMes(card) {
     const reg = historico.find(h => h.clienteId === c.id && h.mes === mes && h.ano === ano);
     const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
     if (pago) return;
-    const diaVenc = Math.min(Number(c.dia), ultimoDiaMes);
-    const dataVenc = new Date(ano, mes, diaVenc);
+    // Retroativo: a mensalidade deste mês vence no mês seguinte
+    const dataVenc = dataVencimentoCompetencia(c, mes, ano);
     const diasAtraso = Math.round((hoje - dataVenc) / (1000*60*60*24));
-    lista.push({ cliente: c, diaVenc, diasAtraso });
+    lista.push({ cliente: c, diaVenc: dataVenc.getDate(), mesVenc: dataVenc.getMonth(), diasAtraso });
   });
   lista.sort((a, b) => b.diasAtraso - a.diasAtraso || a.cliente.nome.localeCompare(b.cliente.nome));
   const totalAberto = lista.reduce((s, p) => s + Number(p.cliente.valor || 0), 0);
@@ -2215,12 +2230,16 @@ function renderCardVencimentosMes(card) {
     ? `<div class="cv-vazio">Nenhum cliente em aberto em ${nomeMes}. 🎉</div>`
     : lista.map(p => {
         const c = p.cliente;
-        const quando = p.diasAtraso === 1 ? 'venceu ontem' : `venceu há ${p.diasAtraso}d`;
+        const quando = p.diasAtraso > 1 ? `venceu há ${p.diasAtraso}d`
+          : p.diasAtraso === 1 ? 'venceu ontem'
+          : p.diasAtraso === 0 ? 'vence hoje!'
+          : p.diasAtraso === -1 ? 'vence amanhã' : `vence em ${-p.diasAtraso}d`;
+        const classeAtraso = p.diasAtraso >= 0 ? 'venchoje' : '';
         return `
-        <div class="cv-item naopago venchoje">
+        <div class="cv-item naopago ${classeAtraso}">
           <span class="cv-quando">${quando}</span>
-          <span class="cv-nome">${escapeHtml(c.nome)}</span>
-          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(mes+1).padStart(2,'0')}</span>
+          <span class="cv-nome">${escapeHtml(c.nome)}${ehRetroativoVenc(c) ? ' <span class="tag-retro" title="Retroativo: vence no mês seguinte">↩</span>' : ''}</span>
+          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(p.mesVenc+1).padStart(2,'0')}</span>
           <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
           <button class="cv-btn-cob" onclick="gerarCobranca(${c.id}, ${mes}, ${ano})" title="Enviar cobrança de ${nomeMes} por WhatsApp">💬 Cobrar</button>
         </div>`;
@@ -2263,9 +2282,11 @@ function renderCardVencimentos() {
     // Ignora suspensos e isentos
     if (c.status === 'suspenso' || c.status === 'isento') return;
     if (!c.dia) return;
-    // Dia de vencimento ajustado ao mês (ex: dia 31 em mês de 30 vira 30)
-    const diaVenc = Math.min(Number(c.dia), ultimoDiaMes);
-    const faltam = diaVenc - diaHoje;
+    // Vencimento da mensalidade DESTE mês (retroativo vence no mês seguinte)
+    const venc = dataVencimentoCompetencia(c, mesAtual, anoAtual);
+    const diaVenc = venc.getDate();
+    const mesVenc = venc.getMonth();
+    const faltam = Math.round((venc - hoje) / (1000 * 60 * 60 * 24));
     // Já pagou este mês?
     const reg = historico.find(h => h.clienteId === c.id && h.mes === mesAtual && h.ano === anoAtual);
     const pago = reg && (reg.status === 'pago' || reg.status === 'isento');
@@ -2288,7 +2309,7 @@ function renderCardVencimentos() {
     }
     // Classifica: "vencido" = não pago e já passou do dia; senão "a vencer" (inclui pagos)
     const grupo = (!pago && faltam < 0) ? 'vencido' : 'avencer';
-    proximos.push({ cliente: c, faltam, diaVenc, pago, grupo });
+    proximos.push({ cliente: c, faltam, diaVenc, mesVenc, pago, grupo });
   });
 
   // Contadores por grupo (para os rótulos do seletor)
@@ -2341,8 +2362,8 @@ function renderCardVencimentos() {
       return `
         <div class="cv-item ${classeItem} ${classeHoje}">
           <span class="cv-quando">${quando}</span>
-          <span class="cv-nome">${escapeHtml(c.nome)}</span>
-          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(mesAtual+1).padStart(2,'0')}</span>
+          <span class="cv-nome">${escapeHtml(c.nome)}${ehRetroativoVenc(c) ? ' <span class="tag-retro" title="Retroativo: este vencimento paga o mês anterior">↩</span>' : ''}</span>
+          <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(p.mesVenc+1).padStart(2,'0')}</span>
           <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
           ${acao}
         </div>`;
@@ -5446,9 +5467,11 @@ function gerarCobranca(id, mesRef, anoRef) {
   const blocoPix = dadosPix
     ? `\n\nPagamento via PIX (CNPJ)\nConta: ${dadosPix.label}\n\nChave PIX:\n\n${chaveLimpa}`
     : '';
-  const diaMesRef = mesPassado ? Math.min(Number(c.dia), new Date(anoRef, mesRef + 1, 0).getDate()) : 0;
+  const vencRef = mesPassado ? dataVencimentoCompetencia(c, mesRef, anoRef) : null;
+  const vencRefTxt = vencRef ? `${String(vencRef.getDate()).padStart(2,'0')}/${String(vencRef.getMonth()+1).padStart(2,'0')}/${vencRef.getFullYear()}` : '';
+  const jaVenceu = vencRef ? (new Date().setHours(0,0,0,0) > vencRef.getTime()) : false;
   const msg=mesPassado
-    ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que a mensalidade de manutenção de piscina referente a *${MESES[mesRef]}/${anoRef}*, no valor de *R$ ${Number(c.valor).toFixed(2)}*, está em aberto.\n\nO vencimento foi dia *${String(diaMesRef).padStart(2,'0')}/${String(mesRef+1).padStart(2,'0')}/${anoRef}*.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
+    ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que a mensalidade de manutenção de piscina referente a *${MESES[mesRef]}/${anoRef}*, no valor de *R$ ${Number(c.valor).toFixed(2)}*, ${jaVenceu ? 'está em aberto' : 'ainda está pendente'}.\n\n${jaVenceu ? 'O vencimento foi' : 'O vencimento é'} dia *${vencRefTxt}*.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
     :status==='atrasado'
     ?`Olá, ${nome}! Tudo bem?\n\nPassando aqui para lembrar que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* está em aberto.\n\nO vencimento era dia *${c.dia}* deste mês.\n\nCaso já tenha feito o pagamento, me envie o comprovante para que eu possa dar baixa no sistema.\n\nQualquer dúvida, estou à disposição.${blocoPix}\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`
     :`Olá, ${nome}! Tudo bem?\n\nPassando para lembrá-lo(a) que sua mensalidade de manutenção de piscina no valor de *R$ ${Number(c.valor).toFixed(2)}* vence dia *${c.dia}*.${blocoPix}\n\nObrigado!\n\nAtenciosamente,\nDiego R Oliveira\nAcqua Brise manutenção em piscinas`;
