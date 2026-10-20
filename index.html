@@ -977,6 +977,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
         <span style="font-size:0.82rem;font-weight:600;color:var(--muted);">📅 Período:</span>
         <select class="form-input" id="contMes" style="width:auto;min-width:130px;" onchange="renderContador()">
+          <option value="todos">📅 Todos os meses (ano inteiro)</option>
           <option value="0">Janeiro</option><option value="1">Fevereiro</option>
           <option value="2">Março</option><option value="3">Abril</option>
           <option value="4">Maio</option><option value="5">Junho</option>
@@ -6024,78 +6025,173 @@ function renderRelatoriosPage() {
 function preencherContAno() {
   const sel = document.getElementById('contAno');
   if (!sel) return;
-  const anos = [...new Set(historico.map(h=>h.ano))].sort((a,b)=>b-a);
+  // Anos com pagamento (pela data real de entrada e pelo mês de referência)
+  const anosSet = new Set(historico.map(h=>h.ano));
+  historico.forEach(h => { const d = dataEntradaHist(h); if (d) anosSet.add(d.ano); });
+  const anos = [...anosSet].filter(a => a).sort((a,b)=>b-a);
   const anoAtual = new Date().getFullYear();
-  sel.innerHTML = anos.map(a=>`<option value="${a}"${a===anoAtual?' selected':''}>${a}</option>`).join('');
+  // Mantém o ano que o usuário escolheu (antes voltava sempre para o ano atual)
+  const anterior = parseInt(sel.value, 10);
+  const escolhido = anos.includes(anterior) ? anterior : anoAtual;
+  sel.innerHTML = anos.map(a=>`<option value="${a}"${a===escolhido?' selected':''}>${a}</option>`).join('');
+}
+
+// Data real de entrada de um registro do histórico ('AAAA-MM-DD'), lida sem fuso horário.
+// (new Date('2026-10-01') no Brasil vira 30/09 às 21h e jogava o pagamento no mês anterior)
+function dataEntradaHist(h) {
+  const m = String(h && h.data || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return { ano: Number(m[1]), mes: Number(m[2]) - 1, dia: Number(m[3]) };
+}
+
+// Mês selecionado no relatório do contador: número de 0 a 11, ou 'todos' (ano inteiro)
+function getMesContador() {
+  const v = document.getElementById('contMes')?.value;
+  return v === 'todos' ? 'todos' : parseInt(v || '0', 10);
 }
 
 function getHistContador() {
-  const mes = parseInt(document.getElementById('contMes')?.value||'0', 10);
+  const mes = getMesContador();
   const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
   if (!ano) return [];
   // Filtra pela DATA REAL de entrada (não pelo mês de referência)
   return historico.filter(h => {
-    if (h.status !== 'pago' || !h.data) return false;
-    const d = new Date(h.data);
-    return d.getMonth() === mes && d.getFullYear() === ano;
+    if (h.status !== 'pago') return false;
+    const d = dataEntradaHist(h);
+    if (!d) return false;
+    return d.ano === ano && (mes === 'todos' || d.mes === mes);
   });
+}
+
+// Totais por mês (0–11) do ano — usado no relatório anual
+function totaisMensaisContador(hist) {
+  const t = Array(12).fill(0), n = Array(12).fill(0);
+  hist.forEach(h => { const d = dataEntradaHist(h); if (d) { t[d.mes] += Number(h.valor||0); n[d.mes]++; } });
+  return { t, n };
+}
+
+// Data (ano/mês) de uma venda de produto: data do PAGAMENTO; se não houver, data da conclusão.
+// Aceita 'AAAA-MM-DD' (lido sem fuso) ou data/hora completa (ISO).
+function dataRefVenda(v) {
+  const ref = v && (v.dataPagamento || v.dataConclusao || v.data);
+  if (!ref) return null;
+  const m = String(ref).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return { ano: Number(m[1]), mes: Number(m[2]) - 1 };
+  const d = new Date(ref);
+  if (isNaN(d.getTime())) return null;
+  return { ano: d.getFullYear(), mes: d.getMonth() };
+}
+// Vendas de produtos (Vendas Concluídas = pedido entregue + pago) do período do relatório do contador
+function getVendasContador() {
+  const mes = getMesContador();
+  const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
+  const fonte = Array.isArray(vendasConcluidas) ? vendasConcluidas : [];
+  return fonte.filter(v => {
+    const d = dataRefVenda(v);
+    return d && d.ano === ano && (mes === 'todos' || d.mes === mes);
+  });
+}
+// Pedidos já pagos mas ainda NÃO entregues no período (dinheiro recebido, venda ainda não concluída)
+function getPedidosPagosNaoEntreguesContador() {
+  const mes = getMesContador();
+  const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
+  return (Array.isArray(pedidos) ? pedidos : []).filter(p => {
+    if (!p.pago || p.entregue || !p.dataPagamento) return false;
+    const d = dataRefVenda({ dataPagamento: p.dataPagamento });
+    return d && d.ano === ano && (mes === 'todos' || d.mes === mes);
+  });
+}
+// Monta todos os números do relatório do contador (tela e PDF usam a mesma conta)
+function dadosContador() {
+  const mes = getMesContador();
+  const anual = mes === 'todos';
+  const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
+  const hist = getHistContador();
+  const vendas = getVendasContador();
+  const pendentesEntrega = getPedidosPagosNaoEntreguesContador();
+  const totais = {};
+  CONTAS_CONFIG.forEach(c => totais[c.key] = 0);
+  hist.forEach(h => { totais[identificarConta(h.obs)] += Number(h.valor||0); });
+  const totalMensalidades = Object.values(totais).reduce((s,v)=>s+v, 0);
+  const totalProdutos = vendas.reduce((s,v)=>s+totalPedido(v), 0);
+  const totalPendEntrega = pendentesEntrega.reduce((s,p)=>s+totalPedido(p), 0);
+  const { t: mensMes, n: qtdMes } = totaisMensaisContador(hist);
+  const prodMes = Array(12).fill(0), qtdProdMes = Array(12).fill(0);
+  vendas.forEach(v => { const d = dataRefVenda(v); if (d) { prodMes[d.mes] += totalPedido(v); qtdProdMes[d.mes]++; } });
+  return {
+    mes, anual, ano, hist, vendas, totais, totalMensalidades, totalProdutos,
+    total: totalMensalidades + totalProdutos,
+    pendentesEntrega, totalPendEntrega,
+    mensMes, qtdMes, prodMes, qtdProdMes,
+    periodo: anual ? `Ano de ${ano} (janeiro a dezembro)` : `${MESES[mes]}/${ano}`,
+    periodoCurto: anual ? String(ano) : `${MESES[mes]}/${ano}`
+  };
 }
 
 function renderContador() {
   preencherContAno();
-  const mes = parseInt(document.getElementById('contMes')?.value||'0', 10);
-  const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
-  const hist = getHistContador();
+  const D = dadosContador();
   const fmt = v => 'R$ '+Number(v).toFixed(2).replace('.',',');
+  const dataGeracao = new Date().toLocaleDateString('pt-BR');
+  const linha = (rotulo, valor, cor, extra) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
+            <span style="color:var(--muted);">${rotulo}${extra ? ` <span style="font-size:0.7rem;">${extra}</span>` : ''}</span>
+            <strong${cor ? ` style="color:${cor};"` : ''}>${fmt(valor)}</strong>
+          </div>`;
 
-  // Totais por conta
-  const totais = {};
-  CONTAS_CONFIG.forEach(c => totais[c.key] = 0);
-  hist.forEach(h => { totais[identificarConta(h.obs)] += Number(h.valor||0); });
-  const total = Object.values(totais).reduce((s,v)=>s+v, 0);
-  const hoje = new Date();
-  const dataGeracao = hoje.toLocaleDateString('pt-BR');
+  const tabelaMeses = !D.anual ? '' : `
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:700;margin-bottom:4px;">ENTRADAS POR MÊS</div>
+        ${MESES.map((m,i)=>`
+          <div style="padding:4px 0;border-bottom:1px dashed var(--border);">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:var(--muted);">${m}</span>
+              <strong>${fmt(D.mensMes[i] + D.prodMes[i])}</strong>
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted);text-align:right;line-height:1.4;">
+              mensalidades ${fmt(D.mensMes[i])} (${D.qtdMes[i]}) · produtos ${fmt(D.prodMes[i])} (${D.qtdProdMes[i]})
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+  const avisoPend = D.pendentesEntrega.length ? `
+        <br>⚠ ${D.pendentesEntrega.length} pedido(s) de produto pago(s) e ainda não entregue(s) (${fmt(D.totalPendEntrega)}) não entram no total — passam a contar quando virarem Venda Concluída.` : '';
 
   document.getElementById('contPreview').innerHTML = `
     <div style="font-family:monospace;font-size:0.85rem;color:var(--text);line-height:1.8;">
       <div style="text-align:center;margin-bottom:16px;">
         <div style="font-size:1rem;font-weight:700;color:var(--accent2);">Acqua Brise Piscinas</div>
-        <div style="font-size:0.82rem;color:var(--muted);">Relatório Financeiro — Entradas do Mês</div>
+        <div style="font-size:0.82rem;color:var(--muted);">Relatório Financeiro — ${D.anual ? 'Faturamento Anual' : 'Entradas do Mês'}</div>
       </div>
       <div style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px 0;margin-bottom:16px;display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);">
-        <span>Período: <strong style="color:var(--text);">${MESES[mes]}/${ano}</strong></span>
+        <span>Período: <strong style="color:var(--text);">${D.periodo}</strong></span>
         <span>Gerado em: ${dataGeracao}</span>
       </div>
+      ${tabelaMeses}
+      <div style="font-weight:700;margin-bottom:4px;">MENSALIDADES (SERVIÇOS) POR CONTA</div>
+      <div style="margin-bottom:6px;">
+        ${CONTAS_CONFIG.map(c => linha(c.label, D.totais[c.key], c.cor)).join('')}
+        ${linha('<strong>Subtotal mensalidades</strong>', D.totalMensalidades, null, `(${D.hist.length} pgto)`)}
+      </div>
+      <div style="font-weight:700;margin:12px 0 4px;">VENDAS DE PRODUTOS</div>
       <div style="margin-bottom:16px;">
-        ${CONTAS_CONFIG.map(c=>`
-          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border);">
-            <span style="color:var(--muted);">${c.label}</span>
-            <strong style="color:${c.cor};">${fmt(totais[c.key])}</strong>
-          </div>`).join('')}
+        ${linha('🛒 Vendas de produtos', D.totalProdutos, '#059669', `(${D.vendas.length} venda${D.vendas.length===1?'':'s'})`)}
       </div>
       <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:2px solid var(--border);font-size:0.95rem;">
-        <strong>TOTAL DO MÊS</strong>
-        <strong style="color:var(--accent2);font-size:1.05rem;">${fmt(total)}</strong>
+        <strong>${D.anual ? 'TOTAL DO ANO' : 'TOTAL DO MÊS'}</strong>
+        <strong style="color:var(--accent2);font-size:1.05rem;">${fmt(D.total)}</strong>
       </div>
       <div style="margin-top:16px;font-size:0.72rem;color:var(--muted);text-align:center;">
-        ${hist.length} pagamento(s) com data de entrada em ${MESES[mes]}/${ano}
-        <br>* Baseado na data real de recebimento, independente do mês de referência
+        ${D.hist.length} mensalidade(s) e ${D.vendas.length} venda(s) de produto com data de recebimento em ${D.periodoCurto}
+        <br>* Baseado na data real de recebimento, independente do mês de referência${avisoPend}
       </div>
     </div>`;
 }
 
 function gerarPDFContador() {
-  const mes = parseInt(document.getElementById('contMes')?.value||'0', 10);
-  const ano = parseInt(document.getElementById('contAno')?.value||'0', 10);
-  const hist = getHistContador();
+  const D = dadosContador();
   const fmt = v => 'R$ '+Number(v).toFixed(2).replace('.',',');
-
-  const totais = {};
-  CONTAS_CONFIG.forEach(c => totais[c.key] = 0);
-  hist.forEach(h => { totais[identificarConta(h.obs)] += Number(h.valor||0); });
-  const total = Object.values(totais).reduce((s,v)=>s+v, 0);
-  const hoje = new Date();
-  const dataGeracao = hoje.toLocaleDateString('pt-BR');
+  const dataGeracao = new Date().toLocaleDateString('pt-BR');
 
   try {
     const doc = new jspdf.jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
@@ -6103,50 +6199,79 @@ function gerarPDFContador() {
 
     // Cabeçalho
     doc.setFontSize(16); doc.setFont(undefined,'bold');
-    doc.text('Acqua Brise Piscinas', W/2, 30, {align:'center'});
+    doc.text('Acqua Brise Piscinas', W/2, 25, {align:'center'});
     doc.setFontSize(11); doc.setFont(undefined,'normal');
-    doc.text('Relatório Financeiro — Entradas do Mês', W/2, 38, {align:'center'});
-
-    // Linha
-    doc.setDrawColor(200,200,200); doc.line(mg, 44, W-mg, 44);
-
-    // Período e data
+    doc.text(D.anual ? 'Relatório Financeiro — Faturamento Anual' : 'Relatório Financeiro — Entradas do Mês', W/2, 32, {align:'center'});
+    doc.setDrawColor(200,200,200); doc.line(mg, 37, W-mg, 37);
     doc.setFontSize(10);
-    doc.text(`Período: ${MESES[mes]}/${ano}`, mg, 52);
-    doc.text(`Gerado em: ${dataGeracao}`, W-mg, 52, {align:'right'});
+    doc.text(`Período: ${D.periodo}`, mg, 44);
+    doc.text(`Gerado em: ${dataGeracao}`, W-mg, 44, {align:'right'});
+    doc.line(mg, 48, W-mg, 48);
 
-    // Linha
-    doc.line(mg, 56, W-mg, 56);
+    let y = 57;
+    // Ano inteiro: tabela mês a mês (mensalidades | produtos | total)
+    if (D.anual) {
+      const c1 = 105, c2 = 145, c3 = W - mg;
+      doc.setFontSize(11); doc.setFont(undefined,'bold');
+      doc.text('ENTRADAS POR MÊS', mg, y); y += 7;
+      doc.setFontSize(8.5);
+      doc.text('Mês', mg, y); doc.text('Mensalidades', c1, y, {align:'right'});
+      doc.text('Produtos', c2, y, {align:'right'}); doc.text('Total', c3, y, {align:'right'});
+      doc.setFont(undefined,'normal'); y += 2;
+      doc.setDrawColor(180,180,180); doc.line(mg, y, W-mg, y); y += 5;
+      MESES.forEach((m, i) => {
+        doc.setFontSize(9);
+        doc.text(m, mg, y);
+        doc.text(fmt(D.mensMes[i]), c1, y, {align:'right'});
+        doc.text(fmt(D.prodMes[i]), c2, y, {align:'right'});
+        doc.text(fmt(D.mensMes[i] + D.prodMes[i]), c3, y, {align:'right'});
+        doc.setDrawColor(230,230,230); doc.line(mg, y+2, W-mg, y+2);
+        y += 6.5;
+      });
+      y += 6;
+    }
 
-    // Entradas por conta
+    // Mensalidades por conta
     doc.setFontSize(11); doc.setFont(undefined,'bold');
-    doc.text('ENTRADAS DO MÊS POR CONTA', mg, 65);
+    doc.text('MENSALIDADES (SERVIÇOS) POR CONTA', mg, y); y += 8;
     doc.setFont(undefined,'normal');
-
-    let y = 75;
     CONTAS_CONFIG.forEach(c => {
       doc.setFontSize(10);
       doc.text(c.label+':', mg, y);
-      doc.text(fmt(totais[c.key]), W-mg, y, {align:'right'});
-      doc.setDrawColor(220,220,220);
-      doc.line(mg, y+3, W-mg, y+3);
-      y += 12;
+      doc.text(fmt(D.totais[c.key]), W-mg, y, {align:'right'});
+      doc.setDrawColor(220,220,220); doc.line(mg, y+2.5, W-mg, y+2.5);
+      y += 8;
     });
+    doc.setFont(undefined,'bold');
+    doc.text(`Subtotal mensalidades (${D.hist.length} pgto):`, mg, y);
+    doc.text(fmt(D.totalMensalidades), W-mg, y, {align:'right'});
+    y += 11;
+
+    // Produtos
+    doc.setFontSize(11);
+    doc.text('VENDAS DE PRODUTOS', mg, y); y += 8;
+    doc.setFontSize(10); doc.setFont(undefined,'normal');
+    doc.text(`Vendas de produtos (${D.vendas.length}):`, mg, y);
+    doc.text(fmt(D.totalProdutos), W-mg, y, {align:'right'});
+    doc.setDrawColor(220,220,220); doc.line(mg, y+2.5, W-mg, y+2.5);
+    y += 10;
 
     // Total
-    y += 4;
     doc.setDrawColor(100,100,100); doc.setLineWidth(0.5);
     doc.line(mg, y, W-mg, y); y += 8;
     doc.setFontSize(12); doc.setFont(undefined,'bold');
-    doc.text('TOTAL DO MÊS:', mg, y);
-    doc.text(fmt(total), W-mg, y, {align:'right'});
+    doc.text(D.anual ? 'TOTAL DO ANO:' : 'TOTAL DO MÊS:', mg, y);
+    doc.text(fmt(D.total), W-mg, y, {align:'right'});
 
     // Rodapé
     doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(150,150,150);
-    doc.text(`${hist.length} pagamento(s) com data de entrada em ${MESES[mes]}/${ano}`, W/2, 270, {align:'center'});
-    doc.text('* Baseado na data real de recebimento, independente do mês de referência', W/2, 276, {align:'center'});
+    doc.text(`${D.hist.length} mensalidade(s) e ${D.vendas.length} venda(s) de produto com data de recebimento em ${D.periodoCurto}`, W/2, 279, {align:'center'});
+    doc.text('* Baseado na data real de recebimento, independente do mês de referência', W/2, 284, {align:'center'});
+    if (D.pendentesEntrega.length) {
+      doc.text(`${D.pendentesEntrega.length} pedido(s) pago(s) e ainda não entregue(s) (${fmt(D.totalPendEntrega)}) não incluído(s) no total.`, W/2, 289, {align:'center'});
+    }
 
-    doc.save(`relatorio_contador_${MESES[mes]}_${ano}.pdf`);
+    doc.save(D.anual ? `relatorio_contador_anual_${D.ano}.pdf` : `relatorio_contador_${MESES[D.mes]}_${D.ano}.pdf`);
     showToast('✓ PDF gerado com sucesso!', 'success');
   } catch(e) {
     showToast('⚠ Erro ao gerar PDF: '+e.message, 'error');
