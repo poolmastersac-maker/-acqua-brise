@@ -139,6 +139,19 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .cv-pago-tag{font-size:0.66rem;font-weight:700;color:#059669;background:#ECFDF5;border-radius:20px;padding:1px 8px;white-space:nowrap;}
 .cv-btn-cob{background:#25D366;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:0.74rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:0.2s;}
 .cv-btn-cob:hover{background:#1EB456;}
+.cv-btn-cob.sec{background:#fff;color:#1EB456;border:1px solid #25D366;}
+.cv-btn-cob.sec:hover{background:#ECFDF5;}
+.cv-item.cobrado{background:#F7F3FF !important;border-color:#C4B5FD !important;}
+.tag-cob{font-size:0.66rem;font-weight:700;color:#6D28D9;background:#EDE9FE;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.cv-contador.cob{background:#7C3AED;}
+.cv-chk{font-size:0.72rem;font-weight:600;color:#B5721A;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;}
+.cv-btn-seq{background:#1565C0;color:#fff;border:none;border-radius:7px;padding:4px 11px;font-size:0.74rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.cv-btn-seq:hover{background:#0D47A1;}
+.seq-bar{display:none;margin-bottom:12px;}
+.seq-bar.on{display:block;}
+.seq-topo{display:flex;justify-content:space-between;font-size:0.75rem;font-weight:700;color:var(--muted);}
+.seq-prog{height:6px;background:var(--border);border-radius:6px;margin-top:5px;overflow:hidden;}
+.seq-prog div{height:100%;background:#25D366;transition:width 0.3s;}
 @media(max-width:600px){.cv-nome{min-width:90px;}}
 .nav-badge{background:var(--red);color:#fff;font-size:0.62rem;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;margin-left:2px;}
 .lembrete-form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 8px rgba(33,150,243,0.06);}
@@ -1189,11 +1202,14 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 <!-- MODAIS -->
 <div class="modal-overlay" id="modalCobranca">
   <div class="modal">
-    <div class="modal-title"><span>📲 Mensagem de Cobrança</span><button class="modal-close" onclick="fecharModal('modalCobranca')">✕</button></div>
+    <div class="modal-title"><span>📲 Mensagem de Cobrança</span><button class="modal-close" onclick="fecharCobranca()">✕</button></div>
+    <div class="seq-bar" id="seqBar"><div class="seq-topo"><span>▶ Cobrando em sequência</span><span id="seqPos"></span></div><div class="seq-prog"><div id="seqProg"></div></div></div>
     <p style="color:var(--muted);font-size:0.83rem;margin-bottom:4px;">Para: <strong id="cobrancaNome" style="color:var(--text)"></strong></p>
+    <p id="cobrancaJaCobrado" style="display:none;font-size:0.75rem;font-weight:700;color:#6D28D9;margin-bottom:4px;"></p>
     <div class="cobranca-box" id="cobrancaTexto"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalCobranca')">Fechar</button>
+      <button class="btn btn-ghost btn-sm" id="btnCobFechar" onclick="fecharCobranca()">Fechar</button>
+      <button class="btn btn-ghost btn-sm" id="btnSeqPular" style="display:none;" onclick="pularSequenciaCobranca()">⏭ Pular</button>
       <button class="btn btn-primary btn-sm" onclick="copiarMensagem()">📋 Copiar</button>
       <button class="btn btn-green btn-sm" onclick="abrirWhatsApp()">💬 WhatsApp</button>
     </div>
@@ -1677,6 +1693,7 @@ let histClienteId = null;
 let histAno = new Date().getFullYear();
 let vgAno = new Date().getFullYear();
 let cobrancaAtual = null;
+let cobrancaRefAtual = null; // {mes, ano} da mensalidade sendo cobrada
 let usuarioLogado = null;
 let codigoRecuperacao = null;
 let emailRecuperacao = null;
@@ -2218,6 +2235,86 @@ function renderCardFeriados() {
 // Baseado no dia de vencimento (c.dia). Destaca quem ainda não pagou o mês.
 // Não mostra suspensos nem isentos. Só aparece para quem não é técnico.
 // Guarda a opção escolhida no seletor do card (padrão: a vencer)
+// ===== Marca de "cobrado" (fica no cadastro do cliente: c.cobrancas['AAAA-M'] = {em, por}) =====
+function chaveCobranca(mes, ano) { return ano + '-' + mes; }
+function infoCobranca(c, mes, ano) {
+  const r = c && c.cobrancas && c.cobrancas[chaveCobranca(mes, ano)];
+  return r && r.em ? r : null;
+}
+function textoCobrado(r) {
+  const d = new Date(r.em);
+  if (isNaN(d.getTime())) return 'cobrado';
+  return `cobrado ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} às ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function registrarCobranca(c, mes, ano) {
+  if (!c) return;
+  const cobrancas = Object.assign({}, c.cobrancas || {});
+  cobrancas[chaveCobranca(mes, ano)] = { em: new Date().toISOString(), por: usuarioLogado?.nome || usuarioLogado?.usuario || '' };
+  // guarda só os 12 meses mais recentes
+  const chaves = Object.keys(cobrancas).sort((a, b) => { const [ya, ma] = a.split('-').map(Number), [yb, mb] = b.split('-').map(Number); return (yb*12+mb) - (ya*12+ma); });
+  chaves.slice(12).forEach(k => delete cobrancas[k]);
+  c.cobrancas = cobrancas;
+  window._clientesEditadosRecentemente = window._clientesEditadosRecentemente || {};
+  window._clientesEditadosRecentemente[String(c.id)] = Date.now();
+  salvar();
+  if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c); else fbSave('clientes');
+}
+function botaoCobrarHTML(c, mes, ano, chamada, titulo) {
+  const r = infoCobranca(c, mes, ano);
+  if (!r) return `<button class="cv-btn-cob" onclick="${chamada}" title="${titulo}">💬 Cobrar</button>`;
+  const por = r.por ? ` por ${escapeHtml(r.por)}` : '';
+  return `<span class="tag-cob" title="Cobrança enviada${por}">📲 ${textoCobrado(r)}</span><button class="cv-btn-cob sec" onclick="${chamada}" title="Enviar de novo">↻ Cobrar de novo</button>`;
+}
+
+// Opção "Esconder já cobrados" (preferência deste aparelho)
+let _esconderCobrados = (() => { try { return localStorage.getItem('aquagest_esconder_cobrados') === '1'; } catch (e) { return false; } })();
+function trocarEsconderCobrados(v) {
+  _esconderCobrados = !!v;
+  try { localStorage.setItem('aquagest_esconder_cobrados', v ? '1' : '0'); } catch (e) {}
+  renderCardVencimentos();
+}
+function controlesCobrancaHTML(qtdFila) {
+  return `<label class="cv-chk" title="Tirar da lista quem já recebeu cobrança"><input type="checkbox" ${_esconderCobrados?'checked':''} onchange="trocarEsconderCobrados(this.checked)"> Esconder já cobrados</label>
+    ${qtdFila ? `<button class="cv-btn-seq" onclick="iniciarSequenciaCobranca()" title="Abre a cobrança de um cliente por vez">▶ Cobrar em sequência (${qtdFila})</button>` : ''}`;
+}
+
+// ===== Cobrar em sequência =====
+let _filaCobranca = [];   // itens visíveis ainda não cobrados: {id, mes, ano}
+let _seqCobranca = null;  // {fila, pos, enviados}
+function iniciarSequenciaCobranca() {
+  if (!_filaCobranca.length) { showToast('Ninguém para cobrar nesta lista 🎉', 'success'); return; }
+  _seqCobranca = { fila: _filaCobranca.slice(), pos: 0, enviados: 0 };
+  mostrarPassoSequencia();
+}
+function mostrarPassoSequencia() {
+  const sq = _seqCobranca; if (!sq) return;
+  if (sq.pos >= sq.fila.length) {
+    const tot = sq.fila.length, env = sq.enviados;
+    encerrarSequenciaCobranca();
+    fecharModal('modalCobranca');
+    showToast(`🎉 Sequência concluída: ${env} enviada(s), ${tot - env} pulada(s)`, 'success');
+    return;
+  }
+  const it = sq.fila[sq.pos];
+  gerarCobranca(it.id, it.mes, it.ano);
+  document.getElementById('seqBar').classList.add('on');
+  document.getElementById('seqPos').textContent = `${sq.pos + 1} de ${sq.fila.length}`;
+  document.getElementById('seqProg').style.width = Math.round(sq.pos / sq.fila.length * 100) + '%';
+  document.getElementById('btnSeqPular').style.display = '';
+  document.getElementById('btnCobFechar').textContent = '⏹ Parar';
+}
+function pularSequenciaCobranca() { if (!_seqCobranca) return; _seqCobranca.pos++; mostrarPassoSequencia(); }
+function encerrarSequenciaCobranca() {
+  _seqCobranca = null;
+  document.getElementById('seqBar')?.classList.remove('on');
+  const bp = document.getElementById('btnSeqPular'); if (bp) bp.style.display = 'none';
+  const bf = document.getElementById('btnCobFechar'); if (bf) bf.textContent = 'Fechar';
+}
+function fecharCobranca() {
+  encerrarSequenciaCobranca();
+  fecharModal('modalCobranca');
+}
+
 let _filtroVencimentos = 'avencer';
 function trocarFiltroVencimentos(v) {
   _filtroVencimentos = v;
@@ -2269,10 +2366,15 @@ function renderCardVencimentosMes(card) {
   });
   lista.sort((a, b) => b.diasAtraso - a.diasAtraso || a.cliente.nome.localeCompare(b.cliente.nome));
   const totalAberto = lista.reduce((s, p) => s + Number(p.cliente.valor || 0), 0);
+  const qtdCobrados = lista.filter(p => infoCobranca(p.cliente, mes, ano)).length;
+  const visiveis = _esconderCobrados ? lista.filter(p => !infoCobranca(p.cliente, mes, ano)) : lista;
+  _filaCobranca = visiveis.filter(p => !infoCobranca(p.cliente, mes, ano)).map(p => ({ id: p.cliente.id, mes, ano }));
 
-  const itens = !lista.length
+  const itens = !visiveis.length && lista.length
+    ? `<div class="cv-vazio">Todos de ${nomeMes} já foram cobrados. 📲</div>`
+    : !lista.length
     ? `<div class="cv-vazio">Nenhum cliente em aberto em ${nomeMes}. 🎉</div>`
-    : lista.map(p => {
+    : visiveis.map(p => {
         const c = p.cliente;
         const quando = p.diasAtraso > 1 ? `venceu há ${p.diasAtraso}d`
           : p.diasAtraso === 1 ? 'venceu ontem'
@@ -2280,12 +2382,12 @@ function renderCardVencimentosMes(card) {
           : p.diasAtraso === -1 ? 'vence amanhã' : `vence em ${-p.diasAtraso}d`;
         const classeAtraso = p.diasAtraso >= 0 ? 'venchoje' : '';
         return `
-        <div class="cv-item naopago ${classeAtraso}">
+        <div class="cv-item naopago ${classeAtraso} ${infoCobranca(c, mes, ano) ? 'cobrado' : ''}">
           <span class="cv-quando">${quando}</span>
           <span class="cv-nome">${escapeHtml(c.nome)}${ehRetroativoVenc(c) ? ' <span class="tag-retro" title="Retroativo: vence no mês seguinte">↩</span>' : ''}</span>
           <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(p.mesVenc+1).padStart(2,'0')}</span>
           <span class="cv-valor">R$ ${Number(c.valor||0).toFixed(2)}</span>
-          <button class="cv-btn-cob" onclick="gerarCobranca(${c.id}, ${mes}, ${ano})" title="Enviar cobrança de ${nomeMes} por WhatsApp">💬 Cobrar</button>
+          ${botaoCobrarHTML(c, mes, ano, `gerarCobranca(${c.id}, ${mes}, ${ano})`, `Enviar cobrança de ${nomeMes} por WhatsApp`)}
         </div>`;
       }).join('');
 
@@ -2294,7 +2396,8 @@ function renderCardVencimentosMes(card) {
     <div class="cv-topo">
       <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
       ${lista.length ? `<span class="cv-contador">${lista.length} em aberto · R$ ${totalAberto.toFixed(2)}</span>` : ''}
-      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">${seletorMesVencimentosHTML()}</span>
+      ${qtdCobrados ? `<span class="cv-contador cob">📲 ${qtdCobrados} já cobrados</span>` : ''}
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">${lista.length ? controlesCobrancaHTML(_filaCobranca.length) : ''}${seletorMesVencimentosHTML()}</span>
     </div>
     <div class="cv-lista">${itens}</div>`;
 }
@@ -2373,10 +2476,17 @@ function renderCardVencimentos() {
   // (faltam mais negativo = venceu há mais dias), depois os próximos a vencer.
   lista.sort((a, b) => a.faltam - b.faltam);
 
-  const naoPagos = lista.filter(p => !p.pago).length;
+  const cobradoP = p => !p.pago && infoCobranca(p.cliente, mesAtual, anoAtual);
+  const qtdCobrados = lista.filter(cobradoP).length;
+  const naoPagos = lista.filter(p => !p.pago).length - qtdCobrados;
+  const listaCompleta = lista;
+  if (_esconderCobrados) lista = lista.filter(p => !cobradoP(p));
+  _filaCobranca = lista.filter(p => !p.pago && !cobradoP(p)).map(p => ({ id: p.cliente.id, mes: mesAtual, ano: anoAtual }));
 
   let itens;
-  if (!lista.length) {
+  if (!lista.length && listaCompleta.length) {
+    itens = `<div class="cv-vazio">Todos desta lista já foram cobrados. 📲</div>`;
+  } else if (!lista.length) {
     const vazioMsg = _filtroVencimentos === 'vencidos'
       ? 'Nenhum cliente vencido. 🎉'
       : (_filtroVencimentos === 'todos' ? 'Nada por aqui.' : 'Nenhum vencimento próximo.');
@@ -2402,9 +2512,9 @@ function renderCardVencimentos() {
       // Se já pagou, mostra tag "pago" no lugar do botão de cobrança
       const acao = p.pago
         ? `<span class="cv-pago-tag">✓ Pago</span>`
-        : `<button class="cv-btn-cob" onclick="gerarCobranca(${c.id})" title="Enviar cobrança por WhatsApp">💬 Cobrar</button>`;
+        : botaoCobrarHTML(c, mesAtual, anoAtual, `gerarCobranca(${c.id})`, 'Enviar cobrança por WhatsApp');
       return `
-        <div class="cv-item ${classeItem} ${classeHoje}">
+        <div class="cv-item ${classeItem} ${classeHoje} ${cobradoP(p) ? 'cobrado' : ''}">
           <span class="cv-quando">${quando}</span>
           <span class="cv-nome">${escapeHtml(c.nome)}${ehRetroativoVenc(c) ? ' <span class="tag-retro" title="Retroativo: este vencimento paga o mês anterior">↩</span>' : ''}</span>
           <span class="cv-data" title="Data de vencimento">📅 ${String(p.diaVenc).padStart(2,'0')}/${String(p.mesVenc+1).padStart(2,'0')}</span>
@@ -2420,7 +2530,9 @@ function renderCardVencimentos() {
     <div class="cv-topo">
       <span class="cv-titulo">⏰ Vencimentos e cobranças</span>
       ${naoPagos > 0 ? `<span class="cv-contador">${naoPagos} a cobrar</span>` : ''}
-      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+      ${qtdCobrados > 0 ? `<span class="cv-contador cob">📲 ${qtdCobrados} já cobrados</span>` : ''}
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      ${(naoPagos > 0 || qtdCobrados > 0) ? controlesCobrancaHTML(_filaCobranca.length) : ''}
       <select class="cv-seletor" onchange="trocarFiltroVencimentos(this.value)">
         ${opt('avencer', `A vencer (${totalAvencer})`)}
         ${opt('vencidos', `Vencidos (${totalVencidos})`)}
@@ -5566,6 +5678,12 @@ function exportarPDF(tipo) {
 function gerarCobranca(id, mesRef, anoRef) {
   const c=clientes.find(x=>x.id===id); if(!c) return;
   cobrancaAtual=c;
+  { const h0 = new Date();
+    cobrancaRefAtual = (typeof mesRef === 'number' && typeof anoRef === 'number') ? { mes: mesRef, ano: anoRef } : { mes: h0.getMonth(), ano: h0.getFullYear() };
+    const r0 = infoCobranca(c, cobrancaRefAtual.mes, cobrancaRefAtual.ano);
+    const el0 = document.getElementById('cobrancaJaCobrado');
+    if (el0) { el0.style.display = r0 ? '' : 'none'; el0.textContent = r0 ? `📲 Já ${textoCobrado(r0)}${r0.por ? ' por ' + r0.por : ''}` : ''; }
+    if (!_seqCobranca) encerrarSequenciaCobranca(); }
   const status=calcularStatus(c); const nome=c.nome.split(' ')[0];
   // Cobrança de um mês passado específico (vinda do seletor de mês do card)
   const hojeCob = new Date();
@@ -5601,6 +5719,13 @@ function abrirWhatsApp() {
   const tel=(cobrancaAtual.tel||'').replace(/\D/g,'');
   if(!tel || tel.length < 10) { showToast('⚠ Cliente sem telefone cadastrado','error'); return; }
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(document.getElementById('cobrancaTexto').textContent)}`,'_blank');
+  // Marca o cliente como "cobrado" para a mensalidade desta mensagem
+  if (cobrancaRefAtual) {
+    registrarCobranca(cobrancaAtual, cobrancaRefAtual.mes, cobrancaRefAtual.ano);
+    renderCardVencimentos();
+  }
+  // Em sequência: já deixa pronto o próximo cliente
+  if (_seqCobranca) { _seqCobranca.enviados++; _seqCobranca.pos++; mostrarPassoSequencia(); }
 }
 
 // BACKUP COMPLETO
