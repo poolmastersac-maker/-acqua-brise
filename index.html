@@ -325,6 +325,9 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 .config-section-title{font-size:1rem;font-weight:700;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,32,44,0.5);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
+.pc-conta{border:2px solid var(--border);background:var(--surface2);border-radius:10px;padding:12px 8px;font-size:0.85rem;font-weight:700;cursor:pointer;color:var(--text);text-align:center;font-family:inherit;}
+.pc-conta:hover{border-color:var(--accent);}
+.pc-conta.sel{border-color:var(--green);background:rgba(76,175,80,0.12);color:var(--green);}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;animation:slideUp 0.2s ease;box-shadow:0 20px 60px rgba(33,150,243,0.15);}
 @keyframes slideUp{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 .modal-title{font-size:1.05rem;font-weight:800;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;}
@@ -1188,6 +1191,22 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalCobranca')">Fechar</button>
       <button class="btn btn-primary btn-sm" onclick="copiarMensagem()">📋 Copiar</button>
       <button class="btn btn-green btn-sm" onclick="abrirWhatsApp()">💬 WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPagoConta">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title"><span>💰 Registrar pagamento</span><button class="modal-close" onclick="fecharModal('modalPagoConta')">✕</button></div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:2px;">Cliente: <strong id="pcNome" style="color:var(--text)"></strong></p>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Referente a: <strong id="pcMes" style="color:var(--text)"></strong> · <strong id="pcValor" style="color:var(--text)"></strong></p>
+    <div style="font-size:0.8rem;font-weight:700;margin-bottom:8px;">Em qual conta caiu o pagamento?</div>
+    <div id="pcContas" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;"></div>
+    <label style="font-size:0.8rem;font-weight:700;display:block;margin-bottom:6px;" for="pcData">Data em que o dinheiro entrou</label>
+    <input type="date" class="form-input" id="pcData" style="margin-bottom:18px;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalPagoConta')">Cancelar</button>
+      <button class="btn btn-green btn-sm" id="pcConfirmar" onclick="confirmarPagoConta()" disabled>✓ Confirmar pagamento</button>
     </div>
   </div>
 </div>
@@ -2629,28 +2648,78 @@ function limparForm() {
   document.getElementById('fContaPix').value='';
   document.getElementById('formTitulo').textContent='Novo Cliente'; document.getElementById('formIcon').textContent='➕';
 }
+const CONTAS_PAGO_DASH = [
+  { key:'infinite_diego',   label:'InfinitePay Diego',   obs:'InfinitePayDiego' },
+  { key:'infinite_adriane', label:'InfinitePay Adriane', obs:'InfinitePayAdriane' },
+  { key:'itau',             label:'Itaú',                obs:'Itaú' },
+  { key:'dinheiro',         label:'💵 Dinheiro',          obs:'Pago em dinheiro' },
+];
+const MESES_NOME_PC = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let _pagoContaCtx = null;
+
+function dataLocalISO(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function togglePago(id) {
   const c = clientes.find(x=>x.id===id);
   if (!c) return;
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
-  const mesAtualSistema = hoje.getMonth();
-
   // Usar o mês do seletor do Dashboard — se nenhum selecionado, usa mês atual
   const selMes = document.getElementById('mesCobrar');
-  const mesIdx = (selMes && selMes.value !== '') ? parseInt(selMes.value, 10) : mesAtualSistema;
-
-  // Verificar status ATUAL do mês selecionado no histórico
+  const mesIdx = (selMes && selMes.value !== '') ? parseInt(selMes.value, 10) : hoje.getMonth();
   const idx = historico.findIndex(h=>h.clienteId===id&&h.ano===anoAtual&&h.mes===mesIdx);
   const statusAtualMes = idx >= 0 ? historico[idx].status : 'pendente';
-  const novoStatus = statusAtualMes === 'pago' ? 'pendente' : 'pago';
 
-  // Atualizar histórico do mês selecionado
+  // Desfazer pagamento: direto, sem popup
+  if (statusAtualMes === 'pago') { aplicarPagoDashboard(id, anoAtual, mesIdx, 'pendente', null, ''); return; }
+
+  // Marcar como pago: abre o popup para escolher a conta e a data
+  _pagoContaCtx = { id, ano: anoAtual, mes: mesIdx, conta: c.contaPix || null };
+  document.getElementById('pcNome').textContent = c.nome;
+  document.getElementById('pcMes').textContent = `${MESES_NOME_PC[mesIdx]}/${anoAtual}`;
+  document.getElementById('pcValor').textContent = 'R$ ' + Number(c.valor||0).toFixed(2).replace('.',',');
+  document.getElementById('pcData').value = dataLocalISO(hoje);
+  document.getElementById('pcData').max = dataLocalISO(hoje);
+  renderContasPagoDash();
+  document.getElementById('modalPagoConta').classList.add('open');
+}
+
+function renderContasPagoDash() {
+  const sel = _pagoContaCtx && _pagoContaCtx.conta;
+  document.getElementById('pcContas').innerHTML = CONTAS_PAGO_DASH.map(ct =>
+    `<button type="button" class="pc-conta ${sel===ct.key?'sel':''}" onclick="selecionarContaPagoDash('${ct.key}')">${ct.label}</button>`).join('');
+  document.getElementById('pcConfirmar').disabled = !sel;
+}
+
+function selecionarContaPagoDash(key) {
+  if (!_pagoContaCtx) return;
+  _pagoContaCtx.conta = key;
+  renderContasPagoDash();
+}
+
+function confirmarPagoConta() {
+  const ctx = _pagoContaCtx;
+  if (!ctx || !ctx.conta) { showToast('Escolha a conta do pagamento', 'error'); return; }
+  const data = document.getElementById('pcData').value || dataLocalISO();
+  fecharModal('modalPagoConta');
+  _pagoContaCtx = null;
+  aplicarPagoDashboard(ctx.id, ctx.ano, ctx.mes, 'pago', ctx.conta, data);
+}
+
+function aplicarPagoDashboard(id, ano, mesIdx, novoStatus, contaKey, data) {
+  const c = clientes.find(x=>x.id===id);
+  if (!c) return;
+  const mesAtualSistema = new Date().getMonth();
+  const idx = historico.findIndex(h=>h.clienteId===id&&h.ano===ano&&h.mes===mesIdx);
+  const ct = CONTAS_PAGO_DASH.find(x=>x.key===contaKey);
   const reg = {
-    clienteId: id, ano: anoAtual, mes: mesIdx,
+    clienteId: id, ano: ano, mes: mesIdx,
     status: novoStatus, valor: c.valor,
-    data: novoStatus === 'pago' ? hoje.toISOString().slice(0,10) : '',
-    obs: novoStatus === 'pago' ? 'Marcado via Dashboard' : ''
+    data: novoStatus === 'pago' ? data : '',
+    obs: novoStatus === 'pago' ? `Marcado via Dashboard - ${ct ? ct.obs : 'conta não informada'}` : ''
   };
   if (idx >= 0) historico[idx] = reg; else historico.push(reg);
 
@@ -2664,7 +2733,7 @@ function togglePago(id) {
   salvarHistorico();
   renderDashboard();
   atualizarStats();
-  showToast(novoStatus === 'pago' ? '✓ Pago!' : 'Pagamento desfeito', 'success');
+  showToast(novoStatus === 'pago' ? `✓ Pago! (${ct ? ct.label.replace('💵 ','') : ''})` : 'Pagamento desfeito', 'success');
   // Escrita granular: salva SÓ o registro de histórico alterado e, se mudou,
   // SÓ o cliente afetado — em vez de reescrever as coleções inteiras (economia de cota).
   if (window.fbSalvarHistorico) window.fbSalvarHistorico([reg]);
