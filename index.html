@@ -6039,9 +6039,12 @@ function preencherContAno() {
 // Data real de entrada de um registro do histórico ('AAAA-MM-DD'), lida sem fuso horário.
 // (new Date('2026-10-01') no Brasil vira 30/09 às 21h e jogava o pagamento no mês anterior)
 function dataEntradaHist(h) {
-  const m = String(h && h.data || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  return { ano: Number(m[1]), mes: Number(m[2]) - 1, dia: Number(m[3]) };
+  const s = String(h && h.data || '').trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return { ano: Number(m[1]), mes: Number(m[2]) - 1, dia: Number(m[3]) };
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // registros antigos no formato DD/MM/AAAA
+  if (m) return { ano: Number(m[3]), mes: Number(m[2]) - 1, dia: Number(m[1]) };
+  return null;
 }
 
 // Mês selecionado no relatório do contador: número de 0 a 11, ou 'todos' (ano inteiro)
