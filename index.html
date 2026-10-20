@@ -1116,6 +1116,11 @@ tr:hover td{background:rgba(33,150,243,0.04);}
             <button onclick="restaurarBackup()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-size:0.88rem;">📂 Restaurar Backup</button>
           </div>
           <input type="file" id="inputRestaurar" accept=".json" style="display:none;" onchange="lerArquivoBackup(event)">
+          <div style="margin-top:10px;">
+            <button onclick="document.getElementById('inputRestaurarPedidos').click()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:0.82rem;">♻️ Recuperar pedidos de um backup</button>
+            <span style="font-size:0.72rem;opacity:0.85;margin-left:6px;">traz de volta só os pedidos escolhidos — o resto do sistema não muda</span>
+          </div>
+          <input type="file" id="inputRestaurarPedidos" accept=".json" style="display:none;" onchange="lerBackupPedidos(event)">
         </div>
 
         <!-- INSTRUÇÕES PASTA PC -->
@@ -1207,6 +1212,19 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalPagoConta')">Cancelar</button>
       <button class="btn btn-green btn-sm" id="pcConfirmar" onclick="confirmarPagoConta()" disabled>✓ Confirmar pagamento</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalRecPedidos">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-title"><span>♻️ Recuperar pedidos</span><button class="modal-close" onclick="fecharModal('modalRecPedidos')">✕</button></div>
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:10px;" id="recPedInfo"></p>
+    <div id="recPedLista" style="max-height:55vh;overflow-y:auto;"></div>
+    <p style="color:var(--muted);font-size:0.74rem;margin:10px 0 14px;">Marque <b>“Já entregue”</b> quando o produto já foi entregue ao cliente: o pedido volta como entregue e o estoque <b>não</b> é baixado de novo. Falta só marcar o pagamento quando o cliente pagar.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalRecPedidos')">Cancelar</button>
+      <button class="btn btn-green btn-sm" onclick="confirmarRecPedidos()">♻️ Recuperar selecionados</button>
     </div>
   </div>
 </div>
@@ -5700,6 +5718,75 @@ function baixarSistema() {
   a.click();
   URL.revokeObjectURL(url);
   showToast('✓ Sistema salvo! Guarde em C:\\Backup Acqua Brise\\sistema\\', 'success');
+}
+
+// ============================================================
+// RECUPERAR PEDIDOS DE UM BACKUP (só os escolhidos)
+// ============================================================
+let _recPedCandidatos = [];
+function lerBackupPedidos(ev) {
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try { d = JSON.parse(r.result); } catch (e) { showToast('Arquivo inválido', 'error'); return; }
+    const lista = Array.isArray(d.pedidos) ? d.pedidos : [];
+    const atuais = new Set(pedidos.map(p => String(p.id)));
+    const vendidos = new Set();
+    (vendasConcluidas || []).forEach(v => { vendidos.add(String(v.id)); if (v.pedidoId != null) vendidos.add(String(v.pedidoId)); });
+    pedidos.forEach(p => { if (p.restauradoDe != null) atuais.add(String(p.restauradoDe)); });
+    (vendasConcluidas || []).forEach(v => { if (v.restauradoDe != null) vendidos.add(String(v.restauradoDe)); });
+    _recPedCandidatos = lista.filter(p => p && p.id != null && !atuais.has(String(p.id)) && !vendidos.has(String(p.id)))
+      .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+    const dataBk = d.data ? new Date(d.data).toLocaleString('pt-BR') : f.name;
+    document.getElementById('recPedInfo').textContent = _recPedCandidatos.length
+      ? `Backup de ${dataBk}: ${_recPedCandidatos.length} pedido(s) que não estão mais no sistema e não viraram venda.`
+      : `Backup de ${dataBk}: nenhum pedido faltando — todos estão no sistema ou já viraram venda.`;
+    document.getElementById('recPedLista').innerHTML = _recPedCandidatos.map((p, i) => {
+      const itens = p.itens || [];
+      const cli = itens.find(x => x.cliente && x.cliente !== '—')?.cliente || '—';
+      const tot = itens.reduce((s, x) => s + Number(x.valorUnit || 0) * Number(x.qtd || 0), 0);
+      const dt = p.data ? new Date(p.data).toLocaleDateString('pt-BR') : '—';
+      const prods = itens.map(x => `${x.qtd}x ${escapeHtml(x.produto || '')}`).join(', ');
+      return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;">
+        <input type="checkbox" id="recSel${i}" style="margin-top:3px;width:18px;height:18px;">
+        <label for="recSel${i}" style="flex:1;cursor:pointer;font-size:0.82rem;">
+          <b>${escapeHtml(cli)}</b> · ${dt} · <b>R$ ${tot.toFixed(2).replace('.', ',')}</b> <span style="color:var(--muted);">(${escapeHtml(p.status || '')})</span><br>
+          <span style="color:var(--muted);font-size:0.76rem;">${prods}</span>
+        </label>
+        <label style="font-size:0.75rem;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="recEnt${i}"> Já entregue</label>
+      </div>`;
+    }).join('');
+    document.getElementById('modalRecPedidos').classList.add('open');
+  };
+  r.readAsText(f);
+}
+
+function confirmarRecPedidos() {
+  const novos = [];
+  _recPedCandidatos.forEach((p, i) => {
+    if (!document.getElementById('recSel' + i)?.checked) return;
+    const entregue = !!document.getElementById('recEnt' + i)?.checked;
+    const novo = JSON.parse(JSON.stringify(p));
+    novo.id = gerarId();               // id novo: o antigo está na lista de exclusões
+    novo.restauradoDe = p.id;
+    novo.restauradoEm = new Date().toISOString();
+    novo.pago = false; delete novo.dataPagamento;
+    if (entregue) { novo.entregue = true; novo.dataEntrega = novo.dataEntrega || p.data || novo.restauradoEm; }
+    else { novo.entregue = false; delete novo.dataEntrega; }
+    novos.push(novo);
+  });
+  if (!novos.length) { showToast('Marque pelo menos um pedido', 'error'); return; }
+  pedidos.push(...novos);
+  salvarPedidos();
+  novos.forEach(n => { if (window.fbSetDoc) window.fbSetDoc('pedidos', String(n.id), n); });
+  if (!window.fbSetDoc) fbSync();
+  fecharModal('modalRecPedidos');
+  _recPedCandidatos = [];
+  if (typeof renderPedidos === 'function') renderPedidos();
+  showToast(`♻️ ${novos.length} pedido(s) recuperado(s) — veja na aba Pedidos`, 'success');
 }
 
 function restaurarBackup() {
