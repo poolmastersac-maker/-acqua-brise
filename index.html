@@ -1642,8 +1642,9 @@ if (!produtos || produtos.length === 0) { produtos = PRODUTOS_DEFAULT; salvarPro
 let necessidades = JSON.parse(localStorage.getItem('aquagest_necessidades') || '[]');
 let usuarios = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
 if (!usuarios || usuarios.length === 0) {
-  usuarios = [{id:1,usuario:'Diegoskamino',senha:'#Diegoskamino992801',email:'',perfil:'admin',nome:'Diego'}];
-  salvarUsuarios();
+  // Sem usuário padrão no código (a senha ficava pública no GitHub).
+  // Os usuários chegam do Firebase; até lá a lista fica vazia e o login espera a sincronização.
+  usuarios = [];
 }
 // Permissões padrão versionadas
 const _permissoesVersao = '3.3'; // Incrementar aqui sempre que mudar permissões
@@ -1891,13 +1892,18 @@ function fazerLogin() {
     const fresh = JSON.parse(localStorage.getItem('aquagest_usuarios') || 'null');
     if (fresh && fresh.length > 0) usuarios = fresh;
   }
-  const u = usuarios.find(x => x.usuario === usr && x.senha === sen);
+  if (!usuarios || usuarios.length === 0) {
+    const el = document.getElementById('loginErro');
+    if (el) { el.textContent = 'Carregando usuários da nuvem… aguarde alguns segundos e tente de novo.'; el.classList.add('show'); }
+    return;
+  }
+  const u = sen ? usuarios.find(x => x.usuario === usr && x.senha === sen) : null;
   if (u) {
     usuarioLogado = u;
     localStorage.setItem('drprime_logado', u.usuario);
     registrarAtividade();
     entrar();
-  } else document.getElementById('loginErro').classList.add('show');
+  } else { const el = document.getElementById('loginErro'); el.textContent = '⚠ Usuário ou senha incorretos'; el.classList.add('show'); }
 }
 function entrar() {
   document.getElementById('loginOverlay').style.display = 'none';
