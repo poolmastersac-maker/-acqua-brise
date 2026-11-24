@@ -1700,6 +1700,44 @@ let emailRecuperacao = null;
 
 // SALVAR
 function salvar() { localStorage.setItem('aquagest_clientes', JSON.stringify(clientes)); }
+
+// ===== Gravação de UM cliente na nuvem, com fila de pendentes =====
+// Antes, salvar um cadastro regravava TODOS os clientes, um por um. Isso demorava,
+// e se o sistema fosse atualizado antes de terminar a edição se perdia; além disso,
+// um aparelho com dados antigos desfazia edições feitas em outro aparelho.
+// Agora grava só o cliente alterado e guarda a pendência até a nuvem confirmar.
+const LS_CLI_PEND = 'aquagest_clientes_pendentes';
+function lerPendentesClientes() { try { return JSON.parse(localStorage.getItem(LS_CLI_PEND) || '{}') || {}; } catch (e) { return {}; } }
+function gravarPendentesClientes(p) { try { localStorage.setItem(LS_CLI_PEND, JSON.stringify(p)); } catch (e) {} }
+window.lerPendentesClientes = lerPendentesClientes;
+async function sincronizarCliente(c, avisar, campos) {
+  if (!c) return false;
+  const id = String(c.id);
+  // Só alguns campos (status, marca de cobrança): grava apenas eles, sem
+  // reescrever o cadastro inteiro — um aparelho com dados antigos não desfaz
+  // a edição de cadastro feita em outro aparelho.
+  if (campos && window.fbMergeDoc) {
+    const parcial = {};
+    campos.forEach(k => { parcial[k] = c[k] === undefined ? null : c[k]; });
+    parcial.id = c.id;
+    return window.fbMergeDoc('clientes', id, parcial);
+  }
+  const ts = Date.now();
+  const pend = lerPendentesClientes(); pend[id] = ts; gravarPendentesClientes(pend);
+  window._clientesEditadosRecentemente = window._clientesEditadosRecentemente || {};
+  window._clientesEditadosRecentemente[id] = ts;
+  if (!window.fbSetDoc) return false; // fica pendente; reenviado quando a nuvem carregar
+  const ok = await window.fbSetDoc('clientes', id, c);
+  if (ok) {
+    const p2 = lerPendentesClientes();
+    if (p2[id] === ts) { delete p2[id]; gravarPendentesClientes(p2); } // só limpa se não houve edição mais nova
+    if (avisar) showToast('☁ Cadastro salvo na nuvem', 'success');
+  } else if (avisar) {
+    showToast('⚠ Sem conexão: o cadastro ficou salvo neste aparelho e será enviado assim que possível', 'error');
+  }
+  return ok;
+}
+window.sincronizarCliente = sincronizarCliente;
 // Gera um ID numérico único. Date.now() sozinho pode colidir se dois registros
 // forem criados no mesmo milissegundo; um contador incremental garante unicidade.
 let _idCounter = 0;
@@ -2257,7 +2295,7 @@ function registrarCobranca(c, mes, ano) {
   window._clientesEditadosRecentemente = window._clientesEditadosRecentemente || {};
   window._clientesEditadosRecentemente[String(c.id)] = Date.now();
   salvar();
-  if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c); else fbSave('clientes');
+  sincronizarCliente(c, false, ['cobrancas']);
 }
 function botaoCobrarHTML(c, mes, ano, chamada, titulo) {
   const r = infoCobranca(c, mes, ano);
@@ -2713,8 +2751,8 @@ function pagarClienteSelecionado() {
   selecionarCliente(c.id);
   renderDashboard();
   showToast(c.status==='pago'?'✓ Pagamento confirmado!':'Status atualizado','success');
-  // Escrita granular (só o cliente e o registro afetados)
-  if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c); else fbSave('clientes');
+  // Escrita granular (só o status do cliente e o registro afetados)
+  sincronizarCliente(c, false, ['status']);
   if (regAlterado) {
     if (window.fbSalvarHistorico) window.fbSalvarHistorico([regAlterado]);
     else fbSave('historico');
@@ -2765,17 +2803,18 @@ function saveClient() {
   const editId = document.getElementById('editId').value;
   // Blinda o cliente editado/criado contra o polling sobrescrever com dado antigo
   // do Firebase antes do fbSave subir. A marca guarda o momento da edição.
-  window._clientesEditadosRecentemente = window._clientesEditadosRecentemente || {};
+  let alterado = null;
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
-    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}; showToast('✓ Cliente atualizado!','success'); }
-    window._clientesEditadosRecentemente[String(editId)] = Date.now();
+    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}; alterado = clientes[idx]; showToast('✓ Cliente atualizado!','success'); }
   } else {
     const novoId = gerarId();
-    clientes.push({id:novoId,nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}); showToast('✓ Cliente cadastrado!','success');
-    window._clientesEditadosRecentemente[String(novoId)] = Date.now();
+    alterado = {id:novoId,nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde};
+    clientes.push(alterado); showToast('✓ Cliente cadastrado!','success');
   }
-  salvar(); limparForm(); renderLista(); renderDashboard(); fbSave('clientes');
+  salvar(); limparForm(); renderLista(); renderDashboard();
+  // Grava SÓ este cliente na nuvem (antes regravava todos, devagar e com risco de desfazer edições)
+  if (alterado) sincronizarCliente(alterado, true);
 }
 function limparForm() {
   ['editId','fNome','fTel','fDia','fValor','fEndereco','fClienteDesde'].forEach(id=>document.getElementById(id).value='');
@@ -2875,8 +2914,7 @@ function aplicarPagoDashboard(id, ano, mesIdx, novoStatus, contaKey, data) {
   if (window.fbSalvarHistorico) window.fbSalvarHistorico([reg]);
   else fbSave('historico');
   if (clienteMudou) {
-    if (window.fbSetDoc) window.fbSetDoc('clientes', String(c.id), c);
-    else fbSave('clientes');
+    sincronizarCliente(c, false, ['status']);
   }
 }
 
@@ -2967,8 +3005,7 @@ function salvarPagamento() {
   if (window.fbSalvarHistorico) window.fbSalvarHistorico([reg]);
   else fbSave('historico');
   if (clienteAlterado) {
-    if (window.fbSetDoc) window.fbSetDoc('clientes', String(clienteAlterado.id), clienteAlterado);
-    else fbSave('clientes');
+    sincronizarCliente(clienteAlterado, false, ['status']);
   }
 }
 
@@ -6907,6 +6944,19 @@ window.addEventListener('resize', ajustarOffsetHeader);
   };
 
   // Expor função de set para uso direto no JS principal
+  // Grava só alguns campos de um documento (não desfaz o resto do cadastro)
+  window.fbMergeDoc = async function(colecao, id, campos) {
+    if (window.estaExcluido && window.estaExcluido(colecao, id)) return false;
+    try {
+      const limpo = JSON.parse(JSON.stringify(campos, (k, v) => v === undefined ? null : v));
+      await setDoc(doc(db, colecao, String(id)), limpo, { merge: true });
+      return true;
+    } catch(e) {
+      console.error('Erro fbMergeDoc:', e);
+      return false;
+    }
+  };
+
   window.fbSetDoc = async function(colecao, id, dados) {
     if (window.estaExcluido && window.estaExcluido(colecao, id)) return false; // excluído: não regravar
     try {
@@ -7159,6 +7209,29 @@ window.addEventListener('resize', ajustarOffsetHeader);
   };
 
   // LER do Firebase — Firebase é fonte principal
+  // Reenvia cadastros de clientes que ficaram pendentes (sistema fechado/atualizado
+  // antes de a nuvem confirmar, ou sem internet no momento da edição)
+  let _reenviandoClientes = false;
+  async function reenviarClientesPendentes() {
+    if (_reenviandoClientes || !window.lerPendentesClientes || !window.sincronizarCliente) return;
+    const pend = window.lerPendentesClientes();
+    const ids = Object.keys(pend);
+    if (!ids.length) return;
+    _reenviandoClientes = true;
+    try {
+      const locais = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
+      for (const id of ids) {
+        const c = locais.find(x => String(x.id) === id);
+        if (!c || window.estaExcluido('clientes', id)) {
+          const p = window.lerPendentesClientes(); delete p[id];
+          localStorage.setItem('aquagest_clientes_pendentes', JSON.stringify(p));
+          continue;
+        }
+        await window.sincronizarCliente(c);
+      }
+    } finally { _reenviandoClientes = false; }
+  }
+
   async function carregarDoFirebase() {
     try {
       // LISTA DE EXCLUSÕES — carregar ANTES de tudo (fonte da verdade do que foi apagado)
@@ -7204,10 +7277,12 @@ window.addEventListener('resize', ajustarOffsetHeader);
           const locaisAtuais = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
           const mapaLocal = {};
           locaisAtuais.forEach(c => { mapaLocal[String(c.id)] = c; });
+          const pendCli = (window.lerPendentesClientes ? window.lerPendentesClientes() : {});
           const dadosAjustados = dados.map(cFb => {
-            const marca = editadosRecentes[String(cFb.id)];
-            if (marca && (agora - marca) < 60000 && mapaLocal[String(cFb.id)]) {
-              return mapaLocal[String(cFb.id)]; // prioriza a edição local recente
+            const k = String(cFb.id);
+            const marca = editadosRecentes[k];
+            if ((pendCli[k] || (marca && (agora - marca) < 60000)) && mapaLocal[k]) {
+              return mapaLocal[k]; // prioriza a edição local ainda não confirmada na nuvem
             }
             return cFb;
           });
@@ -7216,6 +7291,7 @@ window.addEventListener('resize', ajustarOffsetHeader);
           if (typeof clientes !== 'undefined') { clientes = mesclado; }
         }
       }
+      reenviarClientesPendentes();
 
       // HISTÓRICO
       const snapH = await getDocs(collection(db, 'historico'));
@@ -7363,9 +7439,48 @@ window.addEventListener('resize', ajustarOffsetHeader);
 
   // Carregar do Firebase ao iniciar
   carregarDoFirebase();
+  let _ultimaLeituraClientes = Date.now();
+
+  // Ao voltar para o sistema (aba/celular reaberto), atualiza só os CLIENTES
+  // (no máximo a cada 3 min). Evita que um aparelho aberto há horas trabalhe
+  // com cadastro antigo. Edições ainda não confirmadas na nuvem são mantidas.
+  async function recarregarClientes() {
+    try {
+      await reenviarClientesPendentes();
+      const snapC = await getDocs(collection(db, 'clientes'));
+      if (snapC.empty) return;
+      const dados = snapC.docs.map(d => d.data()).filter(c => !window.estaExcluido('clientes', c.id));
+      const pendCli = window.lerPendentesClientes ? window.lerPendentesClientes() : {};
+      const editados = window._clientesEditadosRecentemente || {};
+      const agora = Date.now();
+      const locais = JSON.parse(localStorage.getItem('aquagest_clientes') || '[]');
+      const mapaLocal = {}; locais.forEach(c => { mapaLocal[String(c.id)] = c; });
+      const idsFb = new Set();
+      const lista = dados.map(cFb => {
+        const k = String(cFb.id); idsFb.add(k);
+        const marca = editados[k];
+        if ((pendCli[k] || (marca && agora - marca < 60000)) && mapaLocal[k]) return mapaLocal[k];
+        return cFb;
+      });
+      locais.forEach(c => { const k = String(c.id); if (!idsFb.has(k) && pendCli[k] && !window.estaExcluido('clientes', k)) lista.push(c); });
+      localStorage.setItem('aquagest_clientes', JSON.stringify(lista));
+      if (typeof clientes !== 'undefined') clientes = lista;
+      _ultimaLeituraClientes = Date.now();
+      if (typeof usuarioLogado !== 'undefined' && usuarioLogado) {
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof atualizarStats === 'function') atualizarStats();
+        const pg = document.getElementById('page-clientes');
+        if (pg && pg.classList.contains('active') && typeof renderLista === 'function') renderLista();
+      }
+    } catch(e) { /* sem conexão: tenta na próxima */ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - _ultimaLeituraClientes > 180000) recarregarClientes();
+  });
 
   // Polling a cada 15 segundos para gestor ver pedidos consolidados em tempo real
   setInterval(async () => {
+    try { await reenviarClientesPendentes(); } catch(e) {}
     try {
       // Novas exclusões feitas em outros aparelhos (lê só as recentes)
       let chegaramExclusoes = false;
