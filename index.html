@@ -5487,7 +5487,7 @@ function renderUsuarios() {
   document.getElementById('usuariosLista').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Usuário</th><th>Senha</th><th>Perfil</th><th>Vínculo Técnico</th><th>E-mail</th><th></th></tr></thead><tbody>
     ${usuarios.map(u=>`<tr>
       <td><div class="client-name">${u.usuario}</div></td>
-      <td><span style="font-family:monospace;font-size:0.85rem;color:var(--muted);">${isAdmin ? u.senha : '••••••••'}</span></td>
+      <td><span style="font-family:monospace;font-size:0.85rem;color:var(--muted);" title="A senha não é exibida. Para trocar, edite o usuário.">••••••••</span></td>
       <td>${perfis[u.perfil]||u.perfil}</td>
       <td><span style="font-size:0.82rem;color:var(--muted);">${u.perfil==='tecnico'?(u.tecnicoVinculo||'⚠ Não vinculado'):'—'}</span></td>
       <td>${u.email||'—'}</td>
@@ -5540,6 +5540,7 @@ function abrirModalUsuario() {
   document.getElementById('userEditId').value=''; document.getElementById('modalUserTitulo').textContent='Novo Usuário';
   ['cfgUsuario','cfgSenha','cfgEmail'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cfgSenha').type = 'password';
+  document.getElementById('cfgSenha').placeholder = 'Mínimo 4 caracteres';
   document.getElementById('cfgPerfil').value='tecnico';
   document.getElementById('cfgVinculo').value='';
   toggleCampoVinculo();
@@ -5549,8 +5550,10 @@ function editarUsuario(id) {
   const u=usuarios.find(x=>x.id===id); if(!u) return;
   document.getElementById('userEditId').value=u.id; document.getElementById('modalUserTitulo').textContent='Editar Usuário';
   document.getElementById('cfgUsuario').value=u.usuario;
-  document.getElementById('cfgSenha').value=u.senha;
-  document.getElementById('cfgSenha').type = usuarioLogado?.perfil === 'admin' ? 'text' : 'password';
+  // A senha atual não é exibida: campo vazio = manter a senha atual
+  document.getElementById('cfgSenha').value='';
+  document.getElementById('cfgSenha').type = 'password';
+  document.getElementById('cfgSenha').placeholder = 'Deixe em branco para manter a senha atual';
   document.getElementById('cfgEmail').value=u.email||'';
   document.getElementById('cfgPerfil').value=u.perfil;
   toggleCampoVinculo();
@@ -5563,31 +5566,40 @@ function salvarUsuario() {
   const email=document.getElementById('cfgEmail').value.trim();
   const perfil=document.getElementById('cfgPerfil').value;
   const tecnicoVinculo = perfil==='tecnico' ? document.getElementById('cfgVinculo').value : '';
-  if(!usuario||senha.length<4){showToast('⚠ Preencha usuário e senha (mín. 4 chars)','error');return;}
-  if(perfil==='tecnico'&&!tecnicoVinculo){showToast('⚠ Selecione o técnico vinculado','error');return;}
   const editId=document.getElementById('userEditId').value;
+  // Ao editar, senha em branco = manter a atual
+  if(!usuario){showToast('⚠ Preencha o nome de usuário','error');return;}
+  if((!editId || senha.length>0) && senha.length<4){showToast('⚠ A senha precisa ter no mínimo 4 caracteres','error');return;}
+  if(perfil==='tecnico'&&!tecnicoVinculo){showToast('⚠ Selecione o técnico vinculado','error');return;}
   // Impedir login duplicado (comparação case-insensitive), exceto o próprio ao editar
   const loginExiste = usuarios.some(u =>
     u.usuario.toLowerCase() === usuario.toLowerCase() &&
     String(u.id) !== String(editId)
   );
   if (loginExiste) { showToast('⚠ Já existe um usuário com esse login','error'); return; }
+  let alteradoU = null;
   if(editId){
     const idx=usuarios.findIndex(u=>u.id===Number(editId));
     if(idx>=0){
-      usuarios[idx]={...usuarios[idx],usuario,senha,email,perfil,tecnicoVinculo};
-      showToast('✓ Usuário atualizado!','success');
+      const novaSenha = senha.length>0 ? senha : usuarios[idx].senha;
+      usuarios[idx]={...usuarios[idx],usuario,senha:novaSenha,email,perfil,tecnicoVinculo};
+      alteradoU = usuarios[idx];
+      showToast(senha.length>0 ? '✓ Usuário atualizado (senha trocada)' : '✓ Usuário atualizado','success');
     }
   } else {
-    usuarios.push({id:gerarId(),usuario,senha,email,perfil,tecnicoVinculo,nome:usuario});
+    alteradoU = {id:gerarId(),usuario,senha,email,perfil,tecnicoVinculo,nome:usuario};
+    usuarios.push(alteradoU);
     showToast('✓ Usuário criado!','success');
   }
+  document.getElementById('cfgSenha').value='';
   salvarUsuarios();
   window._fbUsuarios = [...usuarios];
   fecharModal('modalUsuario');
   renderUsuarios();
   preencherSelectTecnicos();
-  fbSave('usuarios');
+  // Grava só o usuário alterado (aparelho com lista antiga não desfaz troca de senha de outro usuário)
+  if (alteradoU && window.fbSetDoc) window.fbSetDoc('usuarios', String(alteradoU.id), alteradoU);
+  else fbSave('usuarios');
 }
 function renderPermissoes() {
   const abas=['dashboard','clientes','historico','estoque','servicos','visaogeral','necessidades','pedidos','lembretes','lembretesavisos','relatorios','vendas','configuracoes','excluir','exportar'];
@@ -5807,8 +5819,11 @@ function fazerBackupCompleto() {
   a.click();
   URL.revokeObjectURL(url);
   
-  // Registrar data do último backup
+  // Registrar data do último backup (neste aparelho e na nuvem, para todos verem)
   localStorage.setItem('drprime_ultimo_backup', hoje.toISOString());
+  const infoBk = { em: hoje.toISOString(), por: usuarioLogado?.nome || usuarioLogado?.usuario || '' };
+  try { localStorage.setItem('drprime_ultimo_backup_info', JSON.stringify(infoBk)); } catch(e) {}
+  if (window.fbSalvarInfoBackup) window.fbSalvarInfoBackup(infoBk);
   atualizarInfoBackup();
   
   showToast(`✓ Backup salvo! Guarde na pasta C:\\Backup Acqua Brise\\`, 'success');
@@ -6055,10 +6070,15 @@ function lerArquivoBackup(event) {
 function atualizarInfoBackup() {
   const el = document.getElementById('ultimoBackupInfo');
   if (!el) return;
-  const ultimo = localStorage.getItem('drprime_ultimo_backup');
-  if (ultimo) {
-    const d = new Date(ultimo);
-    el.textContent = `Último backup: ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}`;
+  // Vale o backup mais recente entre o deste aparelho e o registrado na nuvem
+  let info = null;
+  try { info = JSON.parse(localStorage.getItem('drprime_ultimo_backup_info') || 'null'); } catch(e) {}
+  const local = localStorage.getItem('drprime_ultimo_backup');
+  if (local && (!info || !info.em || new Date(local) > new Date(info.em))) info = { em: local, por: '' };
+  if (info && info.em) {
+    const d = new Date(info.em);
+    const dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+    el.textContent = `Último backup: ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}${info.por ? ' (por ' + info.por + ')' : ''}${dias >= 7 ? ' ⚠️ há ' + dias + ' dias' : ''}`;
   } else {
     el.textContent = 'Último backup: nunca realizado ⚠️';
   }
@@ -7192,6 +7212,12 @@ window.addEventListener('resize', ajustarOffsetHeader);
     }
   };
 
+  // Registrar o último backup na nuvem (todos os aparelhos veem a mesma data)
+  window.fbSalvarInfoBackup = async function(info) {
+    try { await setDoc(doc(db, 'config', 'ultimo_backup'), JSON.parse(JSON.stringify(info))); }
+    catch(e) { console.error('Erro ao registrar backup:', e); }
+  };
+
   // Expor salvamento das chaves PIX no Firebase
   window.fbSalvarChavesPix = async function(chaves) {
     try {
@@ -7423,6 +7449,18 @@ window.addEventListener('resize', ajustarOffsetHeader);
           const dadosPix = {...pixDoc.data()};
           localStorage.setItem('aquagest_chaves_pix', JSON.stringify(dadosPix));
           if (typeof chavesPix !== 'undefined') { chavesPix = dadosPix; }
+        }
+
+        // ÚLTIMO BACKUP — do mesmo snapshot de config
+        const bkDoc = snapPerm.docs.find(d => d.id === 'ultimo_backup');
+        if (bkDoc) {
+          const infoNuvem = bkDoc.data();
+          let infoLocal = null;
+          try { infoLocal = JSON.parse(localStorage.getItem('drprime_ultimo_backup_info') || 'null'); } catch(e) {}
+          if (infoNuvem && infoNuvem.em && (!infoLocal || !infoLocal.em || new Date(infoNuvem.em) > new Date(infoLocal.em))) {
+            localStorage.setItem('drprime_ultimo_backup_info', JSON.stringify(infoNuvem));
+          }
+          if (typeof atualizarInfoBackup === 'function') atualizarInfoBackup();
         }
 
         // PEDIDO FORNECEDOR — do mesmo snapshot de config (evita 2ª leitura)
