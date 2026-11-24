@@ -716,6 +716,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
             <option value="itau">Itaú</option>
           </select>
         </div>
+        <div class="form-group"><label class="form-label">👤 Titular do pagamento <span style="color:var(--muted);font-size:0.75rem;">(se o pagamento vier de outra pessoa ou empresa)</span></label><input type="text" class="form-input" id="fPagador" placeholder="Ex.: Maria Lucia Andersen  •  vários: separe com ;"></div>
         <div class="form-actions">
           <button class="btn btn-ghost btn-sm" onclick="limparForm()">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="saveClient()">💾 Salvar</button>
@@ -747,6 +748,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
         <div class="painel-info-row"><span class="painel-info-label">Técnico</span><span class="painel-info-value" id="painelTecnico">—</span></div>
         <div class="painel-info-row"><span class="painel-info-label">Localização</span><span class="painel-info-value" id="painelEnd" style="font-size:0.76rem;text-align:right;max-width:150px;">—</span></div>
         <div class="painel-info-row"><span class="painel-info-label">💰 Conta PIX</span><span class="painel-info-value" id="painelContaPix" style="font-size: 0.76rem; text-align: right;">InfinitePayAdriane</span></div>
+        <div class="painel-info-row"><span class="painel-info-label">👤 Titular do pagamento</span><span class="painel-info-value" id="painelPagador" style="font-size:0.76rem;text-align:right;max-width:170px;">—</span></div>
         <div class="painel-acoes">
           <button class="painel-btn" onclick="editarClienteSelecionado()"><span class="painel-btn-icon">✏️</span>Alterar cadastro</button>
           <button class="painel-btn" onclick="pagarClienteSelecionado()"><span class="painel-btn-icon">✅</span><span id="btnPagarLabel">Marcar como pago</span></button>
@@ -2666,7 +2668,7 @@ function renderLista() {
   const vinculo = usuarioLogado?.tecnicoVinculo || '';
   const listaFiltrada2 = clientes.filter(c => {
     if (isTecnico) { if (!vinculo || c.tecnico !== vinculo) return false; }
-    return c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca);
+    return c.nome.toLowerCase().includes(busca)||(c.tel||'').includes(busca)||(c.pagador||'').toLowerCase().includes(busca);
   });
   const lista = ordenarClientes(listaFiltrada2, _ordemClientes);
   const container = document.getElementById('listaBody');
@@ -2710,6 +2712,8 @@ function selecionarCliente(id) {
       elContaPix.style.color = 'var(--red)';
     }
   }
+  const elPagador = document.getElementById('painelPagador');
+  if (elPagador) elPagador.textContent = (c.pagador || '').trim() || 'o próprio cliente';
   document.getElementById('btnPagarLabel').textContent = status==='pago'?'Desfazer pagamento':'Marcar como pago';
   document.getElementById('painelCliente').classList.add('visible');
   renderLista();
@@ -2727,6 +2731,7 @@ function editarClienteSelecionado() {
   document.getElementById('fEndereco').value=c.endereco||''; document.getElementById('fTipoPag').value=c.tipoPag||'atual';
   document.getElementById('fTecnico').value=c.tecnico||'';
   document.getElementById('fContaPix').value=c.contaPix||'';
+  document.getElementById('fPagador').value=c.pagador||'';
   document.getElementById('fClienteDesde').value=c.clienteDesde||'';
   document.getElementById('formTitulo').textContent='Editar Cliente'; document.getElementById('formIcon').textContent='✏️';
   document.querySelector('.form-card').scrollIntoView({behavior:'smooth'}); navegarPara('clientes');
@@ -2794,6 +2799,7 @@ function saveClient() {
   const tipoPag = document.getElementById('fTipoPag').value;
   const tecnico = document.getElementById('fTecnico').value;
   const contaPix = document.getElementById('fContaPix').value;
+  const pagador = document.getElementById('fPagador').value.trim().replace(/\s+/g, ' ');
   const clienteDesde = document.getElementById('fClienteDesde').value; // 'YYYY-MM-DD' ou ''
   // Validação: nome obrigatório, dia e valor devem ser números válidos.
   // Aceita valor 0 (ex: cliente cortesia) — não usar !valor, pois 0 é falsy.
@@ -2806,10 +2812,10 @@ function saveClient() {
   let alterado = null;
   if (editId) {
     const idx = clientes.findIndex(c=>c.id===Number(editId));
-    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde}; alterado = clientes[idx]; showToast('✓ Cliente atualizado!','success'); }
+    if (idx>=0) { clientes[idx]={...clientes[idx],nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde,pagador}; alterado = clientes[idx]; showToast('✓ Cliente atualizado!','success'); }
   } else {
     const novoId = gerarId();
-    alterado = {id:novoId,nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde};
+    alterado = {id:novoId,nome,tel,dia,valor,status,endereco,tipoPag,tecnico,contaPix,clienteDesde,pagador};
     clientes.push(alterado); showToast('✓ Cliente cadastrado!','success');
   }
   salvar(); limparForm(); renderLista(); renderDashboard();
@@ -2821,6 +2827,7 @@ function limparForm() {
   document.getElementById('fStatus').value='pendente'; document.getElementById('fTipoPag').value='atual';
   document.getElementById('fTecnico').value='';
   document.getElementById('fContaPix').value='';
+  document.getElementById('fPagador').value='';
   document.getElementById('formTitulo').textContent='Novo Cliente'; document.getElementById('formIcon').textContent='➕';
 }
 const CONTAS_PAGO_DASH = [
@@ -3745,7 +3752,10 @@ function processarImportacao() {
 
     // Buscar cliente — exato primeiro, depois parcial melhorada
     const nomeLower = normStr(nomeDigitado);
-    let cliente = clientes.find(c => normStr(c.nome) === nomeLower);
+    // Titulares do pagamento cadastrados no cliente (esposa, empresa...), separados por ;
+    const pagadoresDe = c => String(c.pagador || '').split(/[;\n]/).map(normStr).filter(Boolean);
+    let cliente = clientes.find(c => normStr(c.nome) === nomeLower)
+      || clientes.find(c => pagadoresDe(c).some(pg => pg === nomeLower || (pg.length >= 6 && (nomeLower.startsWith(pg) || pg.startsWith(nomeLower) && nomeLower.length >= 6))));
 
     if (!cliente) {
       const partsNome = nomeLower.split(' ').filter(p => p.length > 2);
@@ -3753,7 +3763,7 @@ function processarImportacao() {
         let melhorCliente = null;
         let melhorScore = 0;
         clientes.forEach(c => {
-          const cNorm = normStr(c.nome);
+          const cNorm = normStr(c.nome + ' ' + (c.pagador || ''));
           const matches = partsNome.filter(p => cNorm.includes(p));
           const score = matches.length;
           const needed = partsNome.length === 1 ? 1 : 2;
@@ -5627,7 +5637,7 @@ function exportarExcel(tipo) {
   let data, filename;
   if(tipo==='clientes'){
     const contaLabel = { infinite_diego:'InfinitePayDiego', infinite_adriane:'InfinitePayAdriane', itau:'Itaú' };
-    data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||'','Conta de Recebimento':contaLabel[c.contaPix]||'— Não definida —'}));
+    data=clientes.map(c=>({Nome:c.nome,Telefone:c.tel||'',Dia:c.dia,Valor:c.valor,Status:c.status,Localização:c.endereco||'',Técnico:c.tecnico||'','Conta de Recebimento':contaLabel[c.contaPix]||'— Não definida —','Titular do pagamento':c.pagador||''}));
     const T = totaisMensalidadesClientes();
     data.push({});
     data.push({Nome:`TOTAL MENSALIDADES (${T.qtdAtivos} clientes, sem suspensos)`, Valor:Number(T.totalAtivos.toFixed(2))});
