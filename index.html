@@ -569,6 +569,53 @@ tr:hover td{background:rgba(33,150,243,0.04);}
   .nav-tab span:first-child{font-size:0.95rem;}
   .filter-btn{font-size:0.7rem;padding:5px 7px;}
 }
+
+/* ===== RESPONSIVIDADE v25 (ajustes globais) ===== */
+.clientes-layout>*,.hist-layout>*,.config-layout>*,#configContent,.config-section{min-width:0;}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.lista-header{flex-wrap:wrap;gap:8px;}
+.rel-subtabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.rel-subtabs::-webkit-scrollbar{display:none;}
+.rel-subtab{white-space:nowrap;flex-shrink:0;}
+img,canvas,svg{max-width:100%;}
+.form-toggle-ic{display:none;}
+.so-cel{display:none;}
+.modal{max-height:calc(100vh - 24px);overflow-y:auto;}
+@media(min-width:601px) and (max-width:900px){
+  .nav-tab span:last-child{display:inline;}
+  .nav-tabs{justify-content:center;}
+}
+@media(max-width:600px){
+  .hist-meses{overflow:hidden;}
+  .mes-row.header{display:none;}
+  .mes-row{min-width:0;grid-template-columns:1fr auto auto;grid-template-areas:"nome status btn" "valor data data" "obs obs obs";gap:4px 10px;padding:11px 12px;font-size:0.82rem;}
+  .mes-row>:nth-child(1){grid-area:nome;}
+  .mes-row>:nth-child(2){grid-area:status;}
+  .mes-row>:nth-child(3){grid-area:valor;}
+  .mes-row>:nth-child(4){grid-area:data;text-align:right;}
+  .mes-row>:nth-child(5){grid-area:obs;font-size:0.75rem;overflow-wrap:anywhere;}
+  .mes-row>:nth-child(6){grid-area:btn;}
+  .hist-client-name,.hist-client-meta{overflow-wrap:anywhere;}
+  .hist-resumo-card{min-width:0;}
+  .hist-resumo-value{font-size:0.95rem;overflow-wrap:anywhere;}
+  .hist-resumo-label{letter-spacing:0.5px;}
+  .config-section-title{overflow-wrap:anywhere;}
+  body[data-pagina]:not([data-pagina="dashboard"]) .stats-bar{display:none;}
+  .tbl-dash th:nth-child(2),.tbl-dash td:nth-child(2),.tbl-dash th:nth-child(3),.tbl-dash td:nth-child(3){display:none;}
+  table.tbl-dash{min-width:0 !important;}
+  .tbl-dash th:nth-child(4),.tbl-dash td:nth-child(4){display:none;}
+  .tbl-dash th,.tbl-dash td{padding:9px 6px;}
+  .tbl-dash th{letter-spacing:0.3px;font-size:0.62rem;}
+  .tbl-dash .client-name{font-size:0.82rem;}
+  .tbl-dash td:last-child{flex-direction:column;}
+  .tbl-dash .so-cel{display:block;font-size:0.72rem;margin-top:2px;}
+  .tbl-dash .valor{white-space:nowrap;}
+  .form-card-title{cursor:pointer;}
+  .form-toggle-ic{display:inline-block;margin-left:auto;font-size:0.9rem;color:var(--muted);transition:transform .2s;}
+  .form-card.recolhido .form-toggle-ic{transform:rotate(-90deg);}
+  .form-card.recolhido>*:not(.form-card-title){display:none !important;}
+  .form-card.recolhido .form-card-title{margin-bottom:0;}
+}
 </style>
 </head>
 <body __processed_91291952-e711-4a52-a7cd-5d12b45987b7__="true" style="padding-top: 0px;" __processed_081407f3-9355-4a62-b338-f517a66624f4__="true" __processed_4fa940d1-e961-45cc-b6f0-a7e4a1498dfe__="true" __processed_8b19d7cd-3a73-4e4e-bd59-105ba20a120f__="true" __processed_bf55ff14-5dd9-4b59-8330-93557152f1d5__="true" __processed_9f801c6e-9546-40dc-a7ea-2fafc73049a8__="true" __processed_9041410f-837a-41c5-9b63-50ddebc85ec0__="true">
@@ -682,7 +729,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
     <button class="btn btn-ghost btn-sm" onclick="cobrarTodos()">📲 Cobrar Atrasados</button>
   </div>
   <div class="table-wrap">
-    <table><thead><tr><th>Cliente</th><th>Localização</th><th>Técnico</th><th>Vencimento</th><th>Mensalidade</th><th>Status</th><th>Ações</th></tr></thead>
+    <table class="tbl-dash"><thead><tr><th>Cliente</th><th>Localização</th><th>Técnico</th><th>Vencimento</th><th>Mensalidade</th><th>Status</th><th>Ações</th></tr></thead>
     <tbody id="tableBody"></tbody></table>
   </div>
 </div>
@@ -691,8 +738,8 @@ tr:hover td{background:rgba(33,150,243,0.04);}
 <div class="page" id="page-clientes">
   <div class="clientes-layout">
     <div style="display:flex;flex-direction:column;gap:16px;">
-      <div class="form-card">
-        <div class="form-card-title"><span id="formIcon">➕</span><span id="formTitulo">Novo Cliente</span></div>
+      <div class="form-card recolhido" id="cliFormCard">
+        <div class="form-card-title" onclick="toggleFormCliente()"><span id="formIcon">➕</span><span id="formTitulo">Novo Cliente</span><span class="form-toggle-ic">▾</span></div>
         <input type="hidden" id="editId" value="">
         <div class="form-group"><label class="form-label">Nome completo *</label><input type="text" class="form-input" id="fNome" placeholder="João da Silva"></div>
         <div class="form-row">
@@ -977,7 +1024,7 @@ tr:hover td{background:rgba(33,150,243,0.04);}
       <option value="nao_identificado">Não identificado</option>
     </select>
   </div>
-  <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;">
+  <div class="rel-subtabs">
     <button class="rel-subtab active" id="relTab1" onclick="trocarRelTab(1)">📊 Resumo</button>
     <button class="rel-subtab" id="relTab2" onclick="trocarRelTab(2)">📋 Pagamentos</button>
     <button class="rel-subtab" id="relTab3" onclick="trocarRelTab(3)">📈 Gráficos</button>
@@ -2103,6 +2150,7 @@ function navegarPara(pagina) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   paginaEl.classList.add('active');
+  document.body.dataset.pagina = pagina;
   // Marcar aba ativa pelo data-aba (robusto, não depende de ordem)
   const tabAtiva = document.querySelector('.nav-tab[data-aba="'+pagina+'"]');
   if (tabAtiva) tabAtiva.classList.add('active');
@@ -2661,7 +2709,7 @@ function renderDashboard() {
         <td><span style="color:var(--muted);font-size:0.82rem;">${c.endereco||'—'}</span></td>
         <td><span style="font-size:0.82rem;color:var(--muted);">${c.tecnico||'—'}</span></td>
         <td><span class="vencimento">Dia ${c.dia}</span></td>
-        <td><span class="valor">R$ ${Number(c.valor).toFixed(2)}</span></td>
+        <td><span class="valor">R$ ${Number(c.valor).toFixed(2)}</span><div class="so-cel vencimento">Dia ${c.dia}</div></td>
         <td>${badgeHTML(statusMes)}</td>
         <td style="display:flex;gap:5px;">
           <button class="action-btn pay" title="${statusMes==='pago'?'Desfazer':'Pago'}" onclick="togglePago(${c.id})">${statusMes==='pago'?'↩':'✓'}</button>
@@ -2766,6 +2814,7 @@ function editarClienteSelecionado() {
   document.getElementById('fPagador').value=c.pagador||'';
   document.getElementById('fClienteDesde').value=c.clienteDesde||'';
   document.getElementById('formTitulo').textContent='Editar Cliente'; document.getElementById('formIcon').textContent='✏️';
+  document.getElementById('cliFormCard').classList.remove('recolhido');
   document.querySelector('.form-card').scrollIntoView({behavior:'smooth'}); navegarPara('clientes');
 }
 function pagarClienteSelecionado() {
@@ -2861,6 +2910,13 @@ function limparForm() {
   document.getElementById('fContaPix').value='';
   document.getElementById('fPagador').value='';
   document.getElementById('formTitulo').textContent='Novo Cliente'; document.getElementById('formIcon').textContent='➕';
+  const fc=document.getElementById('cliFormCard'); if (fc) fc.classList.add('recolhido');
+}
+// No celular o formulário de cliente fica recolhido; toque no título para abrir/fechar
+function toggleFormCliente() {
+  const fc=document.getElementById('cliFormCard'); if (!fc) return;
+  if (window.innerWidth>600) { fc.classList.remove('recolhido'); return; }
+  fc.classList.toggle('recolhido');
 }
 const CONTAS_PAGO_DASH = [
   { key:'infinite_diego',   label:'InfinitePay Diego',   obs:'InfinitePayDiego' },
