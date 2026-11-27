@@ -5824,6 +5824,10 @@ function exportarExcel(tipo) {
       data.push({ Cliente: `TOTAL DO PERÍODO ${fmtBR(per.de)} a ${fmtBR(per.ate)} (${histFiltrado.length} pagamentos)`, Valor: `R$ ${tot.toFixed(2).replace('.',',')}` });
       filename = `historico_${per.de}_a_${per.ate}.xlsx`;
     } else {
+    const pagos = histFiltrado.filter(h => h.status === 'pago');
+    const totPagos = pagos.reduce((t, h) => t + (Number(h.valor) || 0), 0);
+    data.push({});
+    data.push({ Cliente: `TOTAL PAGO (${pagos.length} pagamentos)`, Valor: `R$ ${totPagos.toFixed(2).replace('.',',')}` });
     let sufixo = '';
     if (anoSel !== 'todos') sufixo += '_' + anoSel;
     if (mesSel !== 'todos') sufixo += '_' + MESES_ARQ[Number(mesSel)];
@@ -5859,9 +5863,11 @@ function exportarPDF(tipo) {
   } else {
     let histFiltrado = getHistoricoFiltrado();
     if (per) histFiltrado = [...histFiltrado].sort((a,b) => dataIsoHist(a).localeCompare(dataIsoHist(b)));
-    const totPer = histFiltrado.reduce((t, h) => t + (Number(h.valor) || 0), 0);
+    // Total no fim do PDF: só o que foi pago (pendentes/isentos não somam)
+    const pagosPdf = histFiltrado.filter(h => h.status === 'pago');
+    const totPer = pagosPdf.reduce((t, h) => t + (Number(h.valor) || 0), 0);
     doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:histFiltrado.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,per?fmtBR(dataIsoHist(h)):(h.data||'')];}),
-      ...(per ? { foot: [[{content:`TOTAL DO PERÍODO (${histFiltrado.length} pagamentos)`, colSpan:4}, `R$ ${totPer.toFixed(2)}`, '']], showFoot:'lastPage' } : {})});
+      foot: [[{content:`${per ? 'TOTAL DO PERÍODO' : 'TOTAL PAGO'} (${pagosPdf.length} pagamentos)`, colSpan:4}, `R$ ${totPer.toFixed(2)}`, '']], showFoot:'lastPage'});
   }
   let filename;
   if (tipo === 'clientes') {
