@@ -1263,9 +1263,9 @@ img,canvas,svg{max-width:100%;}
   <div class="modal" style="max-width:420px;">
     <div class="modal-title"><span>📤 Exportar histórico de pagamentos</span><button class="modal-close" onclick="fecharModal('modalExportHist')">✕</button></div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label">Ano</label><select class="form-input" id="exportAnoHistorico"><option value="todos">Todos os anos</option></select></div>
-      <div class="form-group"><label class="form-label">Mês</label>
-        <select class="form-input" id="exportMesHistorico">
+      <div class="form-group" id="grupoExportAno"><label class="form-label">Ano</label><select class="form-input" id="exportAnoHistorico"><option value="todos">Todos os anos</option></select></div>
+      <div class="form-group" id="grupoExportMes"><label class="form-label">Mês</label>
+        <select class="form-input" id="exportMesHistorico" onchange="atualizarModoExportHist()">
           <option value="todos">Todos os meses</option>
           <option value="0">Janeiro</option><option value="1">Fevereiro</option>
           <option value="2">Março</option><option value="3">Abril</option>
@@ -1273,7 +1273,15 @@ img,canvas,svg{max-width:100%;}
           <option value="6">Julho</option><option value="7">Agosto</option>
           <option value="8">Setembro</option><option value="9">Outubro</option>
           <option value="10">Novembro</option><option value="11">Dezembro</option>
+          <option value="periodo">📅 Período (escolher datas)</option>
         </select></div>
+    </div>
+    <div id="grupoExportPeriodo" style="display:none;">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">De</label><input type="date" class="form-input" id="exportDe"></div>
+        <div class="form-group"><label class="form-label">Até</label><input type="date" class="form-input" id="exportAte"></div>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);background:var(--surface2);border-radius:8px;padding:8px 10px;margin:-4px 0 10px;">💡 Entram os pagamentos feitos entre as duas datas (pela <strong>data do pagamento</strong>). Meses ainda sem pagamento ficam de fora. O arquivo traz o total do período.</div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px;">
       <button class="btn btn-ghost btn-sm" onclick="fecharModal('modalExportHist')">Fechar</button>
@@ -2124,8 +2132,38 @@ function abrirHistoricoDoCliente(id) {
 }
 function abrirModalExportarHistorico() {
   popularAnosHistorico();
+  atualizarModoExportHist();
   document.getElementById('modalExportHist').classList.add('open');
 }
+// Exportar histórico: modo "Período" filtra pela data do pagamento (De/Até)
+function isoLocal(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function atualizarModoExportHist() {
+  const periodo = document.getElementById('exportMesHistorico')?.value === 'periodo';
+  document.getElementById('grupoExportPeriodo').style.display = periodo ? '' : 'none';
+  document.getElementById('grupoExportAno').style.display = periodo ? 'none' : '';
+  document.getElementById('grupoExportMes').style.gridColumn = periodo ? '1 / -1' : '';
+  if (periodo) {
+    const de = document.getElementById('exportDe'), ate = document.getElementById('exportAte');
+    const hoje = new Date();
+    if (!de.value) de.value = isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    if (!ate.value) ate.value = isoLocal(hoje);
+  }
+}
+function periodoExportHist() {
+  if (document.getElementById('exportMesHistorico')?.value !== 'periodo') return null;
+  let de = document.getElementById('exportDe').value, ate = document.getElementById('exportAte').value;
+  if (!de || !ate) return { erro: 'Escolha as duas datas do período' };
+  if (de > ate) [de, ate] = [ate, de];
+  return { de, ate };
+}
+// Data do registro em AAAA-MM-DD (aceita também DD/MM/AAAA)
+function dataIsoHist(h) {
+  const d = String(h.data || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+  const m = d.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+function fmtBR(iso) { const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
 function aplicarPermissoesHistorico() {
   const p = permAtual();
   const perfil = usuarioLogado?.perfil;
@@ -5719,6 +5757,10 @@ function getHistoricoFiltrado() {
   const anoSel = selAno ? selAno.value : 'todos';
   const mesSel = selMes ? selMes.value : 'todos';
   let resultado = historico;
+  const per = periodoExportHist();
+  if (per && !per.erro) {
+    return historico.filter(h => { const d = dataIsoHist(h); return d && d >= per.de && d <= per.ate && h.status === 'pago'; });
+  }
   if (anoSel !== 'todos') resultado = resultado.filter(h => String(h.ano) === String(anoSel));
   if (mesSel !== 'todos') resultado = resultado.filter(h => String(h.mes) === String(mesSel));
   return resultado;
@@ -5744,6 +5786,8 @@ function exportarExcel(tipo) {
     if (T.qtdSusp) data.push({Nome:`Suspensos — fora do total (${T.qtdSusp} clientes)`, Valor:Number(T.totalSusp.toFixed(2))});
     filename='clientes.xlsx';
   } else {
+    const per = periodoExportHist();
+    if (per?.erro) { showToast('⚠ ' + per.erro, 'error'); return; }
     const histFiltrado = getHistoricoFiltrado();
     const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
     data = histFiltrado
@@ -5774,10 +5818,17 @@ function exportarExcel(tipo) {
       });
     const mesSel = document.getElementById('exportMesHistorico')?.value || 'todos';
     const MESES_ARQ = ['01-janeiro','02-fevereiro','03-marco','04-abril','05-maio','06-junho','07-julho','08-agosto','09-setembro','10-outubro','11-novembro','12-dezembro'];
+    if (per) {
+      const tot = histFiltrado.reduce((t, h) => t + (Number(h.valor) || 0), 0);
+      data.push({});
+      data.push({ Cliente: `TOTAL DO PERÍODO ${fmtBR(per.de)} a ${fmtBR(per.ate)} (${histFiltrado.length} pagamentos)`, Valor: `R$ ${tot.toFixed(2).replace('.',',')}` });
+      filename = `historico_${per.de}_a_${per.ate}.xlsx`;
+    } else {
     let sufixo = '';
     if (anoSel !== 'todos') sufixo += '_' + anoSel;
     if (mesSel !== 'todos') sufixo += '_' + MESES_ARQ[Number(mesSel)];
     filename = sufixo ? `historico${sufixo}.xlsx` : 'historico_completo.xlsx';
+    }
   }
   const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,tipo);XLSX.writeFile(wb,filename);
   showToast('✓ Excel exportado!','success');
@@ -5788,9 +5839,12 @@ function exportarPDF(tipo) {
   const{jsPDF}=jspdf;const doc=new jsPDF();
   const anoSel = document.getElementById('exportAnoHistorico')?.value || 'todos';
   const mesSel = document.getElementById('exportMesHistorico')?.value || 'todos';
+  const per = tipo === 'clientes' ? null : periodoExportHist();
+  if (per?.erro) { showToast('⚠ ' + per.erro, 'error'); return; }
   let periodoTxt = '';
-  if (mesSel !== 'todos') periodoTxt += MESES[Number(mesSel)] + ' ';
-  if (anoSel !== 'todos') periodoTxt += anoSel;
+  if (per) periodoTxt = `${fmtBR(per.de)} a ${fmtBR(per.ate)}`;
+  else if (mesSel !== 'todos') periodoTxt += MESES[Number(mesSel)] + ' ';
+  if (!per && anoSel !== 'todos') periodoTxt += anoSel;
   if (!periodoTxt) periodoTxt = 'Completo';
   const titulo = tipo==='clientes' ? 'Clientes' : `Histórico ${periodoTxt.trim()}`;
   doc.setFontSize(16);doc.text('Acqua Brise — '+titulo,14,20);
@@ -5803,8 +5857,11 @@ function exportarPDF(tipo) {
       foot, showFoot:'lastPage', columnStyles:{3:{cellWidth:27}},
       didParseCell: d => { if (d.section === 'foot' && d.row.index === 1) { d.cell.styles.fillColor = [240,240,240]; d.cell.styles.textColor = [110,110,110]; d.cell.styles.fontStyle = 'normal'; } }});
   } else {
-    const histFiltrado = getHistoricoFiltrado();
-    doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:histFiltrado.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,h.data||''];})});
+    let histFiltrado = getHistoricoFiltrado();
+    if (per) histFiltrado = [...histFiltrado].sort((a,b) => dataIsoHist(a).localeCompare(dataIsoHist(b)));
+    const totPer = histFiltrado.reduce((t, h) => t + (Number(h.valor) || 0), 0);
+    doc.autoTable({startY:35,head:[['Cliente','Mês','Ano','Status','Valor','Data']],body:histFiltrado.map(h=>{const c=clientes.find(x=>x.id===h.clienteId);return[c?.nome||'',MESES[h.mes],h.ano,h.status,`R$ ${Number(h.valor||0).toFixed(2)}`,per?fmtBR(dataIsoHist(h)):(h.data||'')];}),
+      ...(per ? { foot: [[{content:`TOTAL DO PERÍODO (${histFiltrado.length} pagamentos)`, colSpan:4}, `R$ ${totPer.toFixed(2)}`, '']], showFoot:'lastPage' } : {})});
   }
   let filename;
   if (tipo === 'clientes') {
@@ -5815,7 +5872,7 @@ function exportarPDF(tipo) {
     let sufixo = '';
     if (anoSel !== 'todos') sufixo += '_' + anoSel;
     if (mesSel !== 'todos') sufixo += '_' + MESES_ARQ[Number(mesSel)];
-    filename = sufixo ? `historico${sufixo}.pdf` : 'historico_completo.pdf';
+    filename = per ? `historico_${per.de}_a_${per.ate}.pdf` : (sufixo ? `historico${sufixo}.pdf` : 'historico_completo.pdf');
   }
   doc.save(filename);
   showToast('✓ PDF exportado!','success');
